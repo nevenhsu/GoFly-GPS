@@ -7,7 +7,7 @@ struct GoFlyIconCatalogTests {
         "alert", "arrow-right", "battery-full", "bookmark", "check", "chevron-down", "chevron-left",
         "chevron-right", "chevron-up", "close", "copy", "direction-forward", "direction-reverse", "expand",
         "external-link", "flag", "gear", "globe", "grip", "help", "history", "hourglass", "joystick",
-        "locate", "mac", "moon", "more", "nav", "paste", "pause", "phone", "pin", "play", "repeat",
+        "locate", "mac", "moon", "more", "nav", "paste", "pause", "phone", "pin", "play", "radius", "repeat",
         "repeat-off", "reset", "route", "route-folder", "route-list", "search", "select", "shield", "shuffle",
         "signal", "speed", "star", "star-filled", "stop", "success", "swap-horizontal", "swap-vertical",
         "terminal", "trash", "wifi"
@@ -51,7 +51,7 @@ struct GoFlyIconCatalogTests {
             .map { String($0.dropLast(".imageset".count)) }
         let expectedDirectories = Self.figmaIcons.map { "icon-\($0)" }
         #expect(Set(actualDirectories) == Set(expectedDirectories))
-        #expect(Self.figmaIcons.count == 54, "Figma 04 currently renders 54 icon/* assets (added icon/terminal)")
+        #expect(Self.figmaIcons.count == 55, "Figma 04 currently renders 55 icon/* assets (added icon/radius)")
 
         let catalog = try String(contentsOf: Self.appRoot().appendingPathComponent("App/GoFlyIcon.swift"), encoding: .utf8)
         for icon in Self.figmaIcons {

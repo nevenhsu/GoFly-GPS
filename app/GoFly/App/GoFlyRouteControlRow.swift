@@ -35,12 +35,16 @@ struct GoFlySpeedChip: View {
     /// Figma D6 uses a 36 pt chip with a trailing chevron; the joystick row keeps the compact 34 pt chip.
     var height: CGFloat = 34
     var showsChevron = false
+    /// The wander range chip (Figma E1/E2 km chip) reuses this chip with another glyph, value and label.
+    var icon: GoFlyIconAsset = .speed
+    var valueText: String? = nil
+    var accessibilityText: String? = nil
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                GoFlySpeedIcon(size: 16)
-                Text("\(speed)")
+                GoFlyIcon(icon, size: 16, maximumSize: 24)
+                Text(valueText ?? "\(speed)")
                     .goFlyFont(GoFlyFont.footnoteEmphasis)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -60,7 +64,7 @@ struct GoFlySpeedChip: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
-        .accessibilityLabel(goFlyLocalizedFormat(goFlyString("route.speedShort"), speed))
+        .accessibilityLabel(accessibilityText ?? goFlyLocalizedFormat(goFlyString("route.speedShort"), speed))
         .accessibilityIdentifier(identifier)
     }
 }

@@ -797,3 +797,9 @@
 "route.start.inProgress" = "進行中";
 
 "route.autoRoundTrip" = "自動來回 (%@)";
+"wander.range.title" = "設定漫步範圍";
+"wander.range.radius" = "漫步半徑";
+"wander.range.chip" = "漫步範圍 %@ 公里";
+"map.rangeShow" = "顯示漫步範圍";
+"map.rangeHide" = "隱藏漫步範圍";
+"map.fitRange" = "適配漫步範圍";

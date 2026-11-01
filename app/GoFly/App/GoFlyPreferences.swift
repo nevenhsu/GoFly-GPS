@@ -43,6 +43,10 @@ final class GoFlyPreferences {
     private(set) var movementSpeed: RouteSpeed
     /// Background run time for fixed position, round trip and wander (seconds).
     private(set) var backgroundRunSeconds: Int
+    /// Wander range (Figma E2.b): radius and circle visibility survive relaunch. The anchor does
+    /// not: after a relaunch the position can be anywhere, so the first position becomes it.
+    private(set) var wanderRadius: WanderRadius
+    private(set) var wanderRangeVisible: Bool
     private var systemLanguages: [String]
     @ObservationIgnored private let defaults: UserDefaults
     private static let storageKey = "gofly.preferences.v1"
@@ -56,7 +60,13 @@ final class GoFlyPreferences {
         movementSpeed = (saved?["movementSpeed"] as? Int).flatMap(RouteSpeed.init(kilometersPerHour:)) ?? .standard
         backgroundRunSeconds = Self.applyBackgroundRunSeconds(
             (saved?["backgroundRunSeconds"] as? Int) ?? Int(BackgroundRunDuration.defaultSeconds))
+        wanderRadius = Self.decodeRadius(saved)
+        wanderRangeVisible = (saved?["wanderRangeVisible"] as? Bool) ?? true
         systemLanguages = Locale.preferredLanguages
+    }
+
+    private static func decodeRadius(_ saved: [String: Any]?) -> WanderRadius {
+        (saved?["wanderRadiusKm"] as? Double).map { WanderRadius(kilometers: $0) } ?? .default
     }
 
     var effectiveLanguage: String {
@@ -93,6 +103,13 @@ final class GoFlyPreferences {
         save()
     }
 
+    func setWanderRange(radius: WanderRadius, isVisible: Bool) {
+        guard radius != wanderRadius || isVisible != wanderRangeVisible else { return }
+        wanderRadius = radius
+        wanderRangeVisible = isVisible
+        save()
+    }
+
     func setBackgroundRunSeconds(_ value: Int) {
         let clamped = Self.applyBackgroundRunSeconds(value)
         guard backgroundRunSeconds != clamped else { return }
@@ -118,6 +135,8 @@ final class GoFlyPreferences {
            let decoded = GoFlyAppearance(rawValue: value) { appearance = decoded }
         if let value = saved?["movementSpeed"] as? Int,
            let decoded = RouteSpeed(kilometersPerHour: value) { movementSpeed = decoded }
+        wanderRadius = Self.decodeRadius(saved)
+        wanderRangeVisible = (saved?["wanderRangeVisible"] as? Bool) ?? true
         if let value = saved?["backgroundRunSeconds"] as? Int {
             backgroundRunSeconds = Self.applyBackgroundRunSeconds(value)
         }
@@ -133,6 +152,8 @@ final class GoFlyPreferences {
         dictionary["appearance"] = appearance.rawValue
         dictionary["movementSpeed"] = movementSpeed.kilometersPerHour
         dictionary["backgroundRunSeconds"] = backgroundRunSeconds
+        dictionary["wanderRadiusKm"] = wanderRadius.kilometers
+        dictionary["wanderRangeVisible"] = wanderRangeVisible
         defaults.set(dictionary, forKey: Self.storageKey)
     }
 }

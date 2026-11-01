@@ -798,3 +798,9 @@
 "route.start.inProgress" = "In progress";
 
 "route.autoRoundTrip" = "Auto round trip (%@)";
+"wander.range.title" = "Wander Range";
+"wander.range.radius" = "Wander Radius";
+"wander.range.chip" = "Wander range, %@ km";
+"map.rangeShow" = "Show wander range";
+"map.rangeHide" = "Hide wander range";
+"map.fitRange" = "Fit wander range";

@@ -27,6 +27,9 @@ final class GoFlyMovementModel: ObservableObject {
     let recovery: ConnectionRecoveryController
     let continuation: MovementContinuationController
     let positionHold: PositionHoldController
+    /// Owned here so the joystick's range closure never outlives or loses its controller
+    /// when the map view struct is rebuilt.
+    let wanderRange: WanderRangeController
     let keepAlive: PositionKeepAlive
     let placeSearch: any PlaceSearching
     let placeResolver: any PlaceResolving
@@ -75,6 +78,13 @@ final class GoFlyMovementModel: ObservableObject {
         _ = route.setRoundTripEnabled(snapshot.roundTripEnabled)
         joystick = JoystickMovementController(commands: service, speed: GoFlyPreferences.shared.movementSpeed)
         positionHold = PositionHoldController(service: service)
+        let preferences = GoFlyPreferences.shared
+        let rangeController = WanderRangeController(
+            radius: preferences.wanderRadius, isVisible: preferences.wanderRangeVisible,
+            onChange: { GoFlyPreferences.shared.setWanderRange(radius: $0, isVisible: $1) })
+        wanderRange = rangeController
+        joystick.wanderRange = { rangeController.range(origin: $0) }
+        joystick.wanderStarting = { rangeController.wanderStarting(at: $0) }
         keepAlive = PositionKeepAlive(service: service)
 #if DEBUG && targetEnvironment(simulator)
         let recoveryProbe: any TunnelProbing = GoFlyUITestOverrides.isFrameMode
@@ -132,6 +142,7 @@ final class GoFlyMovementModel: ObservableObject {
             guard let self else { return }
             self.presentationUpdateQueued = false
             let running = self.route.phase == .running || self.joystick.phase == .moving || self.positionHold.phase == .running
+                || self.joystick.isAwaitingNextTarget
             let paused = self.route.phase == .paused || self.joystick.phase == .paused || self.positionHold.phase == .paused
                 || self.route.phase == .interrupted || self.joystick.phase == .interrupted
                 || self.route.phase == .unknown || self.joystick.phase == .unknown || self.positionHold.phase == .unknown
@@ -277,6 +288,7 @@ struct GoFlyMapView: View {
     @State private var isMapPicking = false
     @StateObject private var joystickOrigin: JoystickOriginController
     @StateObject private var wander: WanderPlanningCoordinator
+    @ObservedObject private var wanderRange: WanderRangeController
     @State private var selectedWanderPlace: MapPlace? = nil
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
@@ -311,8 +323,8 @@ struct GoFlyMapView: View {
         let wanderCoordinator = WanderPlanningCoordinator(
             service: service, joystick: movement.joystick, origin: origin,
             planSegment: { [route = movement.route] in try await route.planWanderSegment(from: $0, to: $1) })
-        movement.positionHold.suppressesHold = { [weak wanderCoordinator] in wanderCoordinator?.isStartOrigin($0) == true }
         _wander = StateObject(wrappedValue: wanderCoordinator)
+        _wanderRange = ObservedObject(wrappedValue: movement.wanderRange)
         _checkpoints = StateObject(wrappedValue: SessionCheckpointSaver(
             store: recoveryStore, backgroundTasks: UIKitBackgroundSaveTasks()))
     }
@@ -454,6 +466,10 @@ struct GoFlyMapView: View {
                     requestLocationFix: { location.requestRecenter() },
                     mapCenter: { projection?.upperThirdCoordinate ?? projection?.centerCoordinate }))
                 wander.attach(wanderPlanningHost)
+                // Wired here, not in init: init also runs for view copies SwiftUI discards, and a
+                // weak reference to such a copy's coordinator would die and let the origin ACK's
+                // position hold wipe the wander start.
+                movement.positionHold.suppressesHold = { [weak wander] in wander?.isStartOrigin($0) == true }
                 movement.attachMapAdmission {
                     !showingSettings && !showingSearch && !showingRouteList && !showingImportedRoutes
                         && !showingAllImportedPoints && presentedSheet == nil && route.picker == nil
@@ -824,6 +840,11 @@ struct GoFlyMapView: View {
     private func observeMapPresentation<Content: View>(_ content: Content) -> some View {
         content
             .task(id: route.completion?.executionID) { await dismissRouteCompletionWhenReady() }
+            // The range stays where the first known position was until a teleport moves it;
+            // joystick movement and a running wander never drag the circle along.
+            .onChange(of: service.currentJoystickOrigin, initial: true) { _, origin in
+                if let origin { wanderRange.adoptAnchorIfNeeded(origin) }
+            }
             .onChange(of: service.pointState) { _, state in
                 switch state {
                 case .acknowledged(let intent):
@@ -835,6 +856,12 @@ struct GoFlyMapView: View {
                         cameraIntent = GoFlyCameraIntent(coordinate: intent.candidate.place.coordinate)
                     }
                     dismissKeyboard()
+                    // The range follows a teleport only while no wander runs; the joystick's
+                    // automatic origin fix just restores the position it already had.
+                    if !joystickOrigin.isOrigin(intent.id) {
+                        wanderRange.teleportAcknowledged(at: intent.candidate.place.coordinate,
+                                                         wanderRunning: joystick.wanderEnabled)
+                    }
                     if joystickOrigin.settle(intent.id), mode == .teleport && search.candidate == nil { mode = .joystick }
                     wander.originAcknowledged(intent.id)
                 case .notSent(let intent, _):
@@ -1064,6 +1091,26 @@ struct GoFlyMapView: View {
         return max(0, geometry.size.height - top) + geometry.safeAreaInsets.bottom + 4
     }
 
+    /// The range circle belongs to the joystick tab (E1 and E2). Until a teleport or
+    /// wander start fixes an anchor, it is centred where an automatic wander would
+    /// start: the current joystick origin, else the map's wander origin candidate.
+    private var rangeCircle: GoFlyRangeCircle? {
+        guard mode == .joystick, route.picker == nil, wanderRange.isVisible else { return nil }
+        return rangeGeometry
+    }
+
+    /// The circle regardless of whether it is drawn: what "fit range" frames.
+    private var rangeGeometry: GoFlyRangeCircle? {
+        guard let center = wanderRange.anchor ?? service.currentJoystickOrigin
+                ?? mapWanderOriginCandidates().first else { return nil }
+        return GoFlyRangeCircle(center: center, radiusMeters: wanderRange.radius.meters)
+    }
+
+    /// Joystick and wander frame the range circle, not the route; the route is the fallback.
+    private func wanderFitIntent(_ planned: PlannedRoute) -> GoFlyCameraIntent {
+        rangeGeometry.map { GoFlyCameraIntent(range: $0) } ?? GoFlyCameraIntent(route: planned)
+    }
+
     private func mapCanvas(viewport: CGRect, size: CGSize, attributionBottomInset: CGFloat) -> some View {
         let cameraViewport = activeCandidate == nil
             ? viewport
@@ -1075,6 +1122,7 @@ struct GoFlyMapView: View {
             // A wander segment has one destination and no intermediate stops.
             routeWaypoints: mode == .route && route.draft.gpxSource == nil ? manualRouteWaypoints : (isWanderMap ? [] : nil),
             wanderTarget: isWanderMap ? joystick.wanderTarget?.place : nil,
+            rangeCircle: rangeCircle,
             markerBearingDegrees: activeMarkerBearing,
             markerRoute: isWanderMap ? (joystick.wanderNeedsReplan ? nil : joystick.wanderRoute) : movement.presentation.route,
             markerRouteDistance: isWanderMap ? joystick.wanderProgressMeters : movement.presentation.routeDistance,
@@ -1309,7 +1357,7 @@ struct GoFlyMapView: View {
     private var isResumeState: Bool {
         if continuation.noticeKey != nil && !notices.isDismissed(.continuation) { return true }
         if !route.canEdit, route.phase == .paused || route.phase == .interrupted { return true }
-        if mode == .joystick, joystick.wanderEnabled, !joystick.wanderNeedsReplan,
+        if mode == .joystick, joystick.wanderEnabled, !joystick.wanderNeedsReplan, !joystick.isAwaitingNextTarget,
            [.paused, .suspended, .interrupted].contains(joystick.phase) { return true }
         if mode == .teleport, positionHold.phase == .paused { return true }
         return false
@@ -1353,7 +1401,9 @@ struct GoFlyMapView: View {
                             canStartWander: canRequestWanderStart,
                             isStartingWander: wander.isStarting,
                             onStopWander: { wander.stop() },
-                            onSettings: { showingSettings = true }
+                            onSettings: { showingSettings = true },
+                            wanderRadius: wanderRange.radius,
+                            onWanderRadiusChanged: { wanderRange.setRadius($0) }
                         )
                         // Keep an admitted finger alive through preparation; disappearance releases it.
                         .opacity(showsOperationPanel ? 0 : 1)
@@ -1692,13 +1742,13 @@ struct GoFlyMapView: View {
             isRecoveryChecking: { recovery.isChecking },
             mapOriginCandidates: { mapWanderOriginCandidates() },
             wanderStarted: { planned in
-                cameraIntent = GoFlyCameraIntent(route: planned)
+                cameraIntent = wanderFitIntent(planned)
             },
             segmentReplaced: { planned in
                 selectedWanderPlace = nil
                 wanderSearch.resetSelection()
-                // Changing the place frames the whole new wander route.
-                cameraIntent = GoFlyCameraIntent(route: planned)
+                // Changing the place keeps the whole wander range framed.
+                cameraIntent = wanderFitIntent(planned)
             },
             destinationCleared: {
                 selectedWanderPlace = nil
@@ -1727,18 +1777,28 @@ struct GoFlyMapView: View {
         let upper = min(planned.totalDistanceMeters, distance + deltaDistance)
         guard let a = planned.coordinate(at: forward ? lower : upper),
               let b = planned.coordinate(at: forward ? upper : lower), a != b else { return nil }
+        return Self.bearingDegrees(from: a, to: b)
+    }
+
+    private var joystickMarkerBearing: Double? {
+        guard let marker = service.positionMarker, marker.source == .simulation else { return nil }
+        if isWanderMap, joystick.input == nil, !joystick.wanderNeedsReplan, let planned = joystick.wanderRoute {
+            let distance = joystick.wanderProgressMeters
+            if let a = planned.coordinate(at: max(0, distance - 3)),
+               let b = planned.coordinate(at: min(planned.totalDistanceMeters, distance + 3)), a != b {
+                return Self.bearingDegrees(from: a, to: b)
+            }
+        }
+        return joystick.lastAcknowledgedBearingDegrees
+    }
+
+    private static func bearingDegrees(from a: GeoCoordinate, to b: GeoCoordinate) -> Double {
         let latitudeA = a.latitude * .pi / 180
         let latitudeB = b.latitude * .pi / 180
         let delta = (b.longitude - a.longitude) * .pi / 180
         let y = sin(delta) * cos(latitudeB)
         let x = cos(latitudeA) * sin(latitudeB) - sin(latitudeA) * cos(latitudeB) * cos(delta)
         return (atan2(y, x) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
-    }
-
-    private var joystickMarkerBearing: Double? {
-        guard let marker = service.positionMarker, marker.source == .simulation,
-              marker.coordinate == joystick.lastAcknowledgedCoordinate else { return nil }
-        return joystick.lastAcknowledgedBearingDegrees
     }
 
     /// Floating search entry and settings gear; execution mode supplies its own header.
@@ -1809,6 +1869,26 @@ struct GoFlyMapView: View {
                 .accessibilityLabel(goFlyString("map.fitRoute"))
                 .accessibilityIdentifier("map.fitRoute")
             }
+            if mode == .joystick {
+                Button {
+                    if let circle = rangeGeometry { cameraIntent = GoFlyCameraIntent(range: circle) }
+                } label: {
+                    GoFlyIcon(GoFlySymbols.fitRoute)
+                        .goFlyIconSize(size: 18)
+                }
+                .buttonStyle(GoFlyIconStyle(variant: .mapControls))
+                .accessibilityLabel(goFlyString("map.fitRange"))
+                .accessibilityIdentifier("map.fitRange")
+                // Shown: the same color as Recenter; hidden: the disabled icon color (Figma E1/E1.c).
+                let foreground = wanderRange.isVisible ? GoFlyThemeColor.iconPrimary : GoFlyThemeColor.iconDisabled
+                Button { wanderRange.setVisible(!wanderRange.isVisible) } label: {
+                    GoFlyIcon(.radius, size: 22, maximumSize: 33)
+                        .foregroundStyle(foreground)
+                }
+                .buttonStyle(GoFlyIconStyle(variant: .mapControls))
+                .accessibilityLabel(goFlyString(wanderRange.isVisible ? "map.rangeHide" : "map.rangeShow"))
+                .accessibilityIdentifier("map.range")
+            }
             Button { recenter() } label: {
                 GoFlyRecenterIcon(size: 22)
             }
@@ -1859,7 +1939,8 @@ struct GoFlyMapView: View {
     /// Route and wander simulation hide the tab bar; a paused wander keeps it for the resume row (E5).
     private var isWanderRunning: Bool {
         // Changing the place pauses the joystick while planning; keep the running layout (no tab bar).
-        isWanderMap && (isWanderReplanning || ![.paused, .suspended, .interrupted].contains(joystick.phase))
+        isWanderMap && (isWanderReplanning || joystick.isAwaitingNextTarget
+            || ![.paused, .suspended, .interrupted].contains(joystick.phase))
     }
 
     private func beginSearch() {

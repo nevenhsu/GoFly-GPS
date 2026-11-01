@@ -28,6 +28,14 @@ struct GoFlyCameraIntent: Equatable {
         coordinate = route.start
         routeCoordinates = route.points
     }
+    /// Frames the whole range circle: its four extreme points fit like a route's points do.
+    init(range: GoFlyRangeCircle) {
+        coordinate = range.center
+        routeCoordinates = [0.0, 90, 180, 270].compactMap { bearing in
+            JoystickDisplacement(bearingDegrees: bearing, distanceMeters: range.radiusMeters)
+                .map { JoystickGeodesy.destination(from: range.center, displacement: $0) }
+        }
+    }
 }
 
 struct GoFlyMapProjection: Equatable {
@@ -115,6 +123,12 @@ struct GoFlyMapProjection: Equatable {
     }
 }
 
+/// A circle on the map in real metres, so it scales with the zoom level.
+struct GoFlyRangeCircle: Equatable {
+    let center: GeoCoordinate
+    let radiusMeters: Double
+}
+
 struct GoFlyMapCanvas: UIViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
@@ -128,6 +142,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
     /// Numbered intermediate stops; when nil, 1/3 and 2/3 of long routes are marked.
     var routeWaypoints: [GeoCoordinate]? = nil
     var wanderTarget: MapPlace? = nil
+    /// Joystick and wander range (Figma E1/E2): a dashed blue circle around the anchor.
+    var rangeCircle: GoFlyRangeCircle? = nil
     var markerBearingDegrees: Double? = nil
     var markerRoute: PlannedRoute? = nil
     var markerRouteDistance: Double? = nil
@@ -188,6 +204,7 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         coordinator.applyAnnotationLocale(locale, on: map)
         coordinator.updateMarker(on: map)
         coordinator.updateRoute(on: map)
+        coordinator.updateRangeCircle(on: map)
         coordinator.refreshAppearance(on: map)
         coordinator.applyCameraIfNeeded(on: map)
         coordinator.publishProjection(on: map)
@@ -218,6 +235,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         private var lastPublishedProjection: GoFlyMapProjection?
         private var routePoints: [GeoCoordinate] = []
         private var routeOverlay: MKPolyline?
+        private var rangeOverlay: MKCircle?
+        private var appliedRangeCircle: GoFlyRangeCircle?
         private var routeRenderer: MKPolylineRenderer?
         private var appliedRouteColor: CGColor?
         private var routeWaypointsApplied: [GeoCoordinate]?
@@ -455,6 +474,20 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             map.addAnnotations(annotations)
         }
 
+        func updateRangeCircle(on map: MKMapView) {
+            guard parent.rangeCircle != appliedRangeCircle else { return }
+            appliedRangeCircle = parent.rangeCircle
+            if let rangeOverlay { map.removeOverlay(rangeOverlay) }
+            rangeOverlay = nil
+            guard let circle = parent.rangeCircle else { return }
+            let overlay = MKCircle(center: circle.center.clLocationCoordinate, radius: circle.radiusMeters)
+            rangeOverlay = overlay
+            // Below the route so the path and its arrow stay readable, but above any base tiles.
+            let overlays = map.overlays(in: .aboveRoads)
+            let routeIndex = routeOverlay.flatMap { route in overlays.firstIndex { $0 === route } } ?? overlays.count
+            map.insertOverlay(overlay, at: routeIndex, level: .aboveRoads)
+        }
+
         func applyCameraIfNeeded(on map: MKMapView) {
             guard let intent = parent.cameraIntent,
                   map.bounds.width > 0, map.bounds.height > 0 else { return }
@@ -642,6 +675,16 @@ struct GoFlyMapCanvas: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: any MKOverlay) -> MKOverlayRenderer {
             if overlay is MKTileOverlay { return MKTileOverlayRenderer(overlay: overlay) }
+            if let circle = overlay as? MKCircle {
+                let renderer = MKCircleRenderer(circle: circle)
+                // System blue like the Figma range circle (#007AFF light, #0A84FF dark).
+                let blue = UIColor.systemBlue
+                renderer.strokeColor = blue
+                renderer.fillColor = blue.withAlphaComponent(0.08)
+                renderer.lineWidth = 1
+                renderer.lineDashPattern = [1.5, 2.5]
+                return renderer
+            }
             guard let line = overlay as? MKPolyline else { return MKOverlayRenderer(overlay: overlay) }
             let renderer = MKPolylineRenderer(polyline: line)
             renderer.strokeColor = UIColor(GoFlyThemeColor.mapRoute)

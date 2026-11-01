@@ -157,10 +157,13 @@ public final class MacAppModel {
     }
 
     public var signingDaysRemaining: Int? {
-        guard let date = signingExpiryDate else { return nil }
-        let calendar = Calendar.current
-        return calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()),
-                                       to: calendar.startOfDay(for: date)).day
+        signingExpiryDate.map(Self.signingDaysLeft)
+    }
+
+    /// Free Personal Team signing lasts 7 days: whole days left, rounded up,
+    /// capped at 7. Negative means already expired.
+    static func signingDaysLeft(until date: Date) -> Int {
+        min(7, Int((date.timeIntervalSinceNow / 86_400).rounded(.up)))
     }
 
     public func signingExpiryText(for device: ConnectedDevice) -> String {
@@ -174,10 +177,8 @@ public final class MacAppModel {
             ? inspection : inspectionsByConnection[device.connectionID]
         expiry = observed?.expiresAt ?? (device.id.lowercased() == selectedID?.lowercased()
             ? setup?.snapshot?.expiresAt ?? setup?.lastCompleted?.expiresAt : nil)
-        guard let expiry, let date = ISO8601DateFormatter().date(from: expiry),
-              let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()),
-                                                         to: Calendar.current.startOfDay(for: date)).day else { return nil }
-        return days
+        guard let expiry, let date = ISO8601DateFormatter().date(from: expiry) else { return nil }
+        return Self.signingDaysLeft(until: date)
     }
 
     public func setAutoRenewEnabled(_ enabled: Bool) {
@@ -607,9 +608,7 @@ public final class MacAppModel {
         guard let date = signingExpiryDate else { return "待確認" }
         let text = date.formatted(Date.FormatStyle(date: .numeric, time: .shortened)
             .locale(Locale(identifier: "zh_TW")))
-        let calendar = Calendar.current
-        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()),
-                                           to: calendar.startOfDay(for: date)).day ?? 0
+        let days = Self.signingDaysLeft(until: date)
         return days < 0 ? "\(text)（已過期）" : "\(text)（剩餘 \(days) 天）"
     }
 

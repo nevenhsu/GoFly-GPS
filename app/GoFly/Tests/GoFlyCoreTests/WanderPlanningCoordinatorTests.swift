@@ -36,6 +36,25 @@ struct WanderPlanningCoordinatorTests {
         #expect(joystick.setWanderEnabled(false))
     }
 
+    @Test func automaticStartPlansToATargetInsideTheWanderRangeAndAnchorsAtItsOrigin() async throws {
+        let service = ServiceController(service: JoystickControlledDevice()); service.setMovementConnectionAvailable(true)
+        service.observeRealLocation(location())
+        let origin = try #require(service.currentJoystickOrigin)
+        let planner = ScriptedWanderPlanner([.hold]), host = RecordingWanderHost()
+        let joystick = JoystickMovementController(commands: service, clock: RouteTestClock())
+        let range = WanderRangeController(radius: WanderRadius(kilometers: 0.1))
+        joystick.wanderRange = { [weak range] in range?.range(origin: $0) }
+        let wander = coordinator(service, joystick, planner, host)
+
+        wander.start(preselectedOrigin: origin)
+        await wait { planner.isHolding }
+        let target = try #require(planner.calls.first?.to)
+        #expect(JoystickGeodesy.distanceMeters(from: origin, to: target) <= 100)
+        #expect(range.anchor == origin)
+        wander.cancelAll()
+        planner.release()
+    }
+
     @Test func aResultArrivingAfterCancelAllNeverTeleportsOrFails() async throws {
         let service = ServiceController(service: JoystickControlledDevice()); service.setMovementConnectionAvailable(true)
         service.observeRealLocation(location())

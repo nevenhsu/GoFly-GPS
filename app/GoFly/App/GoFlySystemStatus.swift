@@ -174,9 +174,10 @@ struct GoFlyDeviceSnapshot {
         guard let signingExpiry, let date = ISO8601DateFormatter().date(from: signingExpiry) else {
             return goFlyString("settings.notObtained")
         }
-        let calendar = Calendar.current
-        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: date)).day ?? 0
-        return String(format: goFlyString("settings.device.daysFormat"), max(0, days))
+        // Free Personal Team signing is valid for 7 days: count whole days left
+        // (rounded up) on that basis so a fresh install reads 7, never more.
+        let days = Int((date.timeIntervalSinceNow / 86_400).rounded(.up))
+        return String(format: goFlyString("settings.device.daysFormat"), min(7, max(0, days)))
     }
 
     var teamIDStatus: String {

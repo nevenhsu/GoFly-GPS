@@ -148,6 +148,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
                 guard !Task.isCancelled, self.planningID == planningID, host.isJoystickMode(),
                       !joystick.wanderEnabled else { return }
                 let origin = service.currentJoystickOrigin ?? originCandidate
+                joystick.wanderStarting(origin)
                 guard let target = preselectedTarget ?? joystick.selectWanderTarget(from: origin) else { continue }
                 activeCheckpoint = Checkpoint(purpose: .startup, origin: origin, target: target)
                 do {

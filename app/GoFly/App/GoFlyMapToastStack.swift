@@ -249,7 +249,8 @@ struct GoFlyMapToastStack: View {
                !isUserPausedRoute, !isUserPausedWander, (continuation.noticeKey != nil && !notices.isDismissed(.continuation)) || isResumeState {
             let routePaused = mode == .route && (route.phase == .paused || route.phase == .interrupted)
             let holdPaused = positionHold.phase == .paused || positionHold.phase == .completed
-            let wanderPaused = mode == .joystick && joystick.wanderEnabled && [.paused, .suspended, .interrupted].contains(joystick.phase)
+            let wanderPaused = mode == .joystick && joystick.wanderEnabled && !joystick.isAwaitingNextTarget
+                && [.paused, .suspended, .interrupted].contains(joystick.phase)
 
             let title: String = routePaused ? goFlyString("route.pausedToast.title")
                 : (holdPaused ? goFlyString("background.positionPaused")

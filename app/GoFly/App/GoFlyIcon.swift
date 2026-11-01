@@ -38,6 +38,7 @@ enum GoFlyIconAsset: String, CaseIterable, Identifiable {
     case phone = "icon/phone"
     case pin = "icon/pin"
     case play = "icon/play"
+    case radius = "icon/radius"
     case `repeat` = "icon/repeat"
     case repeatOff = "icon/repeat-off"
     case reset = "icon/reset"

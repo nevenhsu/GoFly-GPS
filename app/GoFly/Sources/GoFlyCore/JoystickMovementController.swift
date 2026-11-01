@@ -46,6 +46,11 @@ public final class JoystickMovementController: ObservableObject {
         }
         return phase == .neutral && commands.canBeginJoystick && !requiresOrigin
     }
+    /// A wander segment ended and the next destination is being chosen. The wander is still
+    /// running: this is neither a pause nor a stop, and must not surface as either.
+    public var isAwaitingNextTarget: Bool {
+        wanderEnabled && phase == .suspended && suspensionReason == .targetUnavailable
+    }
     public var requiresOrigin: Bool { commands.currentJoystickOrigin == nil }
     public var requiresStop: Bool { phase == .unknown }
     public var canPause: Bool { isRecoveringConnection || (phase == .moving && hasAcknowledgedLease) }
@@ -61,6 +66,10 @@ public final class JoystickMovementController: ObservableObject {
     private var wanderHistory: [GeoCoordinate] = []
     private var wanderRouteRevision = UUID()
     private let wanderBearingSamples: @Sendable () -> [Double]
+    /// The range automatic targets must stay in; nil leaves selection unbounded.
+    public var wanderRange: @MainActor (GeoCoordinate) -> WanderRange? = { _ in nil }
+    /// Called with the origin of each new automatic wander before its first target is picked.
+    public var wanderStarting: @MainActor (GeoCoordinate) -> Void = { _ in }
     private var nextSequence: UInt64 = 1
     private var sceneActive = true
     private var connectionAvailable = true
@@ -314,7 +323,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
 
     private func selectTarget(origin: GeoCoordinate) -> WanderTarget? {
         WanderTargetSelector.select(origin: origin, speed: speed,
-            bearingSamples: wanderBearingSamples())
+            bearingSamples: wanderBearingSamples(), range: wanderRange(origin))
     }
     private func commitTarget(_ target: WanderTarget) {
         if let intent { _ = commands.reviseJoystickInput(executionID: intent.id, lease: intent.lease) }

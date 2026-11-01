@@ -17,7 +17,11 @@ struct GoFlyJoystickPanel: View {
     var isStartingWander = false
     var onStopWander: () -> Void = { }
     var onSettings: () -> Void = { }
+    /// Figma E1/E2 km chip; nil hides the chip (component gallery).
+    var wanderRadius: WanderRadius? = nil
+    var onWanderRadiusChanged: (WanderRadius) -> Void = { _ in }
     @State private var showingSpeedSheet = false
+    @State private var showingRangeSheet = false
 
     /// Row 44, 24 pt, 152 pt pad, 24 pt, 52 pt button, then 36 pt — 340 pt under the 12 pt grabber.
     var body: some View {
@@ -51,6 +55,13 @@ struct GoFlyJoystickPanel: View {
                 onDismiss: { showingSpeedSheet = false }
             )
         }
+        .goFlyTracksSystemPresentation(showingRangeSheet, id: "joystick.rangeSheet")
+        .sheet(isPresented: $showingRangeSheet) {
+            if let wanderRadius {
+                GoFlyRangeSheet(radius: wanderRadius, onRadiusChanged: onWanderRadiusChanged,
+                                onDismiss: { showingRangeSheet = false })
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("joystick.panel")
     }
@@ -74,14 +85,31 @@ struct GoFlyJoystickPanel: View {
                 .goFlyFont(GoFlyFont.title)
                 .lineLimit(1)
             Spacer(minLength: 8)
-            GoFlySpeedChip(
-                speed: controller.speed.kilometersPerHour,
-                action: { showingSpeedSheet = true },
-                isEnabled: controller.canSetSpeed,
-                identifier: "joystick.speed",
-                height: 36,
-                showsChevron: true
-            )
+            HStack(spacing: 8) {
+                if let wanderRadius {
+                    GoFlySpeedChip(
+                        speed: controller.speed.kilometersPerHour,
+                        action: { showingRangeSheet = true },
+                        identifier: "joystick.range",
+                        height: 36,
+                        showsChevron: true,
+                        icon: .radius,
+                        valueText: wanderRadius.kilometersText,
+                        accessibilityText: goFlyLocalizedFormat(goFlyString("wander.range.chip"), wanderRadius.kilometersText)
+                    )
+                }
+                GoFlySpeedChip(
+                    speed: controller.speed.kilometersPerHour,
+                    action: { showingSpeedSheet = true },
+                    isEnabled: controller.canSetSpeed,
+                    identifier: "joystick.speed",
+                    height: 36,
+                    showsChevron: true
+                )
+            }
+            // The chips keep their natural width; the title yields first.
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(1)
         }
         .frame(height: 44)
     }
