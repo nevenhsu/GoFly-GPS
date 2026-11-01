@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Testing
 @testable import GoFlyCore
@@ -163,6 +164,65 @@ struct WanderPlanningCoordinatorTests {
         planner.release()
     }
 
+    /// The first-press bug: the origin ACK arrives while the wander cannot be
+    /// enabled yet. Nothing outside the coordinator calls `resumePending`; the
+    /// wander must still start once the blocking state clears.
+    @Test func anAcknowledgedStartBlockedAtItsACKStartsWhenTheBlockClears() async throws {
+        let device = JoystickControlledDevice(), service = ServiceController(service: device); service.setMovementConnectionAvailable(true)
+        service.observeRealLocation(location())
+        let origin = try #require(service.currentJoystickOrigin)
+        let planner = ScriptedWanderPlanner([.route]), host = RecordingWanderHost()
+        let joystick = JoystickMovementController(commands: service, clock: RouteTestClock())
+        let wander = coordinator(service, joystick, planner, host)
+
+        wander.start(preselectedOrigin: origin, preselectedTarget: WanderTarget(place: place(destination)))
+        await wait { host.origin.intentID != nil }
+        let intentID = try #require(host.origin.intentID)
+        await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait {
+            if case .acknowledged = service.pointState { return !service.nativeBusy }
+            return false
+        }
+        host.origin = JoystickOriginRequest()
+        host.recoveryChecking = true
+        wander.originAcknowledged(intentID)
+        #expect(!joystick.wanderEnabled && wander.hasAcknowledgedPendingStart)
+
+        host.recoveryChecking = false
+        host.changes.send(())
+        await wait { joystick.wanderEnabled }
+        #expect(host.started.count == 1)
+        #expect(joystick.setWanderEnabled(false))
+    }
+
+    /// Returning to the foreground resumes a startup the scene interrupted,
+    /// without the map view asking.
+    @Test func sceneReturnResumesAnInterruptedStartupOnItsOwn() async throws {
+        let service = ServiceController(service: JoystickControlledDevice()); service.setMovementConnectionAvailable(true)
+        service.observeRealLocation(location())
+        let origin = try #require(service.currentJoystickOrigin)
+        let target = WanderTarget(place: place(destination))
+        let planner = ScriptedWanderPlanner([.cancellable, .hold]), host = RecordingWanderHost()
+        let joystick = JoystickMovementController(commands: service, clock: RouteTestClock())
+        let wander = coordinator(service, joystick, planner, host)
+        host.changes.send(())
+        await settle()
+
+        wander.start(preselectedOrigin: origin, preselectedTarget: target)
+        await wait { planner.calls.count == 1 }
+        host.sceneActive = false
+        host.changes.send(())
+        await settle()
+        host.sceneActive = true
+        host.changes.send(())
+        await wait { planner.calls.count == 2 }
+        let resumed = try #require(planner.calls.dropFirst().first)
+        #expect(resumed.from == origin && resumed.to == target.coordinate)
+        wander.cancelAll()
+        planner.release()
+    }
+
     @Test func startOutsideJoystickModeDoesNothing() async {
         let service = ServiceController(service: JoystickControlledDevice()); service.setMovementConnectionAvailable(true)
         service.observeRealLocation(location())
@@ -193,6 +253,7 @@ struct WanderPlanningCoordinatorTests {
                              _ planner: ScriptedWanderPlanner, _ host: RecordingWanderHost) -> WanderPlanningCoordinator {
         host.originController = JoystickOriginController(service: service, joystick: joystick)
         let wander = WanderPlanningCoordinator(service: service, joystick: joystick, origin: host.originController,
+                                               triggers: host.changes.eraseToAnyPublisher(),
                                                planSegment: { try await planner.plan(from: $0, to: $1) })
         wander.attach(host.host)
         return wander
@@ -237,6 +298,8 @@ private final class RecordingWanderHost {
     var joystickMode = true
     var sceneActive = true
     var recoveryChecking = false
+    /// Sent after changing `sceneActive` or `recoveryChecking`.
+    let changes = PassthroughSubject<Void, Never>()
     var originController: JoystickOriginController!
     var origin: JoystickOriginRequest {
         get { originController.request }

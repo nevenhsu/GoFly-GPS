@@ -30,6 +30,12 @@ final class GoFlyMovementModel: ObservableObject {
     /// when the map view struct is rebuilt.
     let wanderRange: WanderRangeController
     let keepAlive: PositionKeepAlive
+    /// The foreground state every movement owner hears from, reported by the map screen.
+    let scene = SceneLifecycle()
+    /// Runtime-owned so a view copy SwiftUI discards can never own the wander start
+    /// the position hold must not take over.
+    let joystickOrigin: JoystickOriginController
+    let wander: WanderPlanningCoordinator
     let placeSearch: any PlaceSearching
     let placeResolver: any PlaceResolving
     /// Owned here so the map view uses it without observing every fix.
@@ -122,6 +128,20 @@ final class GoFlyMovementModel: ObservableObject {
         speedSynchronizer = MovementSpeedSynchronizer(
             route: route, joystick: joystick, initial: GoFlyPreferences.shared.movementSpeed,
             onChange: { GoFlyPreferences.shared.setMovementSpeed($0) })
+        joystickOrigin = JoystickOriginController(service: service, joystick: joystick)
+        let scene = scene, recovery = recovery
+        wander = WanderPlanningCoordinator(
+            service: service, joystick: joystick, origin: joystickOrigin,
+            triggers: recovery.objectWillChange.map { _ in () }
+                .merge(with: scene.$isActive.dropFirst().map { _ in () }).eraseToAnyPublisher(),
+            planSegment: { [route] in try await route.planWanderSegment(from: $0, to: $1) })
+        positionHold.suppressesHold = { [weak wander] in wander?.isStartOrigin($0) == true }
+        scene.register(.init(becameActive: { [location] in location.sceneDidBecomeActive() },
+                             leftForeground: { [location] in location.sceneDidBecomeInactive() }))
+        scene.register(.init(becameActive: { [continuation] in continuation.sceneDidBecomeActive() },
+                             leftForeground: { [continuation] in continuation.releaseForInactiveScene() }))
+        scene.register(.init(becameActive: { [keepAlive] in keepAlive.sceneDidBecomeActive() },
+                             leftForeground: { [keepAlive] in keepAlive.releaseForInactiveScene() }))
         // Both screens observe this owner and read the same status projection.
         subscriptions = [service.objectWillChange, recovery.objectWillChange,
                          route.objectWillChange, joystick.objectWillChange,
@@ -286,15 +306,12 @@ struct GoFlyMapView: View {
     @State private var sceneSettled = true
     @State private var sceneSettleTask: Task<Void, Never>?
     @State private var isMapPicking = false
-    @StateObject private var joystickOrigin: JoystickOriginController
-    @StateObject private var wander: WanderPlanningCoordinator
+    @ObservedObject private var joystickOrigin: JoystickOriginController
+    @ObservedObject private var wander: WanderPlanningCoordinator
     @ObservedObject private var wanderRange: WanderRangeController
     @State private var selectedWanderPlace: MapPlace? = nil
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
-    /// Planning hosts outlive the body copy they were attached from; an
-    /// environment value captured there would stay at its onAppear phase.
-    @State private var sceneActivity = GoFlySceneActivity()
 
     init(
         service: ServiceController,
@@ -318,12 +335,8 @@ struct GoFlyMapView: View {
         _search = StateObject(wrappedValue: CandidateController(search: movement.placeSearch))
         _wanderSearch = StateObject(wrappedValue: CandidateController(search: movement.placeSearch))
         mapPlaces = movement.placeResolver
-        let origin = JoystickOriginController(service: service, joystick: movement.joystick)
-        _joystickOrigin = StateObject(wrappedValue: origin)
-        let wanderCoordinator = WanderPlanningCoordinator(
-            service: service, joystick: movement.joystick, origin: origin,
-            planSegment: { [route = movement.route] in try await route.planWanderSegment(from: $0, to: $1) })
-        _wander = StateObject(wrappedValue: wanderCoordinator)
+        _joystickOrigin = ObservedObject(wrappedValue: movement.joystickOrigin)
+        _wander = ObservedObject(wrappedValue: movement.wander)
         _wanderRange = ObservedObject(wrappedValue: movement.wanderRange)
         _checkpoints = StateObject(wrappedValue: SessionCheckpointSaver(
             store: recoveryStore, backgroundTasks: UIKitBackgroundSaveTasks()))
@@ -366,18 +379,6 @@ struct GoFlyMapView: View {
             GeometryReader { geometry in
                 mapContent(in: geometry)
                     .coordinateSpace(name: "mapRoot")
-                    // An origin ACK can arrive while the position hold still prepares;
-                    // the queued wander starts once native work drains.
-                    .onChange(of: service.nativeBusy) { _, busy in
-                        if !busy, wander.hasAcknowledgedPendingStart,
-                           scenePhase == .active, !recovery.isChecking { wander.resumePending() }
-                    }
-                    // One Start press: the origin teleport's ACK can precede the moment the
-                    // joystick owner may enable wander, so also resume when it becomes enabled.
-                    .onChange(of: joystick.canSetWanderEnabled && joystick.canStartWanderPlanning) { _, ready in
-                        if ready, wander.hasAcknowledgedPendingStart,
-                           scenePhase == .active, !recovery.isChecking { wander.resumePending() }
-                    }
                     .accessibilityHidden(presentedSheet != nil || showingSearch || showingImportedRoutes
                         || showingAllImportedPoints || route.picker != nil)
             }
@@ -450,7 +451,6 @@ struct GoFlyMapView: View {
     private func observeMapLifecycle<Content: View>(_ content: Content) -> some View {
         content
             .onAppear {
-                sceneActivity.isActive = scenePhase == .active
 #if DEBUG && targetEnvironment(simulator)
                 if let uiTestFixtureFrame {
                     configureUITestFrame(uiTestFixtureFrame)
@@ -462,14 +462,10 @@ struct GoFlyMapView: View {
                 }
                 joystickOrigin.attach(JoystickOriginHost(
                     isJoystickMode: { mode == .joystick },
-                    isSceneActive: { sceneActivity.isActive },
+                    isSceneActive: { movement.scene.isActive },
                     requestLocationFix: { location.requestRecenter() },
                     mapCenter: { projection?.upperThirdCoordinate ?? projection?.centerCoordinate }))
                 wander.attach(wanderPlanningHost)
-                // Wired here, not in init: init also runs for view copies SwiftUI discards, and a
-                // weak reference to such a copy's coordinator would die and let the origin ACK's
-                // position hold wipe the wander start.
-                movement.positionHold.suppressesHold = { [weak wander] in wander?.isStartOrigin($0) == true }
                 movement.attachMapAdmission {
                     !showingSettings && !showingSearch && !showingRouteList && !showingImportedRoutes
                         && !showingAllImportedPoints && presentedSheet == nil && route.picker == nil
@@ -482,11 +478,7 @@ struct GoFlyMapView: View {
                         cameraIntent = GoFlyCameraIntent(coordinate: position.coordinate)
                     }
                 }
-                if scenePhase == .active {
-                    location.sceneDidBecomeActive()
-                    continuation.sceneDidBecomeActive()
-                    movement.keepAlive.sceneDidBecomeActive()
-                }
+                movement.scene.sceneDidChange(active: scenePhase == .active)
 #if DEBUG && targetEnvironment(simulator)
                 // B11 captures the explicit connecting state without settling
                 // the local probe before its screenshot is taken.
@@ -677,10 +669,10 @@ struct GoFlyMapView: View {
             try? await Task.sleep(for: .milliseconds(20))
         }
         for _ in 0..<1_000 {
-            if sceneActivity.isActive, !recovery.isChecking, service.movementConnection == .available { break }
+            if movement.scene.isActive, !recovery.isChecking, service.movementConnection == .available { break }
             try? await Task.sleep(for: .milliseconds(20))
         }
-        guard sceneActivity.isActive, !recovery.isChecking, service.movementConnection == .available else { return }
+        guard movement.scene.isActive, !recovery.isChecking, service.movementConnection == .available else { return }
         if service.phase != .ready {
             guard service.phase == .stopped, service.start() else {
                 return
@@ -705,7 +697,7 @@ struct GoFlyMapView: View {
             try? await Task.sleep(for: .milliseconds(20))
         }
         guard service.phase == .ready, !service.nativeBusy, joystick.canStartWanderPlanning,
-              sceneActivity.isActive, !recovery.isChecking else { return }
+              movement.scene.isActive, !recovery.isChecking else { return }
         guard let planned = try? await movement.route.planWanderSegment(from: origin, to: target.coordinate) else {
             return
         }
@@ -753,11 +745,8 @@ struct GoFlyMapView: View {
                 if mode == .route, route.canEdit { cameraIntent = GoFlyCameraIntent(route: planned) }
             }
             .onChange(of: mode) { _, mode in
-                if mode != .joystick { wander.cancelAll() }
-                if mode == .joystick {
-                    service.warmupSession()
-                        if !recovery.isChecking { wander.resumePending() }
-                }
+                wander.joystickModeDidChange(mode == .joystick)
+                if mode == .joystick { service.warmupSession() }
                 if mode == .teleport && (positionHold.phase == .paused || positionHold.phase == .completed) {
                     sheetDetent = .collapsed
                 }
@@ -769,7 +758,6 @@ struct GoFlyMapView: View {
     private func observeMapScene<Content: View>(_ content: Content) -> some View {
         content
             .onChange(of: scenePhase) { _, phase in
-                sceneActivity.isActive = phase == .active
                 Diagnostics.shared.record("movement.scene", category: .movement, level: .notice, [
                     "phase": .text(String(describing: phase)),
                     "route": .text(String(describing: route.phase)),
@@ -789,26 +777,11 @@ struct GoFlyMapView: View {
                 }
                 if phase == .active {
                     checkpoints.sceneBecameActive()
-                    location.sceneDidBecomeActive()
-                    continuation.sceneDidBecomeActive()
-                    movement.keepAlive.sceneDidBecomeActive()
+                    movement.scene.sceneDidChange(active: true)
                     recovery.requestForegroundCheck()
                 } else {
-                    wander.cancelUncommitted()
-                    location.sceneDidBecomeInactive()
-                    continuation.releaseForInactiveScene()
-                    movement.keepAlive.releaseForInactiveScene()
+                    movement.scene.sceneDidChange(active: false)
                     checkpoints.sceneLeftForeground(recovery.snapshot(mode: mode))
-                }
-            }
-            .onChange(of: recovery.isChecking) { _, checking in
-                if !checking && scenePhase == .active { wander.resumePending() }
-            }
-            .onChange(of: service.movementConnection) { _, state in
-                if state == .available {
-                        if scenePhase == .active && !recovery.isChecking { wander.resumePending() }
-                } else {
-                    wander.cancelUncommitted()
                 }
             }
             .onChange(of: recovery.checkpointRevision) { _, _ in
@@ -821,15 +794,6 @@ struct GoFlyMapView: View {
             .onReceive(GoFlyPathMonitor.shared.changes) { _ in recovery.networkPathDidChange() }
             .onChange(of: joystick.wanderEnabled) { _, enabled in
                 if !enabled { wanderSearch.resetSelection() }
-            }
-            .onChange(of: joystick.wanderNeedsReplan) { _, needsReplan in
-                if needsReplan, joystick.phase == .moving { wander.replanCurrentDestination() }
-            }
-            .onChange(of: joystick.wanderNeedsTarget) { _, needsTarget in
-                if needsTarget { wander.planNextSegment() }
-            }
-            .onChange(of: joystick.phase) { _, phase in
-                if joystick.wanderNeedsReplan, phase == .moving { wander.replan(to: joystick.wanderTarget?.place) }
             }
             .onChange(of: positionHold.phase) { _, phase in
                 guard mode == .teleport, (phase == .paused || phase == .completed) else { return }
@@ -1743,7 +1707,7 @@ struct GoFlyMapView: View {
     private var wanderPlanningHost: WanderPlanningHost {
         WanderPlanningHost(
             isJoystickMode: { mode == .joystick },
-            isSceneActive: { sceneActivity.isActive },
+            isSceneActive: { movement.scene.isActive },
             isRecoveryChecking: { recovery.isChecking },
             mapOriginCandidates: { mapWanderOriginCandidates() },
             wanderStarted: { planned in
@@ -1859,15 +1823,6 @@ struct GoFlyMapView: View {
                 .accessibilityIdentifier("map.fitRoute")
             }
             if mode == .joystick {
-                Button {
-                    if let circle = rangeGeometry { cameraIntent = GoFlyCameraIntent(range: circle) }
-                } label: {
-                    GoFlyIcon(GoFlySymbols.fitRoute)
-                        .goFlyIconSize(size: 18)
-                }
-                .buttonStyle(GoFlyIconStyle(variant: .mapControls))
-                .accessibilityLabel(goFlyString("map.fitRange"))
-                .accessibilityIdentifier("map.fitRange")
                 // Shown: the same color as Recenter; hidden: the disabled icon color (Figma E1/E1.c).
                 let foreground = wanderRange.isVisible ? GoFlyThemeColor.iconPrimary : GoFlyThemeColor.iconDisabled
                 Button { wanderRange.setVisible(!wanderRange.isVisible) } label: {
@@ -1877,6 +1832,15 @@ struct GoFlyMapView: View {
                 .buttonStyle(GoFlyIconStyle(variant: .mapControls))
                 .accessibilityLabel(goFlyString(wanderRange.isVisible ? "map.rangeHide" : "map.rangeShow"))
                 .accessibilityIdentifier("map.range")
+                Button {
+                    if let circle = rangeGeometry { cameraIntent = GoFlyCameraIntent(range: circle) }
+                } label: {
+                    GoFlyIcon(GoFlySymbols.fitRoute)
+                        .goFlyIconSize(size: 18)
+                }
+                .buttonStyle(GoFlyIconStyle(variant: .mapControls))
+                .accessibilityLabel(goFlyString("map.fitRange"))
+                .accessibilityIdentifier("map.fitRange")
             }
             Button { recenter() } label: {
                 GoFlyRecenterIcon(size: 22)
@@ -2392,8 +2356,3 @@ private struct GoFlyMapSheetsModifier<Details: View, Places: View, Routes: View>
     }
 }
 
-/// The live scene phase for closures that outlive a view body.
-@MainActor
-private final class GoFlySceneActivity {
-    var isActive = false
-}

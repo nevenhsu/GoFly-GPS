@@ -90,16 +90,90 @@ public final class WanderPlanningCoordinator: ObservableObject {
     }
     private var deferredStart = WanderStartRequestGate()
 
+    /// `triggers` fires when state the host reads changes (scene activity,
+    /// recovery checking); service and joystick changes are observed directly.
     public init(service: ServiceController, joystick: JoystickMovementController,
-                origin: JoystickOriginController, planSegment: @escaping SegmentPlanner) {
+                origin: JoystickOriginController,
+                triggers: AnyPublisher<Void, Never> = Empty().eraseToAnyPublisher(),
+                planSegment: @escaping SegmentPlanner) {
         self.service = service; self.joystick = joystick; self.joystickOrigin = origin
         self.planSegment = planSegment
         originSubscription = origin.$request.dropFirst().receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refreshStarting() }
+        triggerSubscription = Publishers.Merge3(
+            service.objectWillChange.map { _ in () }, joystick.objectWillChange.map { _ in () }, triggers)
+            .sink { [weak self] in self?.queueTriggerEvaluation() }
     }
     private var originSubscription: AnyCancellable?
+    private var triggerSubscription: AnyCancellable?
 
-    public func attach(_ host: WanderPlanningHost) { self.host = host }
+    public func attach(_ host: WanderPlanningHost) {
+        self.host = host
+        queueTriggerEvaluation()
+    }
+
+    /// The person entered or left the joystick tab.
+    public func joystickModeDidChange(_ isJoystickMode: Bool) {
+        if !isJoystickMode { cancelAll() }
+        else if !host.isRecoveryChecking() { resumePending() }
+    }
+
+    // MARK: Triggers
+
+    /// What planning waits on. Each evaluation compares it with the last one,
+    /// so every rule below fires on a change, never once per publish.
+    private struct Triggers: Equatable {
+        var sceneActive = false
+        var recoveryChecking = false
+        var connection: MovementConnectionState?
+        var wanderNeedsReplan = false
+        var wanderNeedsTarget = false
+        var joystickMoving = false
+        var isClear: Bool { sceneActive && !recoveryChecking && connection == .available }
+    }
+    private var lastTriggers = Triggers()
+    private var triggerEvaluationQueued = false
+
+    /// Publishers fire before the change; evaluate once after it settles.
+    private func queueTriggerEvaluation() {
+        guard !triggerEvaluationQueued else { return }
+        triggerEvaluationQueued = true
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self else { return }
+            self.triggerEvaluationQueued = false
+            self.evaluateTriggers()
+        }
+    }
+
+    private func evaluateTriggers() {
+        let now = Triggers(sceneActive: host.isSceneActive(), recoveryChecking: host.isRecoveryChecking(),
+                           connection: service.movementConnection,
+                           wanderNeedsReplan: joystick.wanderNeedsReplan, wanderNeedsTarget: joystick.wanderNeedsTarget,
+                           joystickMoving: joystick.phase == .moving)
+        let last = lastTriggers
+        lastTriggers = now
+        // Leaving the foreground or losing the connection drops uncommitted planning.
+        if (last.sceneActive && !now.sceneActive)
+            || (now.connection != last.connection && now.connection != .available) {
+            cancelUncommitted()
+        }
+        // Becoming clear resumes whatever was interrupted. While clear, an
+        // acknowledged start installs as soon as the joystick owner admits it,
+        // whichever change made that possible.
+        if now.isClear && (!last.isClear || hasAcknowledgedPendingStart) {
+            resumePending()
+        }
+        if now.wanderNeedsReplan && !last.wanderNeedsReplan && now.joystickMoving {
+            replanCurrentDestination()
+        }
+        if now.wanderNeedsTarget && !last.wanderNeedsTarget {
+            planNextSegment()
+        }
+        if now.joystickMoving && !last.joystickMoving && now.wanderNeedsReplan {
+            replan(to: joystick.wanderTarget?.place)
+        }
+    }
 
     public var canRequestStart: Bool {
         let origin = joystickOrigin.request

@@ -103,6 +103,8 @@
 - 地圖 view 的最近搜尋僅記憶體保存最多 8 筆，隨 view 生命週期結束而消失；不改 SessionRecovery 或偏好格式。
 - 全螢幕搜尋的路線結果點選只回填原節點；點圖最小避讓及跟隨方向只操作 camera，不建立送點命令。
 - 「目前的移動」（`ActiveMovement`，GoFlyCore）是唯一判斷「裝置上正在跑或停在哪一件移動、為何暫停、能否繼續」的地方：依序看路線、搖桿／漫步、瞬移維持，與目前分頁無關。狀態 pill、恢復提示、`isResumeState` 與背景阻擋診斷都讀它；分頁只由 view 用 `kind` 再過濾。瞬移維持暫停時記錄原因（連線或背景），不再一律視為使用者暫停（2026-11-01）。
+- 前景生命週期（`SceneLifecycle`，GoFlyCore）是前景狀態進入 Core 的唯一入口：地圖畫面只回報 scenePhase，真實定位、繼續執行與 keepalive 在活動狀態改變時各收到一次（重複回報不重跑）。檢查點擷取、連線前景檢查與 1 秒 UI 穩定計時仍在 view；繼續執行對 recovery／瞬移維持的轉發依其 lease 判斷，留在 `MovementContinuationController`（2026-11-01）。
+- 漫步規劃何時恢復由 `WanderPlanningCoordinator` 自己決定：它監聽 service、joystick、recovery 與前景生命週期，在「前景、未檢查連線、連線可用」成立時恢復中斷的規劃，並在成立期間一旦搖桿可接手就啟動已 ACK 的起點；離開前景或連線不可用時放棄未提交的規劃；漫步偏離道路或完成一段時自行重新規劃。coordinator、搖桿起點與瞬移維持的防搶 lease 接線改由 runtime（`GoFlyMovementModel`）建立一次，不再由 view 的 onChange 觸發（2026-11-01）。
 - 路線／漫步進行與暫停使用執行模式。路線結束沿用取消路線；漫步結束呼叫 `setWanderEnabled(false)`，沿用取消漫步、保留最後模擬位置；設定的 Stop／Restore 仍是清除定位入口。
 - 啟動先以 Logo 銜接既有 detached setup check，500ms 後才顯示進度；沒有提前建立第二份 runtime。
 - 首次引導與設定共用 `GoFlyVPNHelpPage`、`GoFlyExternalLinks`；URL 依 LocalDevVPN、App Store 順序嘗試，全部失敗才提示手動搜尋。權限只請求 When In Use，不新增背景定位模式。
