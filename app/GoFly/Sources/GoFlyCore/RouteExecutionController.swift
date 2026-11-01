@@ -43,16 +43,13 @@ private struct RouteOrderRepairResult {
 /// trigger a factorial number of Directions requests.
 @MainActor
 private final class RouteOrderRepairSearch {
-    static let maximumPlannerRequests = 64
     static let maximumExpandedPrefixes = 4_096
 
     private let planner: any RoutePlanning
     private let nodes: [RouteNode]
     private let coordinates: [GeoCoordinate]
     private let speed: RouteSpeed
-    private var edgeResults: [RoutePlanningEdge: RoutePlanningEdgeResult]
-    private var plannerRequests = 0
-    private var requestLimit = RouteOrderRepairSearch.maximumPlannerRequests
+    private(set) var edgeResults: [RoutePlanningEdge: RoutePlanningEdgeResult]
     private var expandedPrefixes = 0
     private var deepestLegs = 0
     /// Reports the most route legs chained so far in one candidate order.
@@ -78,26 +75,25 @@ private final class RouteOrderRepairSearch {
         if legs.count > deepestLegs { deepestLegs = legs.count; onProgress?(deepestLegs) }
 
         if order.count == nodes.count {
-            guard let route = try? PlannedRoute(legs: legs) else { return nil }
+            guard let route = try? PlannedRoute(legs: legs, bridgingGaps: true) else { return nil }
             let orderedNodes = order.map { nodes[$0] }
             guard let draft = RouteDraft(nodes: orderedNodes, speed: speed) else { return nil }
             return RouteOrderRepairResult(draft: draft, route: route,
                                           coordinates: order.map { coordinates[$0] })
         }
-        guard expandedPrefixes < Self.maximumExpandedPrefixes,
-              plannerRequests < requestLimit else { return nil }
+        guard expandedPrefixes < Self.maximumExpandedPrefixes else { return nil }
         expandedPrefixes += 1
 
         for next in nodes.indices where !used[next] {
-            if Task.isCancelled || expandedPrefixes >= Self.maximumExpandedPrefixes
-                || plannerRequests >= requestLimit { return nil }
+            if Task.isCancelled || expandedPrefixes >= Self.maximumExpandedPrefixes { return nil }
 
             var nextLegs = legs
             if let previous = order.last {
+                // Same rule as the preview: request from the previous road entrance, cache by place pair.
                 let from = legs.last?.end ?? coordinates[previous]
                 let to = coordinates[next]
-                guard from != to else { continue }
-                switch await planEdge(from: from, to: to) {
+                guard coordinates[previous] != to else { continue }
+                switch await planEdge(from: from, to: to, cachedAs: RoutePlanningEdge(from: coordinates[previous], to: to)) {
                 case .planned(let planned): nextLegs.append(planned)
                 case .failed: continue
                 case nil: return nil
@@ -115,17 +111,15 @@ private final class RouteOrderRepairSearch {
 
     /// Walks the original order once and reports which legs plan. A place whose leg
     /// fails is skipped, and the next place is tried from the last kept one.
-    /// It may spend at most one extra request per place beyond the repair budget.
     func analyzeOriginalOrder() async -> (succeeded: Int, failedIndices: [Int])? {
         guard nodes.count >= 2 else { return nil }
-        requestLimit = plannerRequests + nodes.count
         var kept = 0, succeeded = 0
         var failed: [Int] = []
         for index in 1..<nodes.count {
             guard !Task.isCancelled else { return nil }
             let from = coordinates[kept], to = coordinates[index]
             if from == to { succeeded += 1; kept = index; continue }
-            switch await planEdge(from: from, to: to) {
+            switch await planEdge(from: from, to: to, cachedAs: RoutePlanningEdge(from: from, to: to)) {
             case .planned: succeeded += 1; kept = index
             case .failed: failed.append(index)
             case nil: return nil
@@ -134,11 +128,10 @@ private final class RouteOrderRepairSearch {
         return (succeeded, failed)
     }
 
-    private func planEdge(from: GeoCoordinate, to: GeoCoordinate) async -> RoutePlanningEdgeResult? {
-        let edge = RoutePlanningEdge(from: from, to: to)
+    private func planEdge(from: GeoCoordinate, to: GeoCoordinate,
+                          cachedAs edge: RoutePlanningEdge) async -> RoutePlanningEdgeResult? {
         if let cached = edgeResults[edge] { return cached }
-        guard plannerRequests < requestLimit, !Task.isCancelled else { return nil }
-        plannerRequests += 1
+        guard !Task.isCancelled else { return nil }
         do {
             let points = try await planner.planWalking(from: from, to: to)
             try Task.checkCancellation()
@@ -575,6 +568,10 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
                   self.canEdit, !Task.isCancelled else { return }
             self.planningOrderFixTask = nil
             self.isFixingPlanningOrder = false
+            // Legs the search planned stay cached, so adopting its order or editing later never repeats them.
+            for (edge, edgeResult) in search.edgeResults {
+                if case .planned = edgeResult { self.previewEdgeResults[edge] = edgeResult }
+            }
             if let result {
                 // Applied only when the person confirms the sheet.
                 self.pendingRepair = (snapshot, result)
@@ -602,7 +599,6 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         draft = pending.result.draft
         plannedRoute = pending.result.route
         previewInputs = pending.result.coordinates
-        previewEdgeResults = [:]
         error = nil
         return true
     }
@@ -647,7 +643,8 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         isFixingPlanningOrder = false
         previewInputs = nil
         plannedRoute = nil
-        previewEdgeResults = [:]
+        // Planned legs stay valid across edits; failures are retried.
+        previewEdgeResults = previewEdgeResults.filter { if case .planned = $0.value { true } else { false } }
         error = nil
     }
 
@@ -675,8 +672,15 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             do {
                 var legs: [PlannedRoute] = []
                 for index in 1..<coordinates.count {
+                    // Requests start at the previous leg's road entrance so the route stays continuous,
+                    // while the cache is keyed by the chosen places so an unchanged pair is always reused.
                     let from = legs.last?.end ?? coordinates[0], to = coordinates[index]
-                    let edge = RoutePlanningEdge(from: from, to: to)
+                    let edge = RoutePlanningEdge(from: coordinates[index - 1], to: to)
+                    guard self?.revision == token, !Task.isCancelled else { return }
+                    if case .planned(let cached)? = self?.previewEdgeResults[edge] {
+                        legs.append(cached)
+                        continue
+                    }
                     let points: [GeoCoordinate]
                     do {
                         points = try await planner.plan(from: from, to: to)
@@ -697,7 +701,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
                     }
                 }
                 guard let self, self.revision == token, self.canEdit, !Task.isCancelled else { return }
-                self.plannedRoute = try PlannedRoute(legs: legs)
+                self.plannedRoute = try PlannedRoute(legs: legs, bridgingGaps: true)
                 self.previewInputs = coordinates
                 self.error = nil
             } catch {

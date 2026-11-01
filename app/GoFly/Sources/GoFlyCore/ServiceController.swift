@@ -538,7 +538,10 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
 
     @discardableResult public func start() -> Bool {
         guard canStart else { return false }
-        if phase == .ready { hasSimulated = false; return true }
+        // Start begins a new session: a previous Stop must not keep the pill
+        // on "stopped" once preparation succeeds.
+        hasSimulated = false
+        if phase == .ready { return true }
         admitExplicitOperation()
         startRebuildsConnection = error != nil || deviceMayHoldSimulation
             || (clearAttempted && clearState == .unknown)

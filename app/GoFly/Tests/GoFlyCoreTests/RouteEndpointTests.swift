@@ -87,8 +87,27 @@ struct RouteEndpointTests {
 
         #expect(route.confirmSelectedNode(with: place(3)))
         await settle { route.plannedRoute != nil }
-        #expect(planner.calls > callsBeforeAdd, "filling the endpoint starts a fresh preview")
+        #expect(planner.calls == callsBeforeAdd + 1, "filling the endpoint plans only the new leg")
+        #expect(route.error == nil)
         #expect(route.draft.nodes.map(\.id) == originalIDs + [newID])
+    }
+
+    @Test func insertingAStopInTheMiddleOnlyPlansTheTwoChangedLegs() async throws {
+        let planner = SnappingPlanner()
+        let draft = try #require(RouteDraft(values: [.place(place(1)), .place(place(2)), .place(place(3)), .place(place(4))]))
+        let route = fixture(draft: draft, planner: planner)
+        await settle { route.plannedRoute != nil }
+        #expect(planner.calls == 3)
+        let before = planner.calls
+
+        #expect(route.addEmptyWaypoint())
+        let newID = try #require(route.draft.nodes.last?.id)
+        #expect(route.moveNode(id: newID, toIndex: 1))
+        #expect(route.confirmSelectedNode(with: place(5)))
+        await settle { route.plannedRoute != nil }
+        #expect(route.error == nil)
+        #expect(route.draft.nodes.count == 5)
+        #expect(planner.calls == before + 2, "only 1→5 and 5→2 are new; 2→3 and 3→4 are reused")
     }
 
     @Test func appendedWaypointSurvivesRecoveryAndRouteReordering() throws {
@@ -154,6 +173,29 @@ struct RouteEndpointTests {
         #expect(route.draft.role(of: originalIDs[1]) == .start)
         #expect(route.draft.role(of: originalIDs[0]) == .destination)
         #expect(route.plannedRoute != nil)
+    }
+
+    @Test func adoptingTheFixedOrderDoesNotPlanAgainAndKeepsItsLegsCached() async throws {
+        let draft = try #require(RouteDraft(values: [.place(place(1)), .place(place(2)), .place(place(3))]))
+        let planner = SelectiveRepairPlanner(failingEdges: [EndpointPlannerEdge(
+            from: place(1).coordinate, to: place(2).coordinate)])
+        let route = fixture(draft: draft, planner: planner)
+        await settle { route.error == .planningFailed }
+        #expect(route.fixPlanningOrder())
+        await settle { !route.isFixingPlanningOrder }
+        let afterSearch = await planner.callCount
+
+        #expect(route.confirmPlanningRepair())
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(await planner.callCount == afterSearch, "adopting the result reuses its route")
+        #expect(route.plannedRoute != nil)
+
+        // Editing afterwards still reuses the legs the search planned.
+        let ids = route.draft.nodes.map(\.id)
+        #expect(route.moveNode(id: ids[1], toIndex: 2))
+        #expect(route.moveNode(id: ids[1], toIndex: 1))
+        await settle { route.plannedRoute != nil }
+        #expect(await planner.callCount == afterSearch, "an unchanged order is served from the cache")
     }
 
     @Test func planningFixFindsAnotherOrderAndPreservesEveryLocation() async throws {
@@ -273,7 +315,9 @@ struct RouteEndpointTests {
         #expect(route.draft == draft)
         #expect(route.error == .planningFailed)
         let calls = await planner.callCount
-        #expect(calls <= 65, "one initial preview plus at most 64 repair requests")
+        // Every directed pair is requested at most once, plus the initial preview and the original-order analysis.
+        let count = RouteDraft.maximumNodeCount
+        #expect(calls <= count * (count - 1) + 2 * count, "no per-search request cap, but each pair is cached")
     }
 
     @Test func editingDuringPlanningFixCancelsItsStaleResult() async throws {
@@ -410,6 +454,17 @@ struct RouteEndpointTests {
     private func place(_ index: Int) -> MapPlace {
         let coordinate = GeoCoordinate(latitude: 25 + Double(index) * 0.01, longitude: 121)!
         return MapPlace(id: .coordinate(coordinate), title: coordinate.displayText, coordinate: coordinate)
+    }
+}
+
+/// Returns a fixed road entrance for each place, like a provider that snaps a place to its door.
+private final class SnappingPlanner: RoutePlanning, @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var calls: Int { lock.withLock { count } }
+    func plan(from: GeoCoordinate, to: GeoCoordinate) async throws -> [GeoCoordinate] {
+        lock.withLock { count += 1 }
+        return [from, GeoCoordinate(latitude: to.latitude + 1e-7, longitude: to.longitude) ?? to]
     }
 }
 

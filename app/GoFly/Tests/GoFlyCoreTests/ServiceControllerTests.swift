@@ -92,6 +92,21 @@ struct ServiceControllerTests {
         #expect(await device.operations.suffix(2) == ["clear", "prepare"])
     }
 
+    @Test func startAfterStopClearsTheStoppedFlagSoTheSessionShowsStarted() async throws {
+        let device = SwitchableDevice()
+        let controller = ServiceController(service: device)
+        #expect(controller.start())
+        await settle(controller)
+        controller.stopSimulation()
+        #expect(controller.stop())
+        await settle(controller)
+        #expect(controller.phase == .stopped)
+        #expect(controller.start())
+        await settle(controller)
+        #expect(controller.phase == .ready)
+        #expect(!controller.hasSimulated)
+    }
+
     @Test func timeoutCannotUnlockNativeWorkOrSkipMandatoryClear() async throws {
         let device = ControlledDevice()
         let clock = ManualServiceWatchdog()

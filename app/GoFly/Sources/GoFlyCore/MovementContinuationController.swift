@@ -407,10 +407,38 @@ public final class MovementContinuationController: ObservableObject {
         handlingRuntimeLoss = false
         noticeKey = "background.durationCompleted"
     }
-    private func retireCurrent(reason: MovementContinuationRetirement) {
+    private func retireCurrent(reason: MovementContinuationRetirement, line: Int = #line) {
         guard let current = candidate else { return }
-        diagnose("background.retire", category: .background, level: .notice,
-                 ["reason": .text(reason.diagnosticsLabel)])
+        let owner = service.movementAuthority.snapshot
+        let health: String
+        switch owner.health {
+        case .confirmedHealthy: health = "healthy"
+        case .interrupted: health = "interrupted"
+        case .unknown: health = "unknown"
+        case nil: health = "none"
+        }
+        let runState: String
+        switch owner.runState {
+        case .running: runState = "running"
+        case .paused: runState = "paused"
+        case nil: runState = "none"
+        }
+        let connection: String
+        switch service.movementConnection {
+        case .connecting: connection = "connecting"
+        case .available: connection = "available"
+        case .unavailable: connection = "unavailable"
+        }
+        diagnose("background.retire", category: .background, level: .notice, [
+            "reason": .text(reason.diagnosticsLabel),
+            "line": .count(line),
+            "kind": .text(String(describing: current.request.kind)),
+            "owner_health": .text(health),
+            "owner_run": .text(runState),
+            "owner_match": .flag(owner.lease == current.request.lease),
+            "conn": .text(connection),
+            "cold_clear": .flag(service.coldClearPending)
+        ])
         candidate = nil // Retire identity before potentially reentrant driver callbacks.
         _ = service.retireMovementContinuation(requestID: current.request.requestID,
             lease: current.request.lease, reason: reason)

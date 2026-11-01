@@ -1072,7 +1072,9 @@ struct GoFlyMapView: View {
             && bottomCardFrame.height > 0 {
             top = min(top, bottomCardFrame.minY)
         }
-        return max(0, geometry.size.height - top) + 4
+        // The map runs under the bottom safe area, which mapRoot's frames exclude;
+        // keep the Maps logo 4 pt above whatever covers it.
+        return max(0, geometry.size.height - top) + geometry.safeAreaInsets.bottom + 4
     }
 
     private func mapCanvas(viewport: CGRect, size: CGSize, attributionBottomInset: CGFloat) -> some View {

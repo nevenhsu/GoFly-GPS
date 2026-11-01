@@ -43,12 +43,18 @@ public struct PlannedRoute: Equatable, Sendable {
         points = normalized; cumulativeDistancesMeters = distances
     }
 
-    public init(legs: [PlannedRoute]) throws {
+    /// `bridgingGaps` joins legs planned independently, whose road ends may differ slightly,
+    /// with a short straight connector instead of rejecting them.
+    public init(legs: [PlannedRoute], bridgingGaps: Bool = false) throws {
         guard let first = legs.first else { throw RouteExecutionFailure.invalidPath }
         var joined = first.points
         for leg in legs.dropFirst() {
-            guard joined.last == leg.start else { throw RouteExecutionFailure.invalidPath }
-            joined.append(contentsOf: leg.points.dropFirst())
+            if joined.last == leg.start {
+                joined.append(contentsOf: leg.points.dropFirst())
+            } else {
+                guard bridgingGaps else { throw RouteExecutionFailure.invalidPath }
+                joined.append(contentsOf: leg.points)
+            }
             guard joined.count <= 10_000 else { throw RouteExecutionFailure.invalidPath }
         }
         try self.init(points: joined)

@@ -267,25 +267,6 @@ struct ServiceSettingsView: View {
             }
             serviceActionButton
 
-            if service.phase == .repairRequired || service.clearConfirmedAt != nil {
-                Divider()
-                VStack(alignment: .leading, spacing: 8) {
-                    GoFlyIconLabel(title: goFlyString("gps.title"), icon: .locate)
-                        .goFlyFont(GoFlyFont.subheadlineEmphasis)
-                    Text(goFlyString(service.gpsStatusKey))
-                        .goFlyFont(GoFlyFont.subheadline)
-                        .foregroundStyle(GoFlyTextColor.secondary)
-                        .accessibilityIdentifier("service.gpsStatus")
-                    if let date = service.clearConfirmedAt {
-                        HStack(spacing: 4) {
-                            Text(goFlyString("gps.clearConfirmedAt"))
-                            Text(date, style: .time)
-                        }
-                        .goFlyFont(GoFlyFont.caption)
-                        .foregroundStyle(GoFlyTextColor.secondary)
-                    }
-                }
-            }
         }
         .padding(16)
         .goFlyCard(radius: 14)
