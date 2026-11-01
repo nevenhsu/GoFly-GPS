@@ -56,6 +56,17 @@ GoFly for Mac 不是定位工具。它用**你的** Xcode 签名 Team 构建 iPh
 
 这个 App 使用 ad-hoc 签名、**未经公证**，所以不能直接双击打开，请用上面的安装脚本。若你自己拖动 App，请运行 `xattr -dr com.apple.quarantine /Applications/GoFly.app`。
 
+## 用 AltStore 安装 IPA
+
+[AltStore](https://altstore.io) 是专为 sideloading 设计的 app store：用你自己的 Apple ID 重新签名，把 App 装到 iPhone。
+
+1. 按 [AltStore 说明](https://faq.altstore.io/)在 Mac 安装 AltServer，并在 iPhone 安装 AltStore。
+2. 从[最新版 Release](https://github.com/nevenhsu/GoFly/releases/latest)下载 `GoFly-<版本>.ipa` 到 iPhone（或用 AirDrop 传过去）。
+3. 在 AltStore 打开 **My Apps**，点 **+**，选这个 `.ipa`。
+4. 让 AltStore 持续刷新。免费 Apple ID 的签名只有 7 天。
+
+这个 IPA 没有签名，只提供 App 本身。GoFly 还需要这台 iPhone 的配对文件，由 Mac App 通过 USB 创建。这个交接目前只验证过上面的 DMG 流程；AltStore 会改掉 App 的 Bundle ID，我还没验证 Mac 安装器能否把配对交给 AltStore 签名的版本。
+
 ## 让 AI 帮你安装
 
 把 GitHub 网址连同下面的 prompt 贴给能运行 shell 命令（最好也能操作你的 Mac）的 AI 助手：

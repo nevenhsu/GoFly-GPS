@@ -56,6 +56,17 @@ Free Personal Team signing normally expires after about seven days; keep the Mac
 
 The app is ad-hoc signed, **not notarized**, so macOS will not open it by double-click; use the installer above. If you copy the app yourself, run `xattr -dr com.apple.quarantine /Applications/GoFly.app`.
 
+## Install the IPA with AltStore
+
+[AltStore](https://altstore.io) is an app store designed for sideloading: it installs apps on your iPhone and re-signs them with your own Apple ID.
+
+1. Install AltServer on your Mac and AltStore on your iPhone by following the [AltStore guide](https://faq.altstore.io/).
+2. Download `GoFly-<version>.ipa` from the [latest release](https://github.com/nevenhsu/GoFly/releases/latest) to your iPhone (or AirDrop it).
+3. In AltStore, open **My Apps**, tap **+**, and choose the `.ipa`.
+4. Keep AltStore refreshing the app. A free Apple ID signature lasts 7 days.
+
+The IPA is unsigned and only gives you the app. GoFly also needs this iPhone's pairing file, which the Mac app creates over USB. That handoff is verified only for the DMG route above; AltStore changes the app's bundle ID, and I have not verified that the Mac installer can still hand over pairing to an AltStore-signed copy.
+
 ## Let an AI install it for you
 
 Paste a GitHub link and this prompt into an AI assistant that can run shell commands (and, ideally, operate your Mac):
