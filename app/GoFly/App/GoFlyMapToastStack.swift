@@ -6,9 +6,9 @@ struct GoFlySearchPasteWarning: Identifiable {
     let localizationKey: String
 }
 
-/// The one floating notice above the map, in priority order. It is its own
-/// view, built only from observed owners, bindings and values, so SwiftUI can
-/// skip it when nothing it reads has changed.
+/// The floating notices above the map, in `MapNoticeBoard` order. It is its
+/// own view, built only from observed owners, bindings and values, so SwiftUI
+/// can skip it when nothing it reads has changed.
 struct GoFlyMapToastStack: View {
     @ObservedObject var service: ServiceController
     @ObservedObject var route: RouteExecutionController
@@ -29,34 +29,23 @@ struct GoFlyMapToastStack: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private var unconfirmedID: UUID? { service.pointState.unconfirmedID }
-    private var unconfirmedFailure: DeviceServiceFailure? { service.pointState.unconfirmedFailure }
-    private var isUnconfirmedTeleportFailure: Bool {
-        mode == .teleport
-            && unconfirmedFailure.map { SessionStatusErrors.reportsFailure($0.rawValue) } == true
-            && notices.showsUnconfirmed(unconfirmedID)
-    }
 
     private func retryInterruptedRoute() { goFlyRetryInterruptedRoute(route: route, recovery: recovery) }
 
-    private var active: ActiveMovement? {
-        ActiveMovement(route: route, joystick: joystick, positionHold: positionHold)
-    }
-
-    /// The person pressed Pause: the resume panel already says so, no toast.
-    private var isUserPausedRoute: Bool {
-        mode == .route && active?.kind == .route && active?.isPausedByUser == true
-    }
-
-    /// The person paused the wander: same as a route, no toast. A recovery
-    /// suspension is covered by `recovery.isSilentRepairInProgress` instead.
-    /// One connection-lost banner (with Retry) owns the notice while a silent
-    /// repair runs and after it failed: no second service-error or pause toast.
-    private var repairOwnsNotice: Bool {
-        recovery.isSilentRepairInProgress || recovery.canRetryAutomaticRepair
-    }
-
-    private var isUserPausedWander: Bool {
-        mode == .joystick && active?.kind == .wander && active?.isPausedByUser == true
+    private var boardInputs: MapNoticeInputs {
+        var preparedFailure: DeviceServiceFailure?
+        if case .failed(let failure)? = service.preparedOperation?.state { preparedFailure = failure }
+        return MapNoticeInputs(
+            mode: mode, sceneSettled: sceneSettled, notices: notices,
+            activeMovement: ActiveMovement(route: route, joystick: joystick, positionHold: positionHold),
+            isResumeState: isResumeState, serviceError: service.error,
+            unconfirmedID: unconfirmedID, unconfirmedFailure: service.pointState.unconfirmedFailure,
+            preparedFailure: preparedFailure, joystickErrorKey: joystick.error?.localizationKey,
+            wanderError: joystick.wanderError, canRetryWander: joystick.canRetryWander,
+            routeErrorKey: route.error?.localizationKey, isFixingRouteOrder: route.isFixingPlanningOrder,
+            recoveryNoticeKey: recovery.noticeKey, requiresColdConfirmation: recovery.requiresColdConfirmation,
+            repairOwnsNotice: recovery.isSilentRepairInProgress || recovery.canRetryAutomaticRepair,
+            isWiFiConnected: network.isWiFiConnected, continuationNoticeKey: continuation.noticeKey)
     }
 
     /// The one toast button for an error key. Retry stays in the current mode:
@@ -103,176 +92,152 @@ struct GoFlyMapToastStack: View {
                     self.searchPasteWarning = nil
                 }
             }
-            if let key = notices.favoriteRouteKey {
-                GoFlyStatusBanner(
-                    tone: .danger,
-                    title: goFlyString(key),
-                    onDismiss: { notices.clearFavoriteRouteFailure() },
-                    identifier: "route.favoriteSaveError",
-                    isFloating: true
-                )
+            ForEach(MapNoticeBoard.notices(for: boardInputs)) { notice in
+                banner(for: notice)
             }
-            if joystick.wanderError == .planningFailed, mode == .joystick {
-                GoFlyStatusBanner(
-                    tone: .danger,
-                    title: goFlyString("wander.error.planningFailed"),
-                    actionTitle: goFlyString("common.retry"),
-                    onAction: { wander.retryFailedPlanning() },
-                    onDismiss: { joystick.clearWanderError() },
-                    identifier: "joystick.wanderPlanningError",
-                    isFloating: true
-                )
-            }
-            if let error = service.error, !repairOwnsNotice, !isUnconfirmedTeleportFailure,
-               SessionStatusErrors.reportsFailure(error.rawValue), !notices.isDismissed(.serviceError) {
-                GoFlyStatusBanner(
-                    tone: .danger,
-                    title: goFlyString(error.rawValue),
-                    message: goFlyString("status.repairGuidance"),
-                    actionTitle: issueButton(for: error.rawValue).title,
-                    onAction: issueButton(for: error.rawValue).action,
-                    onDismiss: { notices.dismiss(.serviceError) },
-                    identifier: "map.serviceError",
-                    isFloating: true
-                )
-            }
-            if let failure = unconfirmedFailure, SessionStatusErrors.reportsFailure(failure.rawValue),
-               notices.showsUnconfirmed(unconfirmedID) {
-                let isTeleportFailure = mode == .teleport
-                GoFlyStatusBanner(
-                    tone: .danger,
-                    title: goFlyString(isTeleportFailure ? "teleport.failure.toast.title" : failure.rawValue),
-                    message: isTeleportFailure
-                        ? goFlyString("teleport.failure.toast.message")
-                        : goFlyString("teleport.positionUnconfirmed") + " " + goFlyString("operation.failureGuidance"),
-                    actionTitle: goFlyString(isTeleportFailure ? "common.retry" : "operation.settings"),
-                    onAction: {
-                        if isTeleportFailure { recovery.checkConnection() }
-                        else { showingSettings = true }
-                    },
-                    onDismiss: { notices.leaveUnconfirmed(unconfirmedID) },
-                    identifier: "map.unconfirmedFailure",
-                    isFloating: true
-                )
-            }
-            if case .failed(let failure)? = service.preparedOperation?.state,
-               SessionStatusErrors.reportsFailure(failure.rawValue), !isUnconfirmedTeleportFailure {
-                GoFlyStatusBanner(
-                    tone: .danger,
-                    title: goFlyString(failure.rawValue),
-                    message: goFlyString("operation.failureGuidance"),
-                    actionTitle: goFlyString("operation.retry"),
-                    onAction: {
-                        if let id = service.preparedOperation?.id { _ = service.retryPreparedOperation(id: id) }
-                    },
-                    onDismiss: {
-                        if let id = service.preparedOperation?.id { _ = service.cancelPreparation(id: id) }
-                    },
-                    identifier: "map.operationFailure",
-                    isFloating: true
-                )
-            }
-            if let error = joystick.error, SessionStatusErrors.reportsFailure(error.localizationKey),
-               mode == .joystick, !notices.isDismissed(.joystickError) {
-                GoFlyStatusBanner(
-                    tone: .danger,
-                    title: goFlyString(error.localizationKey),
-                    message: goFlyString("status.repairGuidance"),
-                    actionTitle: issueButton(for: error.localizationKey).title,
-                    onAction: issueButton(for: error.localizationKey).action,
-                    onDismiss: { notices.dismiss(.joystickError) },
-                    identifier: "joystick.error",
-                    isFloating: true
-                )
-            }
-            if let error = joystick.wanderError, mode == .joystick, error != .planningFailed {
-                GoFlyStatusBanner(
-                    tone: .warning,
-                    title: goFlyString(error.localizationKey),
-                    message: goFlyString("status.repairGuidance"),
-                    actionTitle: joystick.canRetryWander ? goFlyString("operation.retry") : nil,
-                    onAction: joystick.canRetryWander ? { _ = joystick.retryWander() } : nil,
-                    onDismiss: { joystick.clearWanderError() },
-                    identifier: "joystick.wanderError",
-                    isFloating: true
-                )
-            }
-            if let error = route.error, SessionStatusErrors.reportsFailure(error.localizationKey),
-               mode == .route, !notices.isDismissed(.routeError) {
-                let routeIssueButton = issueButton(for: error.localizationKey,
-                                                   fix: { _ = route.fixPlanningOrder() })
-                GoFlyStatusBanner(
-                    tone: .danger,
-                    title: goFlyString("route.error.shortTitle"),
-                    message: goFlyString(error.localizationKey),
-                    actionTitle: routeIssueButton.title,
-                    onAction: routeIssueButton.action,
-                    onDismiss: { notices.dismiss(.routeError) },
-                    identifier: "route.error",
-                    actionEnabled: !route.isFixingPlanningOrder,
-                    actionInProgress: route.isFixingPlanningOrder,
-                    actionProgressAccessibilityLabel: goFlyString("route.fixing"),
-                    actionIdentifier: "route.error.action",
-                    isFloating: true
-                )
-            }
-            // Losing Wi-Fi shows the same connection-lost toast as a failed probe.
-            if let key = recovery.noticeKey ?? (network.isWiFiConnected ? nil : "recovery.connectionLost"),
-               !notices.isDismissed(.recovery), !isUnconfirmedTeleportFailure {
-                let cold = recovery.requiresColdConfirmation
-                let tone: GoFlyStatusTone = key == "recovery.connectionRecovered" ? .success : .danger
-                GoFlyStatusBanner(
-                    tone: tone,
-                    title: goFlyString(key),
-                    message: key == "recovery.connectionRecovered" ? nil : goFlyString("recovery.connectionGuidance"),
-                    actionTitle: key == "recovery.connectionRecovered" ? nil : goFlyString(cold ? "toast.restore" : "common.retry"),
-                    onAction: {
-                        if cold { _ = service.restoreGPS() }
-                        else { recovery.checkConnection() }
-                    },
-                    onDismiss: { notices.dismiss(.recovery) },
-                    identifier: "recovery.connectionBanner",
-                    actionEnabled: cold ? service.canRestoreGPS : recovery.canCheck,
-                    actionIdentifier: cold ? "recovery.restoreGPS" : "recovery.checkConnection",
-                    titleIdentifier: "recovery.notice",
-                    isFloating: true
-                )
-            }
-            if sceneSettled, !repairOwnsNotice, !isUnconfirmedTeleportFailure,
-               !isUserPausedRoute, !isUserPausedWander, (continuation.noticeKey != nil && !notices.isDismissed(.continuation)) || isResumeState {
-            let resumable = active?.resumeAction
-            let routePaused = mode == .route && (resumable == .resumeRoute || resumable == .retryInterruptedRoute)
-            let holdPaused = resumable == .retryPositionHold
-            let wanderPaused = mode == .joystick && resumable == .resumeWander
-            let resumeAction = routePaused || holdPaused || wanderPaused ? resumable : nil
+        }
+    }
 
-            let title: String = routePaused ? goFlyString("route.pausedToast.title")
-                : (holdPaused ? goFlyString("background.positionPaused")
-                : (wanderPaused ? goFlyString("joystick.wanderPaused") : goFlyString(continuation.noticeKey ?? "background.positionPaused")))
-
-            let message: String = routePaused ? goFlyString("route.pausedToast.message")
-                : (holdPaused ? goFlyString("background.positionPaused.message") : goFlyString("status.repairGuidance"))
-
-                GoFlyStatusBanner(
-                    tone: .warning,
-                    title: title,
-                    message: message,
-                    actionTitle: goFlyString(routePaused || holdPaused ? "common.continue" : "common.retry"),
-                    onAction: {
-                        switch resumeAction {
-                        case .retryInterruptedRoute: retryInterruptedRoute()
-                        case .resumeRoute: _ = route.resume()
-                        case .retryPositionHold: _ = positionHold.retry()
-                        case .resumeWander: _ = joystick.resume()
-                        case nil: showingSettings = true
-                        }
-                    },
-                    onDismiss: { notices.dismiss(.continuation) },
-                    identifier: "map.continuationNotice",
-                    actionEnabled: resumeAction == nil || active?.canResume == true,
-                    isFloating: true
-                )
-            }
+    @ViewBuilder
+    private func banner(for notice: MapNotice) -> some View {
+        switch notice {
+        case .favoriteRouteFailure(let key):
+            GoFlyStatusBanner(
+                tone: .danger,
+                title: goFlyString(key),
+                onDismiss: { notices.clearFavoriteRouteFailure() },
+                identifier: "route.favoriteSaveError",
+                isFloating: true
+            )
+        case .wanderPlanningFailed:
+            GoFlyStatusBanner(
+                tone: .danger,
+                title: goFlyString("wander.error.planningFailed"),
+                actionTitle: goFlyString("common.retry"),
+                onAction: { wander.retryFailedPlanning() },
+                onDismiss: { joystick.clearWanderError() },
+                identifier: "joystick.wanderPlanningError",
+                isFloating: true
+            )
+        case .serviceError(let key):
+            GoFlyStatusBanner(
+                tone: .danger,
+                title: goFlyString(key),
+                message: goFlyString("status.repairGuidance"),
+                actionTitle: issueButton(for: key).title,
+                onAction: issueButton(for: key).action,
+                onDismiss: { notices.dismiss(.serviceError) },
+                identifier: "map.serviceError",
+                isFloating: true
+            )
+        case .unconfirmedPosition(let key, let inTeleport):
+            let id = unconfirmedID
+            GoFlyStatusBanner(
+                tone: .danger,
+                title: goFlyString(inTeleport ? "teleport.failure.toast.title" : key),
+                message: inTeleport
+                    ? goFlyString("teleport.failure.toast.message")
+                    : goFlyString("teleport.positionUnconfirmed") + " " + goFlyString("operation.failureGuidance"),
+                actionTitle: goFlyString(inTeleport ? "common.retry" : "operation.settings"),
+                onAction: {
+                    if inTeleport { recovery.checkConnection() }
+                    else { showingSettings = true }
+                },
+                onDismiss: { notices.leaveUnconfirmed(id) },
+                identifier: "map.unconfirmedFailure",
+                isFloating: true
+            )
+        case .preparedOperationFailed(let key):
+            GoFlyStatusBanner(
+                tone: .danger,
+                title: goFlyString(key),
+                message: goFlyString("operation.failureGuidance"),
+                actionTitle: goFlyString("operation.retry"),
+                onAction: {
+                    if let id = service.preparedOperation?.id { _ = service.retryPreparedOperation(id: id) }
+                },
+                onDismiss: {
+                    if let id = service.preparedOperation?.id { _ = service.cancelPreparation(id: id) }
+                },
+                identifier: "map.operationFailure",
+                isFloating: true
+            )
+        case .joystickError(let key):
+            GoFlyStatusBanner(
+                tone: .danger,
+                title: goFlyString(key),
+                message: goFlyString("status.repairGuidance"),
+                actionTitle: issueButton(for: key).title,
+                onAction: issueButton(for: key).action,
+                onDismiss: { notices.dismiss(.joystickError) },
+                identifier: "joystick.error",
+                isFloating: true
+            )
+        case .wanderSelectionError(let key, let canRetry):
+            GoFlyStatusBanner(
+                tone: .warning,
+                title: goFlyString(key),
+                message: goFlyString("status.repairGuidance"),
+                actionTitle: canRetry ? goFlyString("operation.retry") : nil,
+                onAction: canRetry ? { _ = joystick.retryWander() } : nil,
+                onDismiss: { joystick.clearWanderError() },
+                identifier: "joystick.wanderError",
+                isFloating: true
+            )
+        case .routeError(let key, let isFixing):
+            let routeIssueButton = issueButton(for: key, fix: { _ = route.fixPlanningOrder() })
+            GoFlyStatusBanner(
+                tone: .danger,
+                title: goFlyString("route.error.shortTitle"),
+                message: goFlyString(key),
+                actionTitle: routeIssueButton.title,
+                onAction: routeIssueButton.action,
+                onDismiss: { notices.dismiss(.routeError) },
+                identifier: "route.error",
+                actionEnabled: !isFixing,
+                actionInProgress: isFixing,
+                actionProgressAccessibilityLabel: goFlyString("route.fixing"),
+                actionIdentifier: "route.error.action",
+                isFloating: true
+            )
+        case .connection(let key, let cold):
+            let recovered = key == "recovery.connectionRecovered"
+            GoFlyStatusBanner(
+                tone: recovered ? .success : .danger,
+                title: goFlyString(key),
+                message: recovered ? nil : goFlyString("recovery.connectionGuidance"),
+                actionTitle: recovered ? nil : goFlyString(cold ? "toast.restore" : "common.retry"),
+                onAction: {
+                    if cold { _ = service.restoreGPS() }
+                    else { recovery.checkConnection() }
+                },
+                onDismiss: { notices.dismiss(.recovery) },
+                identifier: "recovery.connectionBanner",
+                actionEnabled: cold ? service.canRestoreGPS : recovery.canCheck,
+                actionIdentifier: cold ? "recovery.restoreGPS" : "recovery.checkConnection",
+                titleIdentifier: "recovery.notice",
+                isFloating: true
+            )
+        case .resume(let resume):
+            GoFlyStatusBanner(
+                tone: .warning,
+                title: goFlyString(resume.titleKey),
+                message: goFlyString(resume.messageKey),
+                actionTitle: goFlyString(resume.actionTitleKey),
+                onAction: {
+                    switch resume.action {
+                    case .retryInterruptedRoute: retryInterruptedRoute()
+                    case .resumeRoute: _ = route.resume()
+                    case .retryPositionHold: _ = positionHold.retry()
+                    case .resumeWander: _ = joystick.resume()
+                    case nil: showingSettings = true
+                    }
+                },
+                onDismiss: { notices.dismiss(.continuation) },
+                identifier: "map.continuationNotice",
+                actionEnabled: resume.actionEnabled,
+                isFloating: true
+            )
         }
     }
 }
