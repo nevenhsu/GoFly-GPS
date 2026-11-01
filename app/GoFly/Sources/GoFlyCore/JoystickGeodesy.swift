@@ -63,3 +63,10 @@ public enum JoystickGeodesy {
         return (cos(latitude) * cos(longitude), cos(latitude) * sin(longitude), sin(latitude))
     }
 }
+
+/// Computed geometry for a target step; it is not a device acknowledgement.
+public struct JoystickTargetStepResolution: Equatable, Sendable {
+    public let coordinate: GeoCoordinate
+    public let bearingDegrees: Double?
+    public let arrived: Bool
+}

@@ -134,6 +134,9 @@ extension View {
 /// Each hold heartbeat marks native work busy for a moment, which briefly
 /// revokes admission. Show a disabled state only once it has lasted `delay`,
 /// so controls do not flicker; the action itself still checks admission.
+/// Kept on purpose (2026-11-01): leaving heartbeats out of `nativeBusy` would
+/// let commands queue behind a heartbeat that can take up to the 20 s write
+/// budget, and would change FIFO admission for Start, teleport and Restore.
 private struct GoFlySteadyDisabled: ViewModifier {
     let disabled: Bool
     let delay: Duration
