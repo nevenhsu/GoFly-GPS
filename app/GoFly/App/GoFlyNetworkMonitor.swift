@@ -9,7 +9,6 @@ final class GoFlyNetworkMonitor: ObservableObject {
     static let shared = GoFlyNetworkMonitor()
 
     @Published private(set) var isWiFiConnected: Bool = true
-    @Published var wifiNoticeDismissed: Bool = false
 
     private let paths = GoFlyPathMonitor.shared
     private var subscription: AnyCancellable?
@@ -31,11 +30,7 @@ final class GoFlyNetworkMonitor: ObservableObject {
         subscription = paths.changes.sink { [weak self] path in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                let previous = self.isWiFiConnected
                 self.isWiFiConnected = Self.evaluate(path)
-                if !previous && self.isWiFiConnected {
-                    self.wifiNoticeDismissed = false
-                }
             }
         }
     }
@@ -52,31 +47,6 @@ final class GoFlyNetworkMonitor: ObservableObject {
 #else
         return path.status == .satisfied && path.usesInterfaceType(.wifi)
 #endif
-    }
-
-    var shouldShowWiFiError: Bool {
-        !isWiFiConnected && !wifiNoticeDismissed
-    }
-
-    /// Re-reads the current path; the toast stays only while Wi-Fi is still missing.
-    func recheck() {
-#if DEBUG && targetEnvironment(simulator)
-        if GoFlyUITestOverrides.isFrameMode {
-            isWiFiConnected = !GoFlyUITestOverrides.contains("-gofly-ui-wifi-disconnected")
-            wifiNoticeDismissed = false
-            return
-        }
-#endif
-        isWiFiConnected = Self.evaluate(paths.currentPath)
-        wifiNoticeDismissed = false
-    }
-
-    func dismissNotice() {
-        wifiNoticeDismissed = true
-    }
-
-    func resetNotice() {
-        wifiNoticeDismissed = false
     }
 
     func openWiFiSettings() {

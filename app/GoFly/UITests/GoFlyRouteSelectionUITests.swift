@@ -56,7 +56,7 @@ final class GoFlyRouteSelectionUITests: GoFlyRouteModeTestCase {
         app.selectGoFlyMode("route")
         element(app, "route.node.destination").tap()
         // The simulator has no connection, so a toast covers the map; dismiss it first.
-        for id in ["map.wifiError.dismiss", "recovery.connectionBanner.dismiss"] {
+        for id in ["recovery.connectionBanner.dismiss"] {
             let toast = app.buttons[id]
             if toast.waitForExistence(timeout: 2) { toast.tap() }
         }

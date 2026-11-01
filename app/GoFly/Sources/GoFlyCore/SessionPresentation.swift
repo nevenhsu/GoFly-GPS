@@ -54,10 +54,9 @@ public struct SessionStatusErrors: Equatable, Sendable {
 
     public init(connection: VPNCheckState, service: DeviceServiceFailure? = nil,
                 route: RouteExecutionFailure? = nil, joystick: JoystickFailure? = nil,
-                wander: WanderSelectionFailure? = nil, wifiAvailable: Bool = true,
+                wander: WanderSelectionFailure? = nil,
                 dataErrors: [String] = []) {
         var messages: [String] = []
-        if !wifiAvailable { messages.append("wifi.error.title") }
         switch connection {
         case .unavailable: messages.append(DeviceServiceFailure.tunnelUnavailable.rawValue)
         case .timedOut: messages.append(DeviceServiceFailure.operationTimedOut.rawValue)

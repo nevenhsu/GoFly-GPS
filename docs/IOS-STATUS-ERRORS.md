@@ -8,7 +8,7 @@ D8 的 `route.error.planningFailed` 依 Figma 04 渲染由路線頁浮動 danger
 
 | 類別 | 項目數 | 觸發來源 |
 | --- | --- | --- |
-| 連線與裝置服務 | 10 | Wi-Fi 不可用、探測 unavailable/timedOut、ServiceController.error；route/joystick 包裝同一裝置錯誤不重複計數 |
+| 連線與裝置服務 | 9 | 探測 unavailable/timedOut、ServiceController.error；route/joystick 包裝同一裝置錯誤不重複計數 |
 | 路線規劃與匯入執行 | 7 | RouteExecutionController.error，含匯入路線執行失敗 |
 | 搖桿與漫步 | 2 | JoystickMovementController.error 或 wanderError |
 | 最愛地點 | 9 | FavoritePlacesStore.error／blocked |
@@ -21,7 +21,6 @@ D8 的 `route.error.planningFailed` 依 Figma 04 渲染由路線頁浮動 danger
 
 | 代碼 | 繁體中文文案 |
 | --- | --- |
-| `wifi.error.title` | 需要連接 Wi-Fi |
 | `error.pairingRequired` | 缺少配對資料。請將這部 iPhone 連接 Mac App，完成裝置準備。 |
 | `error.identityMismatch` | 配對資料屬於其他裝置。請將這部 iPhone 連接 Mac App 修復。 |
 | `error.developerModeRequired` | 請在這部 iPhone 開啟開發者模式，再連接 Mac App 完成裝置準備。 |

@@ -916,7 +916,7 @@ final class GoFlyFigmaFrameScreenshots: XCTestCase {
                     XCTAssertTrue(app.descendants(matching: .any)["onboarding.vpn.failure"].waitForExistence(timeout: 10))
                 }
                 if frame.id == "B10" {
-                    XCTAssertTrue(app.descendants(matching: .any)["map.wifiError"].waitForExistence(timeout: 10))
+                    XCTAssertTrue(app.descendants(matching: .any)["recovery.connectionBanner"].waitForExistence(timeout: 10))
                 }
                 if frame.id == "B2" {
                     let company = app.staticTexts["公司"].firstMatch

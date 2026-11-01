@@ -7,7 +7,7 @@ struct EnglishButtonLabelTests {
     private static let buttonKeys = [
         "route.resumeShort", "teleport.resumeShort", "wander.resumeShort", "route.cancelConfirmation.confirm",
         "route.cancelConfirmation.return", "route.start", "route.startShort", "route.cancel", "route.addStop",
-        "route.viewList", "route.exchange", "route.clearRoute", "wifi.error.action", "operation.settings", "operation.return",
+        "route.viewList", "route.exchange", "route.clearRoute", "operation.settings", "operation.return",
         "operation.cancel", "onboarding.location.allow", "onboarding.location.openSettings",
         "onboarding.location.continue", "onboarding.vpn.reconnect", "settings.vpn.check",
         "settings.diagnostics.export", "setup.retry", "service.reset",
@@ -36,7 +36,7 @@ struct EnglishButtonLabelTests {
 
     /// Toast and snackbar buttons are at most two Chinese characters.
     private static let toastKeys = ["operation.settings", "operation.retry", "common.retry", "common.undo",
-                                    "imports.undo", "imports.load", "toast.restore", "wifi.error.action", "issue.action.fix"]
+                                    "imports.undo", "imports.load", "toast.restore", "issue.action.fix"]
 
     @Test func toastButtonsAreAtMostTwoChineseCharacters() throws {
         var url = URL(fileURLWithPath: #filePath)

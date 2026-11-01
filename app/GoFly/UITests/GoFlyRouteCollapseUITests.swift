@@ -10,7 +10,7 @@ final class GoFlyRouteCollapseUITests: GoFlyRouteModeTestCase {
     func testMapDragKeepsPanelAndPinCollapsesThenCloseRestores() throws {
         let app = launch()
         app.selectGoFlyMode("route")
-        for id in ["map.wifiError.dismiss", "recovery.connectionBanner.dismiss"] {
+        for id in ["recovery.connectionBanner.dismiss"] {
             let toast = app.buttons[id]
             if toast.waitForExistence(timeout: 2) { toast.tap() }
         }

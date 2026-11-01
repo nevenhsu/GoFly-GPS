@@ -21,7 +21,6 @@
 
 | 代碼 | 繁體中文 | English | 按鈕 zh／en |
 | --- | --- | --- | --- |
-| `wifi.error.title` | 需要連接 Wi-Fi | Wi‑Fi connection required | 重試／Retry |
 | `error.pairingRequired` | 缺少配對資料。請將這部 iPhone 連接 Mac App，完成裝置準備。 | Pairing data is missing. Connect this iPhone to the Mac app to finish device setup. | 設定／Settings |
 | `error.identityMismatch` | 配對資料屬於其他裝置。請將這部 iPhone 連接 Mac App 修復。 | Pairing data belongs to a different device. Connect this iPhone to the Mac app to repair it. | 設定／Settings |
 | `error.developerModeRequired` | 請在這部 iPhone 開啟開發者模式，再連接 Mac App 完成裝置準備。 | Turn on Developer Mode on this iPhone, then connect to the Mac app to finish setup. | 設定／Settings |

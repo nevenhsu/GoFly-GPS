@@ -1,21 +1,17 @@
 import XCTest
 
-/// B10: the missing Wi-Fi toast is the danger Toast with a 重試 pill, 8 pt below the status pill.
+/// B10: with Wi-Fi missing, only the connection-lost toast shows; the separate Wi-Fi toast never stacks with it.
 final class GoFlyWiFiToastUITests: GoFlyRouteModeTestCase {
-    func testWiFiToastMatchesB10() throws {
+    func testWiFiLossShowsOnlyTheConnectionLostToast() throws {
         for appearance in ["light", "dark"] {
             let app = launch(["-gofly-ui-wifi-disconnected"], appearance: appearance)
-            let toast = element(app, "map.wifiError")
+            let toast = element(app, "recovery.connectionBanner")
             let pill = element(app, "map.statusPill")
-            XCTAssertEqual(element(app, "map.wifiError.title").label.hasSuffix("需要連接 Wi-Fi"), true)
-            XCTAssertEqual(element(app, "map.wifiError.message").label, "GoFly 需要連接與 Mac 相同的區域 Wi-Fi 才能進行模擬同步。")
-            let action = element(app, "map.wifiError.action")
-            XCTAssertEqual(action.label, "重試")
-            XCTAssertGreaterThanOrEqual(action.frame.width, 56)
-            XCTAssertEqual(action.frame.height, 32, accuracy: 1)
+            XCTAssertTrue(element(app, "recovery.notice").label.contains("連線無法使用"))
+            XCTAssertEqual(element(app, "recovery.connectionBanner.message").label, "請確認 Wi-Fi 與 VPN 後重試。")
+            XCTAssertFalse(app.descendants(matching: .any)["map.wifiError"].exists, "no second Wi-Fi toast")
             XCTAssertEqual(toast.frame.minY - pill.frame.maxY, 8, accuracy: 1.5, "toast sits 8 pt below the status pill")
             XCTAssertEqual(toast.frame.width, app.frame.width - 32, accuracy: 1)
-            XCTAssertTrue((72...96).contains(toast.frame.height), "two-line description toast, got \(toast.frame.height)")
             evidence(app, task: "B10", name: "wifi-toast-\(appearance)")
             app.terminate()
         }

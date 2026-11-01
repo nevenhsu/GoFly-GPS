@@ -680,9 +680,6 @@
 "joystick.wanderPaused" = "漫步暫停";
 "common.done" = "完成";
 "common.skip" = "略過";
-"wifi.error.title" = "需要連接 Wi-Fi";
-"wifi.error.message" = "GoFly 需要連接與 Mac 相同的區域 Wi-Fi 才能進行模擬同步。";
-"wifi.error.action" = "設定";
 "settings.wifi" = "Wi-Fi";
 "settings.wifi.connected" = "已連線";
 "settings.wifi.notConnected" = "未連線";

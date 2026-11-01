@@ -41,7 +41,7 @@ public enum IssueCatalog {
         DeviceServiceFailure.serviceUnavailable.rawValue,
         DeviceServiceFailure.tunnelUnavailable.rawValue,
         DeviceServiceFailure.operationTimedOut.rawValue,
-        "wifi.error.title", "joystick.error.noCandidate",
+        "joystick.error.noCandidate",
     ]
     private static let fixKeys: Set<String> = [
         "route.error.planningFailed",

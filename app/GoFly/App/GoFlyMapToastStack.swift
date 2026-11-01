@@ -100,18 +100,6 @@ struct GoFlyMapToastStack: View {
                     self.searchPasteWarning = nil
                 }
             }
-            if network.shouldShowWiFiError {
-                GoFlyStatusBanner(
-                    tone: .danger,
-                    title: goFlyString("wifi.error.title"),
-                    message: goFlyString("wifi.error.message"),
-                    actionTitle: goFlyString("common.retry"),
-                    onAction: { network.recheck() },
-                    onDismiss: { network.dismissNotice() },
-                    identifier: "map.wifiError",
-                    isFloating: true
-                )
-            }
             if let key = notices.favoriteRouteKey {
                 GoFlyStatusBanner(
                     tone: .danger,
@@ -225,7 +213,9 @@ struct GoFlyMapToastStack: View {
                     isFloating: true
                 )
             }
-            if let key = recovery.noticeKey, !notices.isDismissed(.recovery), !isUnconfirmedTeleportFailure {
+            // Losing Wi-Fi shows the same connection-lost toast as a failed probe.
+            if let key = recovery.noticeKey ?? (network.isWiFiConnected ? nil : "recovery.connectionLost"),
+               !notices.isDismissed(.recovery), !isUnconfirmedTeleportFailure {
                 let cold = recovery.requiresColdConfirmation
                 let tone: GoFlyStatusTone = key == "recovery.connectionRecovered" ? .success : .danger
                 GoFlyStatusBanner(

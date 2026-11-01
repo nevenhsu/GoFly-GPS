@@ -19,7 +19,6 @@ struct GoFlyMovementPresentation: Equatable {
 final class GoFlyMovementModel: ObservableObject {
     @Published private(set) var presentation = GoFlyMovementPresentation()
     private var presentationUpdateQueued = false
-    private let network = GoFlyNetworkMonitor.shared
     private var dataErrorKeys: @MainActor () -> [String] = { [] }
     @Published private(set) var presentationMode: SessionMapMode
     let route: RouteExecutionController
@@ -127,7 +126,7 @@ final class GoFlyMovementModel: ObservableObject {
         subscriptions = [service.objectWillChange, recovery.objectWillChange,
                          route.objectWillChange, joystick.objectWillChange,
                          positionHold.objectWillChange, continuation.objectWillChange,
-                         network.objectWillChange, recoveryStore.objectWillChange].map { publisher in
+                         recoveryStore.objectWillChange].map { publisher in
             publisher.sink { [weak self] _ in self?.queuePresentationUpdate() }
         }
     }
@@ -151,7 +150,7 @@ final class GoFlyMovementModel: ObservableObject {
             let silentRepair = self.recovery.isSilentRepairInProgress
             let errors = SessionStatusErrors(connection: silentRepair ? .checking : self.recovery.connectionState,
                 service: silentRepair ? nil : self.service.error, route: self.route.error, joystick: self.joystick.error,
-                wander: self.joystick.wanderError, wifiAvailable: self.network.isWiFiConnected,
+                wander: self.joystick.wanderError,
                 dataErrors: self.dataErrorKeys())
             let hasError = !errors.isEmpty
             let connecting = self.service.movementConnection != .available

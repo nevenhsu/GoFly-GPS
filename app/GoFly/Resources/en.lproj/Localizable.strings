@@ -681,9 +681,6 @@
 "joystick.wanderPaused" = "Wander Paused";
 "common.done" = "Done";
 "common.skip" = "Skip";
-"wifi.error.title" = "Wi-Fi connection required";
-"wifi.error.message" = "GoFly needs the same local Wi-Fi as your Mac to sync the simulation.";
-"wifi.error.action" = "Settings";
 "settings.wifi" = "Wi-Fi";
 "settings.wifi.connected" = "Connected";
 "settings.wifi.notConnected" = "Not connected";

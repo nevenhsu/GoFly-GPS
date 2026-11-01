@@ -55,18 +55,6 @@ struct ServiceSettingsView: View {
 
     @ViewBuilder
     private var topStatusToasts: some View {
-        if network.shouldShowWiFiError {
-            GoFlyStatusBanner(
-                tone: .danger,
-                title: goFlyString("wifi.error.title"),
-                message: goFlyString("wifi.error.message"),
-                actionTitle: goFlyString("wifi.error.action"),
-                onAction: { network.openWiFiSettings() },
-                onDismiss: { network.dismissNotice() },
-                identifier: "settings.wifiError",
-                isFloating: true
-            )
-        }
         if let failure = bannerFailure, !serviceNoticeDismissed {
             GoFlyStatusBanner(
                 tone: .danger,

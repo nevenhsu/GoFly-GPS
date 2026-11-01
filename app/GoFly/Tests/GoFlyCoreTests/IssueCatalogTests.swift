@@ -3,7 +3,7 @@ import Testing
 
 struct IssueCatalogTests {
     @Test func connectionAndTimeoutErrorsShareRetry() {
-        for key in ["error.serviceUnavailable", "error.tunnelUnavailable", "error.operationTimedOut", "wifi.error.title"] {
+        for key in ["error.serviceUnavailable", "error.tunnelUnavailable", "error.operationTimedOut"] {
             #expect(IssueCatalog.info(for: key).action == .retry, "\(key)")
             #expect(IssueCatalog.info(for: key).scope == .app)
         }
@@ -12,7 +12,6 @@ struct IssueCatalogTests {
     @Test func routePlanningFailureRepairsOrderInsteadOfRetrying() {
         #expect(IssueCatalog.info(for: "route.error.planningFailed").action == .fix)
         #expect(IssueCatalog.info(for: "error.tunnelUnavailable").action == .retry)
-        #expect(IssueCatalog.info(for: "wifi.error.title").action == .retry)
     }
 
     @Test func setupErrorsOpenSettings() {
