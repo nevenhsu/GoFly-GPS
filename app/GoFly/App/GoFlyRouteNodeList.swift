@@ -146,8 +146,8 @@ struct GoFlyRouteNodeList: View {
                 .accessibilityHint(goFlyString("route.dragHint"))
                 .accessibilityAction(named: Text(goFlyString("route.moveUp"))) { move(node.id, by: -1) }
                 .accessibilityAction(named: Text(goFlyString("route.moveDown"))) { move(node.id, by: 1) }
-                .accessibilityAction(named: Text(removeTitle(role))) {
-                    if isEditable, canRemove(node, role: role) { onDelete(node.id) }
+                .accessibilityAction(named: Text(removeTitle(node, role: role))) {
+                    if isEditable, draft.canRemove(nodeID: node.id) { onDelete(node.id) }
                 }
                 .accessibilityIdentifier("route.handle.\(node.id.rawValue.uuidString)")
             Button { if isEditable { onEdit(node.id) } } label: {
@@ -172,10 +172,10 @@ struct GoFlyRouteNodeList: View {
             .accessibilityIdentifier(editIdentifier(role))
             if isEditable {
                 GoFlyRouteNodeDeleteButton(
-                    label: removeTitle(role),
+                    label: removeTitle(node, role: role),
                     identifier: "route.delete.\(node.id.rawValue.uuidString)",
-                    enabled: canRemove(node, role: role) && draggingID == nil
-                ) { if canRemove(node, role: role) { onDelete(node.id) } }
+                    enabled: draft.canRemove(nodeID: node.id) && draggingID == nil
+                ) { if draft.canRemove(nodeID: node.id) { onDelete(node.id) } }
             } else {
                 Spacer().frame(width: 16)
             }
@@ -290,14 +290,9 @@ struct GoFlyRouteNodeList: View {
         goFlyRouteNodeTitle(value, role: role)
     }
 
-    /// Start and destination rows are only cleared (and disabled once empty); a waypoint row is deleted.
-    private func canRemove(_ node: RouteNode, role: RouteNodeRole) -> Bool {
-        if case .waypoint = role { return true }
-        return node.value != .empty
-    }
-
-    private func removeTitle(_ role: RouteNodeRole) -> String {
-        if case .waypoint = role { return goFlyLocalizedFormat(goFlyString("route.deleteNode"), goFlyRouteRoleTitle(role)) }
+    private func removeTitle(_ node: RouteNode, role: RouteNodeRole) -> String {
+        let deletes: Bool = if case .waypoint = role { true } else { role == .destination && node.value == .empty }
+        if deletes { return goFlyLocalizedFormat(goFlyString("route.deleteNode"), goFlyRouteRoleTitle(role)) }
         return goFlyLocalizedFormat(goFlyString("route.clearNode"), goFlyRouteRoleTitle(role))
     }
     private func editIdentifier(_ role: RouteNodeRole) -> String {

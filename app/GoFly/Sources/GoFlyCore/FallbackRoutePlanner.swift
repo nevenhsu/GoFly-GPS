@@ -42,6 +42,9 @@ public struct FallbackRoutePlanner: RoutePlanning, Sendable {
                 return points
             } catch is CancellationError {
                 throw CancellationError()
+            } catch let throttled as RoutePlanningThrottled {
+                // Another transport would only be refused too; let the caller wait.
+                throw throttled
             } catch {
                 try Task.checkCancellation()
             }

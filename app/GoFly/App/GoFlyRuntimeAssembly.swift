@@ -51,7 +51,11 @@ final class GoFlyRuntimeAssembly: ObservableObject {
 
         self.service = service
         self.sessionRecovery = recovery
-        self.movement = GoFlyMovementModel(service: service, recoveryStore: recovery)
+        // UI-test fixtures plan with a scripted planner; keep their legs out of the real cache.
+        let routeLegs = RouteLegCache(file: isUITestFixture ? nil : AtomicFile(
+            directory: support.appendingPathComponent("RouteLegCache", isDirectory: true),
+            filename: "legs.json", maximumBytes: RouteLegCache.maximumBytes))
+        self.movement = GoFlyMovementModel(service: service, recoveryStore: recovery, routeLegs: routeLegs)
         self.favorites = Self.favoritePlacesStore(
             directory: support.appendingPathComponent("FavoritePlaces", isDirectory: true),
             allowUITestNamespace: true)

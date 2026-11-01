@@ -15,11 +15,15 @@ struct GoFlyCameraIntent: Equatable {
     /// Pan only, placing the coordinate at this fraction of the map height
     /// from the top (e.g. 1/3 keeps it clear of a tall bottom panel).
     var verticalFraction: CGFloat? = nil
+    /// Leave the camera alone while the coordinate is well inside the visible
+    /// map; once it leaves or nears an edge, centre it there, keeping the zoom.
+    var recentersNearEdge = false
 
     init(coordinate: GeoCoordinate, ensureVisibleOnly: Bool = false, headingDegrees: Double? = nil,
-         resetsZoom: Bool = false, verticalFraction: CGFloat? = nil) {
+         resetsZoom: Bool = false, verticalFraction: CGFloat? = nil, recentersNearEdge: Bool = false) {
         self.coordinate = coordinate
         self.ensureVisibleOnly = ensureVisibleOnly
+        self.recentersNearEdge = recentersNearEdge
         self.headingDegrees = headingDegrees
         self.resetsZoom = resetsZoom
         self.verticalFraction = verticalFraction
@@ -27,6 +31,12 @@ struct GoFlyCameraIntent: Equatable {
     init(route: PlannedRoute) {
         coordinate = route.start
         routeCoordinates = route.points
+    }
+    /// Frames every coordinate like a route's points; one coordinate only pans to it.
+    init?(fitting coordinates: [GeoCoordinate]) {
+        guard let first = coordinates.first else { return nil }
+        coordinate = first
+        if coordinates.count > 1 { routeCoordinates = coordinates }
     }
     /// Frames the whole range circle: its four extreme points fit like a route's points do.
     init(range: GoFlyRangeCircle) {
@@ -141,6 +151,10 @@ struct GoFlyMapCanvas: UIViewRepresentable {
     var route: PlannedRoute? = nil
     /// Numbered intermediate stops; when nil, 1/3 and 2/3 of long routes are marked.
     var routeWaypoints: [GeoCoordinate]? = nil
+    /// Start, stops and destination to mark while `route` is not planned yet.
+    var routeNodePlaces: [GeoCoordinate] = []
+    /// Which route node (start = 0, stops, destination last) the route list selects.
+    var selectedRouteNode: Int? = nil
     var wanderTarget: MapPlace? = nil
     /// Joystick and wander range (Figma E1/E2): a dashed blue circle around the anchor.
     var rangeCircle: GoFlyRangeCircle? = nil
@@ -216,6 +230,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         private var positionAnnotation: PositionAnnotation?
         private var coordinateDisplayLink: CADisplayLink?
         private var displayedRouteDistance: Double?
+        /// The route `displayedRouteDistance` measures along.
+        private var displayedRoute: PlannedRoute?
         private var coordinateAnimationRoute: PlannedRoute?
         private var coordinateAnimationRouteStart: Double?
         private var coordinateAnimationRouteEnd: Double?
@@ -240,6 +256,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         private var routeRenderer: MKPolylineRenderer?
         private var appliedRouteColor: CGColor?
         private var routeWaypointsApplied: [GeoCoordinate]?
+        private var routeNodePlacesApplied: [GeoCoordinate] = []
+        private var selectedRouteNodeApplied: Int?
         private var routeNodeAnnotations: [RouteNodeAnnotation] = []
         private var appliedNodeDark: Bool?
         private var annotationLocaleIdentifier = ""
@@ -342,12 +360,14 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                     stopCoordinateAnimation()
                     annotation.coordinate = marker.coordinate.clLocationCoordinate
                     displayedRouteDistance = parent.markerRouteDistance
+                    displayedRoute = parent.markerRoute
                 }
             } else {
                 lastMarker = marker
                 let annotation = PositionAnnotation(marker.coordinate.clLocationCoordinate)
                 positionAnnotation = annotation
                 displayedRouteDistance = parent.markerRouteDistance
+                displayedRoute = parent.markerRoute
                 map.addAnnotation(annotation)
             }
             updateMarkerAppearance(on: map)
@@ -366,17 +386,23 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             let now = CACurrentMediaTime()
             let interval = lastAcknowledgedUpdateAt.map { now - $0 } ?? 0.45
             lastAcknowledgedUpdateAt = now
+            // A glide follows the road only when the last one measured along the
+            // same road; a new or dropped road (manual steering, a replan) glides straight.
+            let sameRoute = parent.markerRoute != nil && parent.markerRoute == displayedRoute
+            displayedRoute = parent.markerRoute
             guard distance > 0.15, distance <= 60 else {
                 annotation.coordinate = target.clLocationCoordinate
                 displayedRouteDistance = parent.markerRouteDistance
                 return
             }
             coordinateAnimationStart = current
-            if let route = parent.markerRoute, let from = displayedRouteDistance,
+            if sameRoute, let route = parent.markerRoute, let from = displayedRouteDistance,
                let to = parent.markerRouteDistance {
                 coordinateAnimationRoute = route
                 coordinateAnimationRouteStart = from
                 coordinateAnimationRouteEnd = to
+            } else {
+                displayedRouteDistance = parent.markerRouteDistance
             }
             coordinateAnimationTarget = target
             coordinateAnimationStartedAt = now
@@ -449,16 +475,33 @@ struct GoFlyMapCanvas: UIViewRepresentable {
 
         func updateRoute(on map: MKMapView) {
             let points = parent.route?.points ?? []
-            guard points != routePoints || parent.routeWaypoints != routeWaypointsApplied else { return }
+            let places = points.count > 1 ? [] : parent.routeNodePlaces
+            guard points != routePoints || parent.routeWaypoints != routeWaypointsApplied
+                    || places != routeNodePlacesApplied || parent.selectedRouteNode != selectedRouteNodeApplied else { return }
             routePoints = points
             routeWaypointsApplied = parent.routeWaypoints
+            routeNodePlacesApplied = places
+            selectedRouteNodeApplied = parent.selectedRouteNode
             map.removeAnnotations(routeNodeAnnotations)
             routeNodeAnnotations = []
             if let routeOverlay { map.removeOverlay(routeOverlay) }
             routeOverlay = nil
             routeRenderer = nil
             appliedRouteColor = nil
-            guard points.count > 1 else { return }
+            guard points.count > 1 else {
+                // No road yet: still mark the chosen places so the stops stay visible.
+                guard let first = places.first else { return }
+                var annotations = [RouteNodeAnnotation(first, kind: .start)]
+                if places.count > 1 {
+                    annotations += places.dropFirst().dropLast().enumerated()
+                        .map { RouteNodeAnnotation($1, kind: .waypoint($0 + 1)) }
+                    annotations.append(RouteNodeAnnotation(places[places.count - 1], kind: .destination))
+                }
+                markSelected(annotations)
+                routeNodeAnnotations = annotations
+                map.addAnnotations(annotations)
+                return
+            }
             let coordinates = points.map(\.clLocationCoordinate)
             let overlay = MKPolyline(coordinates: coordinates, count: coordinates.count)
             routeOverlay = overlay
@@ -470,8 +513,14 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             var annotations = [RouteNodeAnnotation(points[0], kind: .start)]
             annotations += waypoints.enumerated().map { RouteNodeAnnotation($1, kind: .waypoint($0 + 1)) }
             annotations.append(RouteNodeAnnotation(points[points.count - 1], kind: .destination))
+            markSelected(annotations)
             routeNodeAnnotations = annotations
             map.addAnnotations(annotations)
+        }
+
+        private func markSelected(_ annotations: [RouteNodeAnnotation]) {
+            guard let selected = parent.selectedRouteNode, annotations.indices.contains(selected) else { return }
+            annotations[selected].isSelected = true
         }
 
         func updateRangeCircle(on map: MKMapView) {
@@ -512,6 +561,16 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                     map.setCenter(map.convert(CGPoint(x: center.x + target.x - desired.x,
                         y: center.y + target.y - desired.y), toCoordinateFrom: map), animated: false)
                 }
+                return
+            }
+            if intent.recentersNearEdge {
+                correctionsRemaining = 0
+                let target = map.convert(intent.coordinate.clLocationCoordinate, toPointTo: map)
+                let comfortable = visible.insetBy(dx: max(40, visible.width * 0.15), dy: max(40, visible.height * 0.15))
+                guard !comfortable.contains(target) else { return }
+                let center = map.convert(map.centerCoordinate, toPointTo: map)
+                map.setCenter(map.convert(CGPoint(x: center.x + target.x - visible.midX,
+                    y: center.y + target.y - visible.midY), toCoordinateFrom: map), animated: true)
                 return
             }
             if let fraction = intent.verticalFraction {
@@ -634,8 +693,11 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                 let view = mapView.dequeueReusableAnnotationView(withIdentifier: "routeNode")
                     ?? MKAnnotationView(annotation: node, reuseIdentifier: "routeNode")
                 view.annotation = node
-                view.image = node.kind.image(dark: mapView.traitCollection.userInterfaceStyle == .dark)
+                let dark = mapView.traitCollection.userInterfaceStyle == .dark
+                view.image = node.isSelected ? node.kind.selectedImage(dark: dark) : node.kind.image(dark: dark)
                 view.centerOffset = node.kind.centerOffset
+                // The selected node stays above the others where stops overlap.
+                view.zPriority = node.isSelected ? .max : .defaultUnselected
                 view.canShowCallout = false
                 configureAccessibility(view, kind: node.kind)
                 return view
@@ -857,6 +919,37 @@ private final class RouteNodeAnnotation: NSObject, MKAnnotation {
             }
         }
 
+        /// The node the route list selects: 32 pt, primary filled with white
+        /// contents, in a white ring with a soft shadow. The shape stays the
+        /// same (ring, number, dot), so it still reads as the same point.
+        func selectedImage(dark: Bool) -> UIImage {
+            let traits = UITraitCollection(userInterfaceStyle: dark ? .dark : .light)
+            let ink = UIColor(GoFlyStyle.primary).resolvedColor(with: traits)
+            let paper = UIColor.white
+            return UIGraphicsImageRenderer(size: CGSize(width: 40, height: 40)).image { context in
+                let disc = CGRect(x: 4, y: 4, width: 32, height: 32)
+                context.cgContext.saveGState()
+                context.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 4,
+                                            color: UIColor.black.withAlphaComponent(0.3).cgColor)
+                paper.setFill(); UIBezierPath(ovalIn: disc).fill()
+                context.cgContext.restoreGState()
+                let face = disc.insetBy(dx: 3, dy: 3)
+                ink.setFill(); UIBezierPath(ovalIn: face).fill()
+                switch self {
+                case .start:
+                    let ring = UIBezierPath(ovalIn: face.insetBy(dx: 7, dy: 7))
+                    ring.lineWidth = 3; paper.setStroke(); ring.stroke()
+                case .waypoint(let number):
+                    let text = NSAttributedString(string: "\(number)", attributes: [
+                        .font: UIFont.systemFont(ofSize: 14, weight: .bold), .foregroundColor: paper])
+                    let size = text.size()
+                    text.draw(at: CGPoint(x: face.midX - size.width / 2, y: face.midY - size.height / 2))
+                case .destination:
+                    paper.setFill(); UIBezierPath(ovalIn: face.insetBy(dx: 8, dy: 8)).fill()
+                }
+            }
+        }
+
         private static func render(_ size: CGSize, _ draw: @escaping (CGRect) -> Void) -> UIImage {
             UIGraphicsImageRenderer(size: size).image { _ in draw(CGRect(origin: .zero, size: size)) }
         }
@@ -864,6 +957,7 @@ private final class RouteNodeAnnotation: NSObject, MKAnnotation {
 
     @objc dynamic var coordinate: CLLocationCoordinate2D
     let kind: Kind
+    var isSelected = false
     init(_ coordinate: GeoCoordinate, kind: Kind) {
         self.coordinate = coordinate.clLocationCoordinate
         self.kind = kind

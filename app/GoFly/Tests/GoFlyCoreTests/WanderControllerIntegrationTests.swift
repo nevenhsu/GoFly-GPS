@@ -70,12 +70,14 @@ struct WanderControllerIntegrationTests {
         await wait { await device.waiting }
         #expect(await device.claim()); await device.finish(.acknowledged)
         await wait { clock.sleepingCount == 1 }
+        #expect(controller.markerGlideRoute == controller.wanderRoute)
 
         let gesture = UUID()
         #expect(controller.beginGesture(id: gesture, input: JoystickInput(bearingDegrees: 90, strength: 1)!))
         #expect(controller.updateGesture(id: gesture, input: JoystickInput(bearingDegrees: 0, strength: 0)!))
         #expect(controller.activeGestureID == gesture && !controller.wanderNeedsReplan)
         #expect(controller.displayBearingDegrees == 90)
+        #expect(controller.markerGlideRoute == nil, "The arrow glides straight while a finger steers")
         clock.advance(by: .seconds(1))
         try await Task.sleep(for: .milliseconds(20))
         #expect(!(await device.waiting), "No road step while the finger rests at the centre")

@@ -86,6 +86,7 @@
 | `ImportedRoutes/` | `manifest.json` 索引＋`<uuid>.gpx` payload。 |
 | `FavoriteRoutes/` | `manifest.json` 索引＋`<uuid>.route` payload。 |
 | `SessionRecovery/` | `session.json`（schemaVersion 1）。 |
+| `RouteLegCache/` | `legs.json`（schemaVersion 1）：已規劃路段（以兩個選定地點為 key）的道路頂點，最多 48 段、4 MiB，超出時丟掉最舊的；讀不到即視為空快取，只省下再次向 Maps 請求，不影響其他資料。UI 測試 fixture 不寫入。 |
 | `Diagnostics/` | `gofly.jsonl`：JSONL ring，上限 2 MiB，超出時在行邊界保留最新一半。 |
 
 `AtomicFile` 是唯一讀寫 primitive：no-follow、大小上限、`.atomic` 寫入、0700／0600、
@@ -128,6 +129,6 @@ GoFly 的端點 `10.7.0.1:49152` 是 iOS 的 remotepairingd，LocalDevVPN 只把
 
 ## 路徑取得（2026-10-23）
 
-`FallbackRoutePlanner` 透過 `RoutePathProviding` 依汽車、行人、公共交通順序取得有效道路頂點；`MapKitRoutePathProvider` 僅負責 MapKit request 與取消，不觸碰裝置。公共交通在 Apple SDK 僅支援 ETA；保留第三順位嘗試，失敗如實回報。此 seam 可供漫步後續共用，目前只接入手動路線。
+`FallbackRoutePlanner` 透過 `RoutePathProviding` 依汽車、行人、公共交通順序取得有效道路頂點；Maps 因請求過多回傳 throttled 時，provider 回報 `RoutePlanningThrottled`，該路段不再試其他交通方式，預覽規劃依 Maps 給的時間（沒有則 10 秒）等待後重問同一段，總共最多等 60 秒，期間不顯示錯誤；路段依序一次問一段，規劃好的路段同時存入 `RouteLegCache`，重開 App 時直接沿用（2026-11-01）。「修正順序」的搜尋共用同一份路段快取（記憶體中的預覽結果與 `RouteLegCache`）：先用已規劃的路段，被 throttle 的試探同樣等待後重問，不當成無法規劃；搜尋規劃出的路段存回兩份快取。按「完成」直接採用搜尋得到的路線與路段，不再重新請求。`MapKitRoutePathProvider` 僅負責 MapKit request 與取消，不觸碰裝置。公共交通在 Apple SDK 僅支援 ETA；保留第三順位嘗試，失敗如實回報。此 seam 可供漫步後續共用，目前只接入手動路線。
 
 `PlannedRoute` 以回傳的道路端點執行，不把 POI 座標插入幾何，也不設定 POI-road 距離門檻；保留有限、非零、點數及路段連續性檢查。多段路線從前段實際終點繼續規劃，不能用直線或跳點接不連續路段。編輯草稿仍保留選取地點，預覽另外記住解析後的輸入座標供 Start 重用。編輯與 Retry 透過同一個預覽 Task／revision 取消舊請求並拒絕過期結果；Retry 只取得路徑，不進入裝置準備或移動流程。

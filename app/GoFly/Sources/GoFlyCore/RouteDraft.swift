@@ -65,6 +65,17 @@ public struct RouteDraft: Equatable, Sendable {
         self.speed = speed
     }
     private init(source: RouteDraftSource, speed: RouteSpeed) { self.source = source; self.speed = speed }
+    /// Whether a row's ✕ does anything: a stop is always deleted; the start
+    /// and destination are cleared, and an empty destination row is deleted
+    /// when a stop before it can become the destination.
+    public func canRemove(nodeID id: RouteNodeID) -> Bool {
+        guard isManual, let node = nodes.first(where: { $0.id == id }), let role = role(of: id) else { return false }
+        switch role {
+        case .waypoint: return true
+        case .start: return node.value != .empty
+        case .destination: return node.value != .empty || nodes.count > 2
+        }
+    }
     public func role(of id: RouteNodeID) -> RouteNodeRole? {
         guard let index = nodes.firstIndex(where: { $0.id == id }) else { return nil }
         if index == 0 { return .start }

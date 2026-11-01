@@ -224,7 +224,12 @@ private struct GoFlyManualJoystickPad: View {
     @State private var steadyEnabled = true
     private let diameter: CGFloat = 150
     private let thumbDiameter: CGFloat = 45
-    private var radius: CGFloat { (diameter - thumbDiameter) / 2 }
+    /// How far the knob's centre travels: out to the base circle's edge, the same in every direction.
+    private var radius: CGFloat { diameter / 2 }
+    /// The Figma assets draw their circles above the image centre, leaving room
+    /// for a drop shadow below; these shifts put the circles on the pad centre.
+    private static let knobArtworkDrop: CGFloat = 7.5
+    private static let compassArtworkDrop: CGFloat = 4.0 / 3
 
     var body: some View {
         ZStack {
@@ -275,6 +280,7 @@ private struct GoFlyManualJoystickPad: View {
             Image("JoystickCompass")
                 .resizable()
                 .frame(width: diameter + 5, height: diameter + 5)
+                .offset(y: Self.compassArtworkDrop)
             if touching {
                 Circle().strokeBorder(GoFlyStyle.primary, lineWidth: 2)
                     .frame(width: diameter, height: diameter)
@@ -297,6 +303,7 @@ private struct GoFlyManualJoystickPad: View {
         Image("JoystickKnob")
             .resizable()
             .frame(width: thumbDiameter + 35, height: thumbDiameter + 35)
+            .offset(y: Self.knobArtworkDrop)
             .opacity(steadyEnabled ? 1 : 0.5)
             .frame(width: thumbDiameter, height: thumbDiameter)
             .offset(thumbOffset)

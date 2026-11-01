@@ -29,6 +29,11 @@ public final class JoystickMovementController: ObservableObject {
         guard wanderEnabled, hasAcknowledgedLease, let bearing = smoothedWanderBearingDegrees ?? lastAcknowledgedBearingDegrees else { return nil }
         return JoystickInput(bearingDegrees: bearing, strength: 1)
     }
+    /// The road the map arrow may glide along between ACKs: none while a
+    /// finger steers off it or a replacement road is still being planned.
+    public var markerGlideRoute: PlannedRoute? {
+        wanderEnabled && !wanderNeedsReplan && input == nil ? wanderRoute : nil
+    }
     public var displayBearingDegrees: Double? { input?.bearingDegrees ?? smoothedWanderBearingDegrees ?? lastAcknowledgedBearingDegrees }
     /// Route tangent around the committed progress. Per-step bearings are chords
     /// from the live position and jump on jagged geometry; display uses this.

@@ -42,6 +42,28 @@ private struct RouteOrderRepairResult {
 /// stops after a fixed request and branch budget, so a large draft cannot
 /// trigger a factorial number of Directions requests.
 @MainActor
+/// Asks for one leg, waiting out Maps throttling instead of failing: a
+/// throttled request is asked again after the wait Maps names, for up to a minute.
+private func askWaitingOutThrottle(clock: any RouteClock,
+                                   _ ask: @Sendable () async throws -> [GeoCoordinate]) async throws -> [GeoCoordinate] {
+    var waited: Duration = .zero
+    while true {
+        do {
+            return try await ask()
+        } catch let throttled as RoutePlanningThrottled {
+            let budget = Duration.seconds(60) - waited
+            guard budget > .zero else { throw RouteExecutionFailure.planningFailed }
+            let wait = min(max(throttled.retryAfter, .seconds(1)), budget)
+            Diagnostics.shared.record("route.planThrottled", category: .movement, level: .notice,
+                                      ["wait_s": .number(Double(wait.components.seconds), digits: 0)])
+            try await clock.sleep(for: wait)
+            waited += wait
+        }
+    }
+}
+
+/// Runs on the main actor with its owner, which hands it the leg cache.
+@MainActor
 private final class RouteOrderRepairSearch {
     static let maximumExpandedPrefixes = 4_096
 
@@ -49,6 +71,9 @@ private final class RouteOrderRepairSearch {
     private let nodes: [RouteNode]
     private let coordinates: [GeoCoordinate]
     private let speed: RouteSpeed
+    private let clock: any RouteClock
+    /// Legs a previous launch planned.
+    private let storedLeg: (GeoCoordinate, GeoCoordinate) -> PlannedRoute?
     private(set) var edgeResults: [RoutePlanningEdge: RoutePlanningEdgeResult]
     private var expandedPrefixes = 0
     private var deepestLegs = 0
@@ -56,11 +81,14 @@ private final class RouteOrderRepairSearch {
     var onProgress: ((Int) -> Void)?
 
     init(planner: any RoutePlanning, nodes: [RouteNode], coordinates: [GeoCoordinate],
-         speed: RouteSpeed, cachedEdges: [RoutePlanningEdge: RoutePlanningEdgeResult]) {
+         speed: RouteSpeed, cachedEdges: [RoutePlanningEdge: RoutePlanningEdgeResult],
+         clock: any RouteClock, storedLeg: @escaping (GeoCoordinate, GeoCoordinate) -> PlannedRoute?) {
         self.planner = planner
         self.nodes = nodes
         self.coordinates = coordinates
         self.speed = speed
+        self.clock = clock
+        self.storedLeg = storedLeg
         edgeResults = cachedEdges
     }
 
@@ -131,9 +159,14 @@ private final class RouteOrderRepairSearch {
     private func planEdge(from: GeoCoordinate, to: GeoCoordinate,
                           cachedAs edge: RoutePlanningEdge) async -> RoutePlanningEdgeResult? {
         if let cached = edgeResults[edge] { return cached }
+        if let stored = storedLeg(edge.from, edge.to) {
+            edgeResults[edge] = .planned(stored)
+            return .planned(stored)
+        }
         guard !Task.isCancelled else { return nil }
+        let planner = planner
         do {
-            let points = try await planner.planWalking(from: from, to: to)
+            let points = try await askWaitingOutThrottle(clock: clock) { try await planner.planWalking(from: from, to: to) }
             try Task.checkCancellation()
             let planned = try PlannedRoute(points: points)
             let result = RoutePlanningEdgeResult.planned(planned)
@@ -204,6 +237,8 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     private var previewTask: Task<Void, Never>?
     private var planningOrderFixTask: Task<Void, Never>?
     private var previewEdgeResults: [RoutePlanningEdge: RoutePlanningEdgeResult] = [:]
+    /// Planned legs kept across launches.
+    private let legCache: RouteLegCache
     private var previewInputs: [GeoCoordinate]?
     private var subscription: AnyCancellable?
     private var pickerCandidateSubscription: AnyCancellable?
@@ -239,8 +274,9 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
 
     public init(draft: RouteDraft = RouteDraft(), planner: any RoutePlanning, commands: any RouteCommanding,
                 search: any PlaceSearching, clock: any RouteClock = ContinuousRouteClock(),
-                cadence: Duration = MovementCadence.path) {
+                cadence: Duration = MovementCadence.path, legCache: RouteLegCache? = nil) {
         self.draft = draft; self.planner = planner; self.commands = commands; self.search = search; self.clock = clock
+        self.legCache = legCache ?? RouteLegCache(file: nil)
         self.cadence = cadence
         if let source = draft.gpxSource {
             // A persisted GPX draft is display data. Build only its existing
@@ -253,6 +289,22 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     }
     public var canEdit: Bool { phase == .editing }
     public var canStart: Bool { canEdit && sceneActive && connectionAvailable && commands.canBeginRoute && (try? resolvedDraft(draft)) != nil }
+    /// The chosen places in route order, the current location resolved when
+    /// known: what the map marks while no road has been planned yet.
+    public var chosenPlaceCoordinates: [GeoCoordinate] { draft.nodes.compactMap(chosenCoordinate) }
+    /// The selected row's position in `chosenPlaceCoordinates`; nil while it is empty.
+    public var selectedChosenPlaceIndex: Int? {
+        guard let id = selectedNodeID, let index = draft.nodes.firstIndex(where: { $0.id == id }),
+              chosenCoordinate(draft.nodes[index]) != nil else { return nil }
+        return draft.nodes[..<index].filter { chosenCoordinate($0) != nil }.count
+    }
+    private func chosenCoordinate(_ node: RouteNode) -> GeoCoordinate? {
+        switch node.value {
+        case .place(let place): place.coordinate
+        case .current: commands.currentRouteOrigin
+        case .empty: nil
+        }
+    }
     public var canAddNode: Bool { canEdit && draft.isManual && draft.nodes.count < RouteDraft.maximumNodeCount }
     public var canClearImportedRoute: Bool { canEdit && draft.gpxSource != nil }
     private func beginPhysicalOperation() -> UUID {
@@ -419,13 +471,18 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         session.candidates.cancelPendingLookups()
         return true
     }
-    /// A waypoint row is deleted; the start and destination rows are only cleared.
+    /// A waypoint row is deleted; the start and destination rows are cleared,
+    /// and an empty destination row is deleted (see `RouteDraft.canRemove`).
     @discardableResult public func removeNode(id: RouteNodeID) -> Bool {
-        guard canEdit else { return false }
+        guard canEdit, draft.canRemove(nodeID: id) else { return false }
         let changed: RouteDraft?
         let filled = draft.nodes.filter { $0.value != .empty }.count
         let filledNode = draft.nodes.first(where: { $0.id == id }).map { $0.value != .empty } ?? false
         if case .waypoint? = draft.role(of: id) { changed = draft.removing(nodeID: id) }
+        else if !filledNode, draft.role(of: id) == .destination {
+            // The previous stop becomes the destination.
+            changed = draft.removing(nodeID: id)
+        }
         else if filledNode, filled >= 2 {
             // With two or more places the start and destination ✕ delete the place instead of clearing it.
             changed = draft.removing(nodeID: id)
@@ -502,9 +559,12 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     }
     private func applyDraft(_ changed: RouteDraft) {
         invalidateFavoriteLoadAdmission()
+        // The map keeps showing the last route and its stops until the new
+        // preview replaces it; cleared inputs stop Start from reusing it.
+        let shown = changed.isManual ? plannedRoute : nil
         resetPreview()
         loadedFavoriteRecordID = nil
-        draft = changed; plannedRoute = nil; completion = nil; error = nil
+        draft = changed; plannedRoute = shown; completion = nil; error = nil
         guard draft.isManual else { picker = nil; return }
         if var session = picker {
             guard let role = draft.role(of: session.nodeID) else { picker = nil; return }
@@ -556,7 +616,8 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         repairState = .running(attempted: 0, total: snapshot.nodes.count - 1)
         let search = RouteOrderRepairSearch(planner: planner, nodes: snapshot.nodes,
                                             coordinates: coordinates, speed: snapshot.speed,
-                                            cachedEdges: previewEdgeResults)
+                                            cachedEdges: previewEdgeResults, clock: clock,
+                                            storedLeg: { [legCache] in legCache.leg(from: $0, to: $1) })
         search.onProgress = { [weak self] attempted in
             guard let self, self.revision == token, self.isFixingPlanningOrder else { return }
             self.repairState = .running(attempted: attempted, total: snapshot.nodes.count - 1)
@@ -570,7 +631,9 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             self.isFixingPlanningOrder = false
             // Legs the search planned stay cached, so adopting its order or editing later never repeats them.
             for (edge, edgeResult) in search.edgeResults {
-                if case .planned = edgeResult { self.previewEdgeResults[edge] = edgeResult }
+                guard case .planned(let leg) = edgeResult, self.previewEdgeResults[edge] == nil else { continue }
+                self.previewEdgeResults[edge] = edgeResult
+                self.legCache.store(leg, from: edge.from, to: edge.to)
             }
             if let result {
                 // Applied only when the person confirms the sheet.
@@ -648,14 +711,17 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         error = nil
     }
 
+    /// Plans the places already chosen. A field still empty, such as a stop
+    /// just added, is skipped so the map keeps the route through the others.
     private func schedulePreviewPlanning(for snapshot: RouteDraft) {
         guard canEdit, snapshot.isManual else { return }
-        guard snapshot.nodes.count >= 2, snapshot.start != nil, snapshot.destination != nil,
-              !snapshot.hasEmptyEndpoint else { return }
+        guard let chosen = RouteDraft(nodes: snapshot.nodes.filter { $0.value != .empty }, speed: snapshot.speed),
+              chosen.nodes.count >= 2 else { plannedRoute = nil; return }
         let resolved: RouteDraft
         do {
-            resolved = try resolvedDraft(snapshot)
+            resolved = try resolvedDraft(chosen)
         } catch {
+            plannedRoute = nil
             if let failure = error as? RouteExecutionFailure {
                 self.error = failure
             }
@@ -667,7 +733,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         }
         guard coordinates.count >= 2 else { return }
         let token = revision
-        let planner = self.planner
+        let planner = self.planner, clock = self.clock
         previewTask = Task { @MainActor [weak self] in
             do {
                 var legs: [PlannedRoute] = []
@@ -681,9 +747,14 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
                         legs.append(cached)
                         continue
                     }
+                    if let stored = self?.legCache.leg(from: edge.from, to: edge.to) {
+                        self?.previewEdgeResults[edge] = .planned(stored)
+                        legs.append(stored)
+                        continue
+                    }
                     let points: [GeoCoordinate]
                     do {
-                        points = try await planner.plan(from: from, to: to)
+                        points = try await askWaitingOutThrottle(clock: clock) { try await planner.plan(from: from, to: to) }
                     } catch {
                         guard let self, self.revision == token, self.canEdit, !Task.isCancelled else { return }
                         self.previewEdgeResults[edge] = .failed
@@ -694,6 +765,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
                     do {
                         let planned = try PlannedRoute(points: points)
                         self.previewEdgeResults[edge] = .planned(planned)
+                        self.legCache.store(planned, from: edge.from, to: edge.to)
                         legs.append(planned)
                     } catch {
                         self.previewEdgeResults[edge] = .failed

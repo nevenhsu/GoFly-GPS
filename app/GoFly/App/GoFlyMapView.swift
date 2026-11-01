@@ -45,7 +45,7 @@ final class GoFlyMovementModel: ObservableObject {
     private var speedSynchronizer: MovementSpeedSynchronizer?
     private var mapAdmission: (@MainActor () -> Bool)?
 
-    init(service: ServiceController, recoveryStore: SessionRecoveryStore) {
+    init(service: ServiceController, recoveryStore: SessionRecoveryStore, routeLegs: RouteLegCache? = nil) {
         self.service = service
 #if DEBUG && targetEnvironment(simulator)
         location = GoFlyUITestOverrides.isFrameMode
@@ -78,7 +78,7 @@ final class GoFlyMovementModel: ObservableObject {
 #endif
         route = RouteExecutionController(
             draft: Self.routeDraft(restoring: snapshot.draft), planner: Self.routePlanner(),
-            commands: service, search: placeSearch
+            commands: service, search: placeSearch, legCache: routeLegs
         )
         _ = route.setRoundTripEnabled(snapshot.roundTripEnabled)
         joystick = JoystickMovementController(commands: service, speed: GoFlyPreferences.shared.movementSpeed)
@@ -472,8 +472,8 @@ struct GoFlyMapView: View {
                 }
                 location.start()
                 if cameraIntent == nil {
-                    if mode == .route, let planned = route.plannedRoute {
-                        cameraIntent = GoFlyCameraIntent(route: planned)
+                    if mode == .route, let fit = routeFitIntent {
+                        cameraIntent = fit
                     } else if let position = service.positionMarker {
                         cameraIntent = GoFlyCameraIntent(coordinate: position.coordinate)
                     }
@@ -739,6 +739,22 @@ struct GoFlyMapView: View {
                     dismissKeyboard()
                 }
             }
+            // Steering the joystick keeps the arrow in view: the camera follows
+            // only once the arrow leaves the map or nears its edge.
+            .onChange(of: service.positionMarker?.coordinate) { _, coordinate in
+                guard mode == .joystick, joystick.activeGestureID != nil, let coordinate else { return }
+                cameraIntent = GoFlyCameraIntent(coordinate: coordinate, recentersNearEdge: true)
+            }
+            .onChange(of: joystick.activeGestureID) { _, gesture in
+                guard mode == .joystick, gesture != nil, let coordinate = service.positionMarker?.coordinate else { return }
+                cameraIntent = GoFlyCameraIntent(coordinate: coordinate, recentersNearEdge: true)
+            }
+            .onChange(of: route.selectedNodeID) { _, _ in
+                // A stop selected in the list is brought into view, keeping the zoom.
+                guard mode == .route, route.canEdit, let index = route.selectedChosenPlaceIndex,
+                      route.chosenPlaceCoordinates.indices.contains(index) else { return }
+                cameraIntent = GoFlyCameraIntent(coordinate: route.chosenPlaceCoordinates[index], ensureVisibleOnly: true)
+            }
             .onChange(of: route.plannedRoute) { _, planned in
                 // Whenever the planned route changes while editing, the camera frames the whole route.
                 guard let planned else { return }
@@ -746,6 +762,7 @@ struct GoFlyMapView: View {
             }
             .onChange(of: mode) { _, mode in
                 wander.joystickModeDidChange(mode == .joystick)
+                if mode == .route, let fit = routeFitIntent { cameraIntent = fit }
                 if mode == .joystick { service.warmupSession() }
                 if mode == .teleport && (positionHold.phase == .paused || positionHold.phase == .completed) {
                     sheetDetent = .collapsed
@@ -1035,6 +1052,13 @@ struct GoFlyMapView: View {
     }
 
     /// Mark the actual road entrances; selected POIs remain in the editing fields.
+    /// Route mode opens framing the planned route, or the chosen places while
+    /// it is still being planned; the route frames itself again once it arrives.
+    private var routeFitIntent: GoFlyCameraIntent? {
+        if let planned = route.plannedRoute { return GoFlyCameraIntent(route: planned) }
+        return GoFlyCameraIntent(fitting: route.chosenPlaceCoordinates)
+    }
+
     private var manualRouteWaypoints: [GeoCoordinate] {
         route.plannedRoute?.waypoints ?? []
     }
@@ -1085,10 +1109,12 @@ struct GoFlyMapView: View {
             route: mode == .route ? route.plannedRoute : (isWanderMap ? joystick.wanderRoute : nil),
             // A wander segment has one destination and no intermediate stops.
             routeWaypoints: mode == .route && route.draft.gpxSource == nil ? manualRouteWaypoints : (isWanderMap ? [] : nil),
+            routeNodePlaces: mode == .route && route.draft.gpxSource == nil ? route.chosenPlaceCoordinates : [],
+            selectedRouteNode: mode == .route && route.canEdit && route.draft.gpxSource == nil ? route.selectedChosenPlaceIndex : nil,
             wanderTarget: isWanderMap ? joystick.wanderTarget?.place : nil,
             rangeCircle: rangeCircle,
             markerBearingDegrees: activeMarkerBearing,
-            markerRoute: isWanderMap ? (joystick.wanderNeedsReplan ? nil : joystick.wanderRoute) : movement.presentation.route,
+            markerRoute: isWanderMap ? joystick.markerGlideRoute : movement.presentation.route,
             markerRouteDistance: isWanderMap ? joystick.wanderProgressMeters : movement.presentation.routeDistance,
             adjustsFocusForViewportChanges: false,
             attributionBottomInset: attributionBottomInset,
@@ -1812,13 +1838,17 @@ struct GoFlyMapView: View {
     /// so there is no separate compass or follow-heading button.
     private func mapControls(in geometry: GeometryProxy) -> some View {
         VStack(spacing: 12) {
-            // Route mode only: frame the whole planned route (Figma has no variant yet).
-            if mode == .route, let planned = route.plannedRoute {
-                Button { cameraIntent = GoFlyCameraIntent(route: planned) } label: {
+            // Route mode always shows it: frames the whole planned route, disabled
+            // until there is one (Figma has no variant yet).
+            if mode == .route {
+                Button {
+                    if let planned = route.plannedRoute { cameraIntent = GoFlyCameraIntent(route: planned) }
+                } label: {
                     GoFlyIcon(GoFlySymbols.fitRoute)
                         .goFlyIconSize(size: 18)
                 }
                 .buttonStyle(GoFlyIconStyle(variant: .mapControls))
+                .disabled(route.plannedRoute == nil)
                 .accessibilityLabel(goFlyString("map.fitRoute"))
                 .accessibilityIdentifier("map.fitRoute")
             }

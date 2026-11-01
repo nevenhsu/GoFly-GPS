@@ -25,7 +25,12 @@ final class MapKitRoutePathProvider: RoutePathProviding {
         let operation = MapKitDirectionsOperation(request: request)
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
-            let response = try await operation.calculate()
+            let response: MKDirections.Response
+            do {
+                response = try await operation.calculate()
+            } catch let error as MKError where error.code == .loadingThrottled {
+                throw RoutePlanningThrottled(retryAfter: Self.timeUntilReset(error))
+            }
             try Task.checkCancellation()
             guard let route = response.routes.first,
                   (2...10_000).contains(route.polyline.pointCount) else {
@@ -39,6 +44,23 @@ final class MapKitRoutePathProvider: RoutePathProviding {
         } onCancel: {
             Task { @MainActor in operation.cancel() }
         }
+    }
+}
+
+extension MapKitRoutePathProvider {
+    /// Maps may say how long until requests are accepted again; otherwise wait 10 s.
+    nonisolated static func timeUntilReset(_ error: MKError) -> Duration {
+        func seconds(in info: [String: Any]) -> Double? {
+            for (key, value) in info {
+                if key.localizedCaseInsensitiveContains("timeUntilReset"), let number = value as? NSNumber {
+                    return number.doubleValue
+                }
+                if let nested = value as? [String: Any], let found = seconds(in: nested) { return found }
+            }
+            return nil
+        }
+        let wait = seconds(in: error.userInfo).flatMap { $0.isFinite && $0 > 0 ? $0 : nil } ?? 10
+        return .milliseconds(Int(min(wait, 60) * 1000))
     }
 }
 
