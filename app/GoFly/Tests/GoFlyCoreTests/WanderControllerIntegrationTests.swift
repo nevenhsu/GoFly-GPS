@@ -55,6 +55,53 @@ struct WanderControllerIntegrationTests {
         await wait { controller.phase == .neutral }
     }
 
+    /// A wander finger passing the joystick centre keeps the override: the
+    /// arrow keeps its bearing, holds still, and the road does not take over.
+    @Test func aWanderFingerAtTheCentreHoldsStillAndKeepsItsBearing() async throws {
+        let device = JoystickControlledDevice(), clock = RouteTestClock(), service = ServiceController(service: device)
+        service.observeRealLocation(location())
+        let origin = try #require(service.currentJoystickOrigin)
+        let destination = GeoCoordinate(latitude: 25.001, longitude: 121)!
+        let controller = JoystickMovementController(commands: service, clock: clock)
+        #expect(controller.installWanderRoute(target: WanderTarget(place: place(destination)),
+                                              route: try PlannedRoute(points: [origin, destination])))
+        #expect(controller.setWanderEnabled(true))
+        await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
+        await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait { clock.sleepingCount == 1 }
+
+        let gesture = UUID()
+        #expect(controller.beginGesture(id: gesture, input: JoystickInput(bearingDegrees: 90, strength: 1)!))
+        #expect(controller.updateGesture(id: gesture, input: JoystickInput(bearingDegrees: 0, strength: 0)!))
+        #expect(controller.activeGestureID == gesture && !controller.wanderNeedsReplan)
+        #expect(controller.displayBearingDegrees == 90)
+        clock.advance(by: .seconds(1))
+        try await Task.sleep(for: .milliseconds(20))
+        #expect(!(await device.waiting), "No road step while the finger rests at the centre")
+
+        #expect(controller.updateGesture(id: gesture, input: JoystickInput(bearingDegrees: 180, strength: 1)!))
+        await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
+        await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait { clock.sleepingCount == 1 }
+        #expect(controller.endGesture(id: gesture))
+        #expect(controller.wanderNeedsReplan, "Only lifting the finger hands the wander back to the road")
+        #expect(controller.setWanderEnabled(false))
+    }
+
+    @Test func rejoiningWalksStraightToTheNearestRoutePointNotYetPassed() throws {
+        let a = GeoCoordinate(latitude: 25, longitude: 121)!, b = GeoCoordinate(latitude: 25.001, longitude: 121)!
+        let c = GeoCoordinate(latitude: 25.002, longitude: 121)!, d = GeoCoordinate(latitude: 25.003, longitude: 121)!
+        let route = try PlannedRoute(points: [a, b, c, d])
+        let offRoad = GeoCoordinate(latitude: 25.0011, longitude: 121.0005)!
+        let rejoin = try #require(WanderPlanningCoordinator.rejoinRoute(from: offRoad, onto: route, passedMeters: 0))
+        #expect(rejoin.points == [offRoad, b, c, d])
+        let past = try #require(WanderPlanningCoordinator.rejoinRoute(
+            from: offRoad, onto: route, passedMeters: route.cumulativeDistancesMeters[2]))
+        #expect(past.points == [offRoad, c, d], "A point already passed is never walked back to")
+    }
+
     @Test func realArrivalWithoutNextTargetPausesAuthorityAndGoThenRetryUsesTheSameLease() async throws {
         let device = JoystickControlledDevice(), clock = RouteTestClock(), samples = IntegrationWanderSamples([[0], []])
         let service = ServiceController(service: device)

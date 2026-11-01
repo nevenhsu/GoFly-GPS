@@ -223,6 +223,42 @@ struct WanderPlanningCoordinatorTests {
         planner.release()
     }
 
+    /// Releasing the joystick off the road: when no road plan comes back, the
+    /// wander walks straight back onto its route instead of failing.
+    @Test func aFailedPlanAfterReleasingTheJoystickRejoinsTheRouteWithoutAnError() async throws {
+        let device = JoystickControlledDevice(), clock = RouteTestClock(), service = ServiceController(service: device)
+        service.setMovementConnectionAvailable(true)
+        service.observeRealLocation(location())
+        let origin = try #require(service.currentJoystickOrigin)
+        let target = WanderTarget(place: place(destination))
+        let planner = ScriptedWanderPlanner([.fail]), host = RecordingWanderHost()
+        let joystick = JoystickMovementController(commands: service, clock: clock)
+        let wander = coordinator(service, joystick, planner, host)
+        host.changes.send(())
+        #expect(joystick.installWanderRoute(target: target, route: try PlannedRoute(points: [origin, destination])))
+        #expect(joystick.setWanderEnabled(true))
+        await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
+        await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait { clock.sleepingCount == 1 }
+
+        let gesture = UUID()
+        #expect(joystick.beginGesture(id: gesture, input: JoystickInput(bearingDegrees: 90, strength: 1)!))
+        clock.advance(by: .seconds(1)); await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait { clock.sleepingCount == 1 }
+        let offRoad = try #require(service.currentJoystickOrigin)
+        #expect(joystick.endGesture(id: gesture))
+
+        await wait { planner.calls.count == 1 && !wander.isReplanning }
+        #expect(joystick.wanderError == nil, "No planning-failed error")
+        #expect(joystick.wanderRoute?.start == offRoad)
+        #expect(joystick.wanderRoute?.points.last == destination)
+        #expect(joystick.phase == .moving && !joystick.wanderNeedsReplan)
+        #expect(host.replaced.count == 1)
+        #expect(joystick.setWanderEnabled(false))
+    }
+
     @Test func startOutsideJoystickModeDoesNothing() async {
         let service = ServiceController(service: JoystickControlledDevice()); service.setMovementConnectionAvailable(true)
         service.observeRealLocation(location())
@@ -306,12 +342,14 @@ private final class RecordingWanderHost {
         set { originController.request = newValue }
     }
     var started: [PlannedRoute] = []
+    var replaced: [PlannedRoute] = []
     var host: WanderPlanningHost {
         WanderPlanningHost(
             isJoystickMode: { [weak self] in self?.joystickMode ?? false },
             isSceneActive: { [weak self] in self?.sceneActive ?? false },
             isRecoveryChecking: { [weak self] in self?.recoveryChecking ?? false },
             mapOriginCandidates: { [] },
-            wanderStarted: { [weak self] in self?.started.append($0) })
+            wanderStarted: { [weak self] in self?.started.append($0) },
+            segmentReplaced: { [weak self] in self?.replaced.append($0) })
     }
 }

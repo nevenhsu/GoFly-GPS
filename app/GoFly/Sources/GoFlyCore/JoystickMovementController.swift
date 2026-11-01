@@ -348,7 +348,14 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
 
     @discardableResult public func updateGesture(id: UUID, input: JoystickInput) -> Bool {
         guard activeGestureID == id, let intent, phase == .preparing || phase == .moving else { return false }
-        guard input.strength > 0 else { return endGesture(id: id) }
+        var input = input
+        if input.strength <= 0 {
+            // Passing the centre does not hand a wander back to the road: the
+            // finger still owns movement, holds still, and keeps its bearing.
+            guard wanderEnabled, let held = JoystickInput(bearingDegrees: self.input?.bearingDegrees ?? input.bearingDegrees,
+                                                          strength: 0) else { return endGesture(id: id) }
+            input = held
+        }
         guard self.input != input else { return true }
         _ = commands.reviseJoystickInput(executionID: intent.id, lease: intent.lease)
         self.input = input
@@ -556,7 +563,11 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             let recipe: JoystickStepRecipe
             var capturedRouteRevision: UUID? = nil
             var routeStepDistance: Double? = nil
-            if let input, let displacement = input.displacement(speed: speed, seconds: seconds) { recipe = .manual(displacement) }
+            if let input {
+                // A wander finger resting at the centre: no write, and no road step either.
+                guard let displacement = input.displacement(speed: speed, seconds: seconds) else { continue }
+                recipe = .manual(displacement)
+            }
             else if wanderEnabled, !wanderNeedsTarget, let route = wanderRoute, let target = wanderTarget,
                     let distance = nextRouteStepDistance(route: route, speed: speed, seconds: seconds),
                     let coordinate = route.coordinate(at: distance),

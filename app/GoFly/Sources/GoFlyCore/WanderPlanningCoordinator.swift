@@ -171,7 +171,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
             planNextSegment()
         }
         if now.joystickMoving && !last.joystickMoving && now.wanderNeedsReplan {
-            replan(to: joystick.wanderTarget?.place)
+            replan(to: joystick.wanderTarget?.place, rejoiningOnFailure: true)
         }
     }
 
@@ -416,12 +416,16 @@ public final class WanderPlanningCoordinator: ObservableObject {
     public func replanCurrentDestination() {
         let destination = joystick.wanderTarget?.place
         retryDestination = destination
-        replan(to: destination)
+        replan(to: destination, rejoiningOnFailure: true)
     }
 
     /// Pauses the wander, plans a replacement segment to `destination` (or a
     /// fresh target when nil) and resumes on the same lease.
-    public func replan(to destination: MapPlace?) {
+    public func replan(to destination: MapPlace?) { replan(to: destination, rejoiningOnFailure: false) }
+
+    /// After a manual override, a failed plan from the arrow is no error: the
+    /// wander walks straight back onto its current route and continues it.
+    private func replan(to destination: MapPlace?, rejoiningOnFailure: Bool) {
         let isCompletedSegment = joystick.phase == .suspended && joystick.suspensionReason == .targetUnavailable
         if isCompletedSegment, destination != nil {
             replanningTask?.cancel()
@@ -451,6 +455,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
             } else {
                 readyToPlan = await joystick.pauseForWanderReplan()
             }
+            let rejoins = rejoiningOnFailure && !isCompletedSegment
             guard readyToPlan, !Task.isCancelled,
                   replanningID == planningID, host.isJoystickMode(),
                   host.isSceneActive(), let origin = service.currentJoystickOrigin else {
@@ -462,7 +467,8 @@ public final class WanderPlanningCoordinator: ObservableObject {
             let target = destination.map { WanderTarget(place: $0) }
                 ?? joystick.selectWanderTarget(from: origin)
             guard let target else {
-                if service.movementConnection != .unavailable { failReplanning(planningID) }
+                if service.movementConnection != .unavailable,
+                   !(rejoins && rejoinCurrentRoute(planningID)) { failReplanning(planningID) }
                 return
             }
             activeCheckpoint = Checkpoint(purpose: .replacement, origin: origin, target: target)
@@ -479,7 +485,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
                         : joystick.replaceWanderRouteAndResume(target: target, route: planned)) else {
                     guard !Task.isCancelled, replanningID == planningID else { return }
                     guard service.movementConnection != .unavailable else { return }
-                    failReplanning(planningID)
+                    if !(rejoins && rejoinCurrentRoute(planningID)) { failReplanning(planningID) }
                     return
                 }
                 joystick.clearWanderError()
@@ -492,9 +498,39 @@ public final class WanderPlanningCoordinator: ObservableObject {
             } catch {
                 guard !Task.isCancelled, replanningID == planningID else { return }
                 guard service.movementConnection != .unavailable else { return }
-                failReplanning(planningID)
+                if !(rejoins && rejoinCurrentRoute(planningID)) { failReplanning(planningID) }
             }
         }
+    }
+
+    /// Resumes the paused wander on a straight walk from the arrow to the
+    /// nearest point of its current route not yet passed, then the rest of it.
+    private func rejoinCurrentRoute(_ planningID: UUID) -> Bool {
+        guard replanningID == planningID, host.isJoystickMode(), host.isSceneActive(),
+              let origin = service.currentJoystickOrigin, let target = joystick.wanderTarget,
+              let route = joystick.wanderRoute,
+              let rejoin = Self.rejoinRoute(from: origin, onto: route, passedMeters: joystick.wanderProgressMeters),
+              joystick.replaceWanderRouteAndResume(target: target, route: rejoin) else { return false }
+        Diagnostics.shared.record("wander.rejoinedRoute", category: .movement, level: .notice, [
+            "rejoin_m": .number(JoystickGeodesy.distanceMeters(from: origin, to: rejoin.points[min(1, rejoin.points.count - 1)]), digits: 1)
+        ])
+        joystick.clearWanderError()
+        activeCheckpoint = nil
+        interruptedCheckpoint = nil
+        retryDestination = nil
+        host.segmentReplaced(rejoin)
+        return true
+    }
+
+    static func rejoinRoute(from origin: GeoCoordinate, onto route: PlannedRoute, passedMeters: Double) -> PlannedRoute? {
+        let ahead = route.points.indices.filter { route.cumulativeDistancesMeters[$0] >= passedMeters }
+        guard let nearest = ahead.min(by: {
+            JoystickGeodesy.distanceMeters(from: origin, to: route.points[$0])
+                < JoystickGeodesy.distanceMeters(from: origin, to: route.points[$1])
+        }) else { return nil }
+        var points = Array(route.points[nearest...])
+        if JoystickGeodesy.distanceMeters(from: origin, to: points[0]) > 1 { points.insert(origin, at: 0) }
+        return points.count >= 2 ? try? PlannedRoute(points: points) : nil
     }
 
     // MARK: Lifecycle
