@@ -14,6 +14,9 @@ extension TunnelProbing {
 public enum TunnelProbeFailure: Error, Equatable, Sendable {
     case unavailable
     case timedOut
+    /// No remotepairingd service could be found on this device; usually the
+    /// Local Network permission is off.
+    case serviceNotFound
 }
 
 public enum LocationAuthorization: Equatable, Sendable {
@@ -36,30 +39,16 @@ public enum VPNCheckState: Equatable, Sendable {
     case unknown, checking, reachable, unavailable, timedOut
 }
 
-public struct OnboardingClock: Sendable {
-    public let now: @MainActor @Sendable () -> Duration
-    public let sleep: @MainActor @Sendable (Duration) async throws -> Void
-
-    public init(
-        now: @escaping @MainActor @Sendable () -> Duration,
-        sleep: @escaping @MainActor @Sendable (Duration) async throws -> Void
-    ) {
-        self.now = now
-        self.sleep = sleep
-    }
-
-    public static var continuous: Self {
-        let origin = ContinuousClock.now
-        return Self(now: { origin.duration(to: .now) }, sleep: { try await Task.sleep(for: $0) })
-    }
-}
-
 @MainActor
 public final class OnboardingController: ObservableObject {
     @Published public private(set) var step: OnboardingStep = .welcome
     @Published public private(set) var vpnState: VPNCheckState = .unknown
     /// iOS's own reason for the last failed check; nil unless `vpnState` is a failure.
     @Published public private(set) var vpnFailureDetail: String?
+    /// Bumps on every failed check so a dismissed failure notice can appear again.
+    @Published public private(set) var vpnFailureRevision: UInt64 = 0
+    /// The last failed check found no pairing service, so the fix is the Local Network permission.
+    @Published public private(set) var vpnNeedsLocalNetwork = false
     @Published public private(set) var isChecking = false
     @Published public private(set) var isAdvancing = false
     @Published public private(set) var isRequestingLocation = false
@@ -72,20 +61,18 @@ public final class OnboardingController: ObservableObject {
     private var generation: UInt64 = 0
     private var checkTask: Task<Void, Never>?
     private var pendingAdvance: (@MainActor () -> Void)?
-    private var pendingRefresh = false
-    private let clock: OnboardingClock
-    private var cadenceTask: Task<Void, Never>?
+    /// A user-requested check was cut short by leaving the foreground (e.g. the
+    /// Local Network permission alert); it continues when the page is active again.
+    private var resumeCheckWhenActive = false
 
-    public init(probe: any TunnelProbing, location: any LocationAuthorizing, clock: OnboardingClock = .continuous) {
+    public init(probe: any TunnelProbing, location: any LocationAuthorizing) {
         self.probe = probe
         self.location = location
         self.locationAuthorization = location.authorization
-        self.clock = clock
     }
 
     deinit {
         checkTask?.cancel()
-        cadenceTask?.cancel()
     }
 
     public var canAdvanceVPN: Bool { step == .vpn && vpnActive && vpnState == .reachable && !isAdvancing }
@@ -128,37 +115,22 @@ public final class OnboardingController: ObservableObject {
             break
         }
     }
+    /// Marks the VPN page as visible and foregrounded. Never starts a check: probing
+    /// happens only when the user asks via `checkConnection` / `advanceVPN`.
     public func setVPNActive(_ active: Bool) {
         guard active != vpnActive else { return }
         vpnActive = active
         generation &+= 1
-        cadenceTask?.cancel()
-        cadenceTask = nil
         if active {
-            pendingRefresh = true
             drainPendingCheck()
-            let token = generation
-            let clock = clock
-            let startedAt = clock.now()
-            cadenceTask = Task { [weak self] in
-                var next = startedAt + .seconds(5)
-                while !Task.isCancelled {
-                    do { try await clock.sleep(max(.zero, next - clock.now())) }
-                    catch { return }
-                    guard !Task.isCancelled, let self, self.generation == token,
-                          self.vpnActive, self.step == .vpn else { return }
-                    self.checkConnection()
-                    repeat { next += .seconds(5) } while next <= clock.now()
-                }
-            }
-        }
-        else {
+        } else {
+            resumeCheckWhenActive = checkTask != nil
             checkTask?.cancel()
             pendingAdvance = nil
-            pendingRefresh = false
             isAdvancing = false
             vpnState = .unknown
             vpnFailureDetail = nil
+            vpnNeedsLocalNetwork = false
         }
     }
     public func checkConnection() {
@@ -182,6 +154,7 @@ public final class OnboardingController: ObservableObject {
                 self.drainPendingCheck()
                 return
             }
+            self.vpnNeedsLocalNetwork = false
             switch result {
             case .success, .failure(is CancellationError): self.vpnFailureDetail = nil
             case .failure: self.vpnFailureDetail = probe.lastFailureDetail
@@ -197,8 +170,16 @@ public final class OnboardingController: ObservableObject {
                     return
                 }
             case .failure(is CancellationError): self.vpnState = .unknown
-            case .failure(TunnelProbeFailure.timedOut): self.vpnState = .timedOut
-            case .failure: self.vpnState = .unavailable
+            case .failure(TunnelProbeFailure.serviceNotFound):
+                self.vpnState = .unavailable
+                self.vpnNeedsLocalNetwork = true
+                self.vpnFailureRevision &+= 1
+            case .failure(TunnelProbeFailure.timedOut):
+                self.vpnState = .timedOut
+                self.vpnFailureRevision &+= 1
+            case .failure:
+                self.vpnState = .unavailable
+                self.vpnFailureRevision &+= 1
             }
             if onAdvance != nil { self.isAdvancing = false }
             self.drainPendingCheck()
@@ -208,10 +189,9 @@ public final class OnboardingController: ObservableObject {
         guard vpnActive, step == .vpn, checkTask == nil else { return }
         if let next = pendingAdvance {
             pendingAdvance = nil
-            pendingRefresh = false
             beginCheck(onAdvance: next)
-        } else if pendingRefresh {
-            pendingRefresh = false
+        } else if resumeCheckWhenActive {
+            resumeCheckWhenActive = false
             beginCheck(onAdvance: nil)
         }
     }

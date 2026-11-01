@@ -448,15 +448,29 @@ private struct GoFlyVPNOnboardingView: View {
 
     @ViewBuilder private var vpnToasts: some View {
         if controller.vpnState == .unavailable || controller.vpnState == .timedOut {
-            GoFlyStatusBanner(tone: .danger,
-                              title: goFlyString("onboarding.vpn.unavailableTitle"),
-                              message: goFlyString(controller.vpnState == .timedOut
-                                ? "onboarding.vpn.timedOut" : "onboarding.vpn.unavailable"),
-                              actionTitle: goFlyString("common.retry"),
-                              onAction: controller.checkConnection,
-                              identifier: "onboarding.vpn.failure",
-                              actionEnabled: !controller.isChecking && !controller.isAdvancing,
-                              actionIdentifier: "onboarding.vpn.failure.retry")
+            if controller.vpnNeedsLocalNetwork {
+                // iOS asks for Local Network only once; afterwards the switch lives in Settings.
+                GoFlyStatusBanner(tone: .danger,
+                                  title: goFlyString("onboarding.vpn.localNetwork.title"),
+                                  message: goFlyString("onboarding.vpn.localNetwork"),
+                                  actionTitle: goFlyString("onboarding.vpn.localNetwork.allow"),
+                                  onAction: openAppSettings,
+                                  identifier: "onboarding.vpn.failure",
+                                  actionIdentifier: "onboarding.vpn.failure.allow")
+                    .id(controller.vpnFailureRevision)
+            } else {
+                GoFlyStatusBanner(tone: .danger,
+                                  title: goFlyString("onboarding.vpn.unavailableTitle"),
+                                  message: [goFlyString(controller.vpnState == .timedOut
+                                    ? "onboarding.vpn.timedOut" : "onboarding.vpn.unavailable"),
+                                            controller.vpnFailureDetail].compactMap { $0 }.joined(separator: "\n"),
+                                  actionTitle: goFlyString("common.retry"),
+                                  onAction: controller.checkConnection,
+                                  identifier: "onboarding.vpn.failure",
+                                  actionEnabled: !controller.isChecking && !controller.isAdvancing,
+                                  actionIdentifier: "onboarding.vpn.failure.retry")
+                    .id(controller.vpnFailureRevision)
+            }
         }
         if externalOpenFailed {
             GoFlyStatusBanner(tone: .danger, title: goFlyString(externalOpenFailureKey),
@@ -472,6 +486,11 @@ private struct GoFlyVPNOnboardingView: View {
         }
     }
 
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
     private func openLocalDevVPN() {
         externalOpenFailed = false
         externalOpenFailureKey = "onboarding.vpn.externalOpenFailed"
@@ -481,7 +500,6 @@ private struct GoFlyVPNOnboardingView: View {
     private func recheckAfterHelp() {
         guard scenePhase == .active else { return }
         controller.setVPNActive(true)
-        controller.checkConnection()
     }
 }
 

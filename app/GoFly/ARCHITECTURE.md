@@ -5,7 +5,7 @@
 | 模組 | 職責 |
 | --- | --- |
 | `GoFlyCore` | 服務、路線、搖桿、漫步、最愛、GPX、恢復與檔案邊界；可在 macOS 測試。 |
-| `GoFlyTransport` | VPN 通道探測；唯一正式端點 `10.7.0.1:49152`、兩秒期限。失敗時保留 iOS 回報的最後連線狀態（NWError、path 狀態／原因、介面）供 B01 原文顯示；只作診斷。連線被拒絕（ECONNREFUSED）立即判定無法連線，不等兩秒期限。 |
+| `GoFlyTransport` | VPN 通道探測；端點為 `10.7.0.1` 加上以 Bonjour（`_remotepairing._tcp`，只取本機位址的那筆）自動找到的 remotepairingd 連接埠，不寫死；兩秒期限。失敗時保留 iOS 回報的最後連線狀態（NWError、path 狀態／原因、介面）供 B01 原文顯示；只作診斷。連線被拒絕（ECONNREFUSED）立即判定無法連線，不等兩秒期限。 |
 | `GoFly` App | SwiftUI 與 `GoFlyRuntimeAssembly`；只建立一份 runtime owner。 |
 | `Device`／`NativeBridge` | 單一 serial session、固定 idevice 來源、窄幅 patch 與 allowlist header。 |
 
@@ -125,7 +125,7 @@
 
 ## VPN 通道需要 Wi‑Fi
 
-GoFly 的端點 `10.7.0.1:49152` 是 iOS 的 remotepairingd，LocalDevVPN 只把封包繞回手機本機。2026-10-19 實機觀察：iPhone 只用行動網路時，該服務沒有在聽（連線被拒絕，path 經 utun 已滿足）；連上 Wi‑Fi 後服務出現在 49152，檢查才可能成功。因此引導、設定與錯誤文案都要求先連 Wi‑Fi。飛航模式加 Wi‑Fi 但未加入網路、個人熱點，以及使用中途 Wi‑Fi 中斷的行為尚未驗證。
+GoFly 的端點 `10.7.0.1` 是 iOS 的 remotepairingd（連接埠由 iOS 動態指派並以 Bonjour 公告；2026-11-01 實機為 64088，先前記錄的 49152 只是當時的值，每次檢查前重新探索），LocalDevVPN 只把封包繞回手機本機。2026-10-19 實機觀察：iPhone 只用行動網路時，該服務沒有在聽（連線被拒絕，path 經 utun 已滿足）；連上 Wi‑Fi 後服務出現在 49152，檢查才可能成功。因此引導、設定與錯誤文案都要求先連 Wi‑Fi。飛航模式加 Wi‑Fi 但未加入網路、個人熱點，以及使用中途 Wi‑Fi 中斷的行為尚未驗證。
 
 ## 路徑取得（2026-10-23）
 

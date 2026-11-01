@@ -13,6 +13,7 @@ struct OnboardingControllerTests {
         await wait { permission.isWaiting }
         controller.skipLocation()
         controller.setVPNActive(true)
+        controller.checkConnection()
         await wait { await probe.requests == 1 }
         controller.goBack()
         #expect(controller.step == .location)
@@ -28,37 +29,44 @@ struct OnboardingControllerTests {
         #expect(!controller.isRequestingLocation)
     }
 
-    @Test func foregroundCadenceChecksEveryFiveSecondsWithoutOverlappingOrFlickeringSuccess() async {
-        let clock = ManualOnboardingClock()
+    @Test func visibleVPNPageNeverChecksUntilUserAsksAndFailureDoesNotRetryAutomatically() async {
         let probe = ControlledProbe()
-        let controller = OnboardingController(probe: probe, location: PermissionStub(.denied), clock: clock.clock)
+        let controller = OnboardingController(probe: probe, location: PermissionStub(.denied))
         controller.advanceWelcome()
         controller.skipLocation()
         controller.setVPNActive(true)
-        await wait { await probe.requests == 1 && clock.hasSleeper }
-        await probe.finish()
-        await wait { controller.canAdvanceVPN }
-        clock.advance(to: .seconds(4))
-        for _ in 0..<10 { await Task.yield() }
-        #expect(await probe.requests == 1)
-        clock.advance(to: .seconds(5))
-        await wait { await probe.requests == 2 }
-        #expect(controller.vpnState == .reachable)
-        clock.advance(to: .seconds(10))
-        for _ in 0..<10 { await Task.yield() }
-        #expect(await probe.requests == 2)
+        for _ in 0..<20 { await Task.yield() }
+        #expect(await probe.requests == 0)
+        #expect(controller.vpnState == .unknown)
+        controller.checkConnection()
+        await wait { await probe.requests == 1 }
         await probe.finish(.failure(TunnelProbeFailure.unavailable))
         await wait { controller.vpnState == .unavailable }
-        clock.advance(to: .seconds(15))
-        await wait { await probe.requests == 3 }
+        for _ in 0..<20 { await Task.yield() }
+        #expect(await probe.requests == 1)
+        #expect(controller.vpnState == .unavailable)
         controller.setVPNActive(false)
+    }
+
+    @Test func checkInterruptedByPermissionAlertResumesWhenForegroundReturns() async {
+        let probe = ControlledProbe()
+        let controller = OnboardingController(probe: probe, location: PermissionStub(.denied))
+        controller.advanceWelcome()
+        controller.skipLocation()
+        controller.setVPNActive(true)
+        controller.checkConnection()
+        await wait { await probe.requests == 1 }
+        controller.setVPNActive(false) // system alert takes the foreground
         await probe.finish(.failure(CancellationError()))
         await wait { !controller.isChecking }
-        clock.advance(to: .seconds(20))
-        for _ in 0..<10 { await Task.yield() }
-        #expect(await probe.requests == 3)
-        #expect(controller.vpnState == .unknown)
-        #expect(await probe.maximumConcurrent == 1)
+        controller.setVPNActive(true)
+        await wait { await probe.requests == 2 }
+        await probe.finish()
+        await wait { controller.canAdvanceVPN }
+        controller.setVPNActive(false)
+        controller.setVPNActive(true)
+        for _ in 0..<20 { await Task.yield() }
+        #expect(await probe.requests == 2) // nothing was in flight, so no automatic check
     }
 
     @Test func backgroundInvalidatesQueuedNextAndReturnWaitsForOldProbeBeforeRechecking() async {
@@ -67,6 +75,7 @@ struct OnboardingControllerTests {
         controller.advanceWelcome()
         controller.skipLocation()
         controller.setVPNActive(true)
+        controller.checkConnection()
         await wait { await probe.requests == 1 }
         await probe.finish()
         await wait { controller.canAdvanceVPN }
@@ -81,6 +90,7 @@ struct OnboardingControllerTests {
         controller.setVPNActive(true)
         #expect(await probe.requests == 2)
         await probe.finish() // Deliberately returns late success after cancellation.
+        // The interrupted user check resumes once the old probe has ended.
         await wait { await probe.requests == 3 }
         #expect(advances == 0)
         await probe.finish()
@@ -103,6 +113,7 @@ struct OnboardingControllerTests {
         controller.advanceWelcome()
         controller.skipLocation()
         controller.setVPNActive(true)
+        controller.checkConnection()
         await wait { await probe.requests == 1 }
         await probe.finish()
         await wait { controller.canAdvanceVPN }
@@ -130,6 +141,7 @@ struct OnboardingControllerTests {
         controller.advanceWelcome()
         controller.skipLocation()
         controller.setVPNActive(true)
+        controller.checkConnection()
         await wait { await probe.requests == 1 }
         #expect(!controller.canAdvanceVPN)
         await probe.finish()
@@ -175,6 +187,7 @@ struct OnboardingControllerTests {
         controller.advanceWelcome()
         controller.skipLocation()
         controller.setVPNActive(true)
+        controller.checkConnection()
         await wait { controller.vpnState == .timedOut }
         #expect(controller.vpnFailureDetail == DetailProbe.detail)
         controller.setVPNActive(false)
@@ -256,33 +269,5 @@ private actor ControlledProbe: TunnelProbing {
         let pending = continuation
         continuation = nil
         pending?.resume(with: result)
-    }
-}
-
-@MainActor
-private final class ManualOnboardingClock {
-    private var instant: Duration = .zero
-    private var sleepers: [UUID: (Duration, CheckedContinuation<Void, any Error>)] = [:]
-    var hasSleeper: Bool { !sleepers.isEmpty }
-    var clock: OnboardingClock { OnboardingClock(now: { self.instant }, sleep: { try await self.sleep($0) }) }
-
-    func advance(to instant: Duration) {
-        self.instant = instant
-        for (id, entry) in sleepers where entry.0 <= instant {
-            sleepers.removeValue(forKey: id)?.1.resume()
-        }
-    }
-
-    private func sleep(_ duration: Duration) async throws {
-        try Task.checkCancellation()
-        let id = UUID()
-        let deadline = instant + duration
-        try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { sleepers[id] = (deadline, $0) }
-        } onCancel: {
-            Task { @MainActor in
-                self.sleepers.removeValue(forKey: id)?.1.resume(throwing: CancellationError())
-            }
-        }
     }
 }

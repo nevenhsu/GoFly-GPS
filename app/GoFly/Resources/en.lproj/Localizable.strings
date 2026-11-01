@@ -76,6 +76,9 @@
 "onboarding.vpn.check" = "Check connection";
 "onboarding.vpn.reconnect" = "Reconnect";
 "onboarding.vpn.unavailable" = "LocalDevVPN is disconnected or the connection timed out. Check the tunnel in Settings.";
+"onboarding.vpn.localNetwork.title" = "Local Network needed";
+"onboarding.vpn.localNetwork" = "In app Settings, allow Local Network.";
+"onboarding.vpn.localNetwork.allow" = "Settings";
 "onboarding.vpn.timedOut" = "LocalDevVPN is disconnected or the connection timed out. Check the tunnel in Settings.";
 "onboarding.vpn.failureDetail" = "iOS reported";
 "onboarding.vpn.externalOpenFailed" = "The App Store could not be opened. Open the App Store manually and search for LocalDevVPN.";

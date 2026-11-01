@@ -334,7 +334,10 @@ public final class MacAppModel {
 
     public func navigate(_ destination: MacRoute) {
         guard !busy else { return }
-        if setupLocksDevice && destination != .startup && destination != activeOperationPage && destination != .environmentSummary {
+        // Choosing the Team must stay reachable while an interrupted setup
+        // locks the phone, since a restart signs with the chosen Team.
+        let teamChoice = destination == .environment(.selectTeam) && setup?.isBusy != true
+        if setupLocksDevice && !teamChoice && destination != .startup && destination != activeOperationPage && destination != .environmentSummary {
             route = activeOperationPage; return
         }
         if case .environment = destination { route = destination; failure = nil; return }
@@ -417,6 +420,23 @@ public final class MacAppModel {
         preferences.set(choice.id.lowercased(), forKey: Self.lastManagedDeviceIDKey)
         preferences.set(choice.transport.rawValue, forKey: Self.lastManagedDeviceTransportKey)
         inspection = nil; failure = nil
+    }
+
+    /// A tap on a phone row. The phone holding an interrupted setup opens its
+    /// D14 page; with no Team chosen the tap leads to the Team choice instead
+    /// of doing nothing.
+    public func openDevice(_ device: ConnectedDevice) {
+        guard !busy else { return }
+        if setup?.hasUnfinishedTransaction == true, setup?.pendingTransaction?.deviceID == device.id.lowercased() {
+            openInterruptedSetup()
+            return
+        }
+        select(device.id, transport: device.transport)
+        if environment?.ready == true, selectedTeam == nil {
+            navigate(.environment(.selectTeam))
+            return
+        }
+        inspectSelected()
     }
 
     public func openDevices(firstInstall: Bool) {
@@ -609,8 +629,12 @@ public final class MacAppModel {
 
     public func restartInterruptedSetup() {
         guard !busy, let setup, setup.isRestored, setup.hasUnfinishedTransaction,
-              let identity = setup.pendingTransaction,
-              let options = try? MacSetupOptions(teamID: identity.teamID, allowProvisioningUpdates: true) else { return }
+              let identity = setup.pendingTransaction else { return }
+        // The interrupted transaction pins its Team. When Xcode no longer has
+        // that account, the fresh transaction signs with the current Team.
+        let pinnedTeamAvailable = environment.map { $0.teams.contains { $0.teamID == identity.teamID } } ?? true
+        guard let teamID = pinnedTeamAvailable ? identity.teamID : selectedTeam?.teamID,
+              let options = try? MacSetupOptions(teamID: teamID, allowProvisioningUpdates: true) else { return }
         do {
             try setup.beginRestart(deviceID: identity.deviceID, options: options)
             firstInstall = identity.mode == .install

@@ -382,6 +382,11 @@
 "setup.deviceLimit.title" = "Phones registered to this account (%d)";
 "setup.deviceLimit.unnamed" = "iPhone (name unknown)";
 "setup.deviceLimit.note" = "Read from this account’s signing profiles on this Mac. GoFly can’t remove phones from a free account; once a slot frees up, choose “Start over”.";
+"setup.failure.untrusted" = "Your iPhone hasn’t trusted this developer yet, so iOS wouldn’t open GoFly. Trust it on the phone, then choose “Start over”.";
+"setup.untrusted.step1" = "Open Settings on the iPhone";
+"setup.untrusted.step2" = "Go to General › VPN & Device Management (Device Management)";
+"setup.untrusted.step3" = "Under Developer App, tap your Apple ID";
+"setup.untrusted.step4" = "Tap “Trust”, confirm, then choose “Start over” here";
 "setup.sidebar.installing" = "Installing…";
 "setup.sidebar.waiting" = "Waiting for iPhone…";
 "setup.stage.preflight" = "Installation check";

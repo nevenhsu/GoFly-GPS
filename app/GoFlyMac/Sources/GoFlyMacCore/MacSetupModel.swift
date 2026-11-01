@@ -187,13 +187,13 @@ public final class MacSetupModel {
     public func beginRestart(deviceID: String, options: MacSetupOptions) throws {
         guard isRestored, !isBusy, !journalBlocked,
               let old = journalIdentity, snapshot?.canReplaceCompletedTransaction != true,
-              old.deviceID == deviceID.lowercased(), old.teamID == options.teamID else {
+              old.deviceID == deviceID.lowercased() else {
             throw MacSetupFailure.service("transaction-conflict")
         }
         restartSourceIdentity = old
         pendingTransaction = try MacSetupTransactionIdentity(
             setupID: UUID(), deviceID: old.deviceID, mode: old.mode, transport: old.transport,
-            teamID: old.teamID
+            teamID: options.teamID
         )
         journalIdentity = nil
         self.options = options

@@ -759,8 +759,7 @@ struct MacDeviceSidebar: View {
                     let selected = model.selectedID?.lowercased() == device.id.lowercased()
                         && model.selectedTransport == device.transport
                     Button {
-                        model.select(device.id, transport: device.transport)
-                        model.inspectSelected()
+                        model.openDevice(device)
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(device.displayName).font(GoFlyStyle.font(13, bold: true)).lineLimit(1)

@@ -26,6 +26,7 @@ SAFE_ERROR_CODES = frozenset({
     "storage-unavailable", "operation-failed", "usb-lockdown-failed", "usb-device-not-found",
     "device-identity-mismatch", "unsupported-os-version",
     "device-values-unavailable", "read-only-mode", "device-limit-reached",
+    "developer-untrusted",
 })
 
 

@@ -66,7 +66,7 @@ final class NativeDeviceSession: DeviceSession {
             }
             try check(read, .pairingRequired, operation: "rp_pairing_file_read")
             guard let pairing else { throw DeviceServiceFailure.pairingRequired }
-            var address = localTunnelAddress()
+            var address = try localTunnelAddress()
             let created = try ffi("tunnel.create") {
                 withUnsafePointer(to: &address) {
                     $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {

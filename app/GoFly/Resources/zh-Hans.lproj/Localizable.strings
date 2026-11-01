@@ -76,6 +76,9 @@
 "onboarding.vpn.check" = "检查连接";
 "onboarding.vpn.reconnect" = "重新连接";
 "onboarding.vpn.unavailable" = "LocalDevVPN 未连接，或连接超时。请前往设置检查通道。";
+"onboarding.vpn.localNetwork.title" = "需要本地网络权限";
+"onboarding.vpn.localNetwork" = "到 App 设置，将“本地网络”改为允许。";
+"onboarding.vpn.localNetwork.allow" = "设置";
 "onboarding.vpn.timedOut" = "LocalDevVPN 未连接，或连接超时。请前往设置检查通道。";
 "onboarding.vpn.failureDetail" = "iOS 报告";
 "onboarding.vpn.externalOpenFailed" = "无法打开 App Store。请手动打开 App Store，搜索 LocalDevVPN。";

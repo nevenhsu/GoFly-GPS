@@ -19,6 +19,7 @@
         <string>App-Prefs</string>
         <string>prefs</string>
     </array>
+    <key>NSBonjourServices</key><array><string>_remotepairing._tcp</string></array>
     <key>UTImportedTypeDeclarations</key>
     <array>
         <dict>

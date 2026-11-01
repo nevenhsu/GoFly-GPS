@@ -135,6 +135,19 @@ import GoFlyMacCore
         #expect(model.snapshot == nil, "A failed observation cannot leave apparently current progress evidence.")
     }
 
+    @Test func restartingUnderAnotherTeamSignsTheFreshTransactionWithThatTeam() async throws {
+        let runner = HeldSetupRunner()
+        let original = try MacSetupTransactionIdentity(setupID: UUID(), deviceID: device,
+                                                       mode: .install, teamID: "ABCDE12345")
+        let model = MacSetupModel(runner: runner, journal: ModelJournal(original))
+        await model.restore()
+        try model.beginRestart(deviceID: original.deviceID, options: MacSetupOptions(teamID: "FGHIJ67890"))
+        guard await waitForRequests(1, runner) else { Issue.record("Restart preflight did not reach the runner"); return }
+        let restarted = try #require(await runner.requests.last)
+        #expect(restarted.options?.teamID == "FGHIJ67890")
+        #expect(model.pendingTransaction?.teamID == "FGHIJ67890")
+    }
+
     @Test func restartingAnInstallWithAnAppAlreadyPresentSwitchesTheFreshTransactionToRenew() async throws {
         let runner = HeldSetupRunner()
         let original = try MacSetupTransactionIdentity(setupID: UUID(), deviceID: device,

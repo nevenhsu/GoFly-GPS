@@ -382,6 +382,11 @@
 "setup.deviceLimit.title" = "已登记在这个账号的手机（%d 台）";
 "setup.deviceLimit.unnamed" = "iPhone（名称不明）";
 "setup.deviceLimit.note" = "取自这台 Mac 上这个账号的签名描述文件。GoFly 无法从免费账号移除手机；空出名额后按“重新开始”。";
+"setup.failure.untrusted" = "这台 iPhone 还没有信任这个开发者，所以 iOS 不会打开 GoFly。请先在手机上信任，再点“重新开始”。";
+"setup.untrusted.step1" = "在 iPhone 上打开“设置”";
+"setup.untrusted.step2" = "进入“通用”›“VPN 与设备管理”";
+"setup.untrusted.step3" = "在“开发者 App”下点你的 Apple ID";
+"setup.untrusted.step4" = "点“信任”并确认，再回到这里点“重新开始”";
 "setup.sidebar.installing" = "正在安装…";
 "setup.sidebar.waiting" = "等待 iPhone…";
 "setup.stage.preflight" = "安装前检查";

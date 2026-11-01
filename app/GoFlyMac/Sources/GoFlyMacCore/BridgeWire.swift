@@ -511,7 +511,7 @@ public enum MacSetupResponseDecoder {
         "signing-required", "signature-invalid", "artifact-mismatch", "support-unavailable",
         "pairing-unknown", "pairing-rejected", "handoff-unknown", "commit-unknown",
         "transaction-unknown", "transaction-conflict", "busy", "cancelled", "timeout",
-        "storage-unavailable", "operation-failed", "device-limit-reached"
+        "storage-unavailable", "operation-failed", "device-limit-reached", "developer-untrusted"
     ]
 
     public static func decode(_ data: Data, for request: MacSetupRequest) throws -> MacSetupSnapshot {

@@ -6,20 +6,25 @@ import GoFlyCore
 public struct NetworkTunnelProbe: TunnelProbing {
     private let timeout: TimeInterval
     private let makeConnection: @Sendable () -> any TunnelConnection
+    private let discoversPort: Bool
     private let diagnostics = ProbeDiagnostics()
 
     public init() {
-        self.init(host: LocalTunnelEndpoint.host, port: LocalTunnelEndpoint.port,
-                  timeout: LocalTunnelEndpoint.timeoutSeconds)
+        self.init(timeout: LocalTunnelEndpoint.timeoutSeconds, discoversPort: true, makeConnection: {
+            // check() discovers the port first; port 0 never connects, so a miss reads as unavailable.
+            NetworkConnection(host: LocalTunnelEndpoint.host, port: LocalTunnelEndpoint.port ?? 0)
+        })
     }
 
     init(host: String, port: UInt16, timeout: TimeInterval) {
         self.init(timeout: timeout, makeConnection: { NetworkConnection(host: host, port: port) })
     }
 
-    init(timeout: TimeInterval, makeConnection: @escaping @Sendable () -> any TunnelConnection) {
+    init(timeout: TimeInterval, discoversPort: Bool = false,
+         makeConnection: @escaping @Sendable () -> any TunnelConnection) {
         precondition(timeout.isFinite && timeout >= 0)
         self.timeout = timeout
+        self.discoversPort = discoversPort
         self.makeConnection = makeConnection
     }
 
@@ -27,6 +32,15 @@ public struct NetworkTunnelProbe: TunnelProbing {
     public var lastFailureDetail: String? { diagnostics.value }
 
     public func check() async throws {
+        // iOS assigns remotepairingd's port dynamically; look it up before each check.
+        if discoversPort {
+            let found = await RemotePairingPort.discover(timeout: timeout)
+            try Task.checkCancellation()
+            if found == nil, RemotePairingPort.current == nil {
+                diagnostics.value = "no _remotepairing._tcp service found on this device"
+                throw TunnelProbeFailure.serviceNotFound
+            }
+        }
         let operation = ProbeOperation(connection: makeConnection(), timeout: timeout, diagnostics: diagnostics)
         try await withTaskCancellationHandler {
             try await operation.run()

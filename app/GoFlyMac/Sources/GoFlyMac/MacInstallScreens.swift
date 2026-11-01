@@ -373,7 +373,26 @@ struct MacInstallScreen: View {
             if hitDeviceLimit, let devices = model.registeredDevices, !devices.isEmpty {
                 registeredDeviceList(devices)
             }
+            if setup.failure == .service("developer-untrusted") { trustSteps }
         }
+    }
+
+    /// iPhone Settings path for trusting the developer profile; GoFly stops
+    /// here instead of launching the App again and raising another prompt.
+    private var trustSteps: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(["setup.untrusted.step1", "setup.untrusted.step2", "setup.untrusted.step3",
+                           "setup.untrusted.step4"].enumerated()), id: \.offset) { index, key in
+                if index > 0 { InstallRule().padding(.leading, 20) }
+                HStack(alignment: .top, spacing: 16) {
+                    Text(String(index + 1)).font(GoFlyStyle.font(13, bold: true)).frame(width: 12, alignment: .leading)
+                    Text(installText(key)).font(GoFlyStyle.font(13)).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 20).padding(.vertical, 12)
+            }
+        }
+        .background(GoFlyStyle.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var hitDeviceLimit: Bool { setup.failure == .service("device-limit-reached") }
@@ -611,6 +630,7 @@ struct MacInstallScreen: View {
             case "handoff-unknown": installText("setup.failure.activation")
             case "device-disconnected": installText("setup.failure.disconnected")
             case "device-limit-reached": installText("setup.failure.deviceLimit")
+            case "developer-untrusted": installText("setup.failure.untrusted")
             case "wifi-device-not-found", "wifi-pairing-unknown", "wifi-support-unavailable", "wifi-renew-unknown":
                 installText("setup.failure.wifi")
             default: installText("setup.failure.generic")

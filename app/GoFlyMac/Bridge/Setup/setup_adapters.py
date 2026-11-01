@@ -2639,6 +2639,11 @@ class PinnedPymobiledeviceAdapter:
             return pid
         except SetupBridgeError:
             raise
+        except AssertionError:
+            # The device returned no PID: iOS refused to start the freshly
+            # installed App, which is what an untrusted developer profile
+            # does. Stop with instructions instead of retrying the launch.
+            raise SetupBridgeError("developer-untrusted") from None
         except Exception:
             raise SetupBridgeError("handoff-unknown") from None
 

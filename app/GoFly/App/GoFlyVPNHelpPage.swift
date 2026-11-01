@@ -29,7 +29,7 @@ struct GoFlyVPNHelpPage: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(GoFlyStyle.canvas)
-        .toolbar(.hidden, for: .navigationBar)
+        .goFlyPushedFullScreen()
         .navigationBarBackButtonHidden()
         .goFlyToastOverlay(topInset: 48) {
             if externalOpenFailed {

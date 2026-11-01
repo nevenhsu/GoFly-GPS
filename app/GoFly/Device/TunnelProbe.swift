@@ -14,7 +14,7 @@ enum TunnelProbe {
         guard fcntl(descriptor, F_SETFL, O_NONBLOCK) != -1 else {
             throw DeviceServiceFailure.tunnelUnavailable
         }
-        var address = localTunnelAddress()
+        var address = try localTunnelAddress()
         let result = withUnsafePointer(to: &address) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
                 Darwin.connect(descriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.stride))
@@ -34,12 +34,14 @@ enum TunnelProbe {
     }
 }
 
-func localTunnelAddress() -> sockaddr_in {
+func localTunnelAddress() throws -> sockaddr_in {
+    // The port is whatever remotepairingd advertised; without one there is nothing to connect to.
+    guard let port = LocalTunnelEndpoint.port else { throw DeviceServiceFailure.tunnelUnavailable }
     var address = sockaddr_in()
     address.sin_len = UInt8(MemoryLayout<sockaddr_in>.stride)
     address.sin_family = sa_family_t(AF_INET)
-    address.sin_port = in_port_t(LocalTunnelEndpoint.port).bigEndian
-    // The transport is a fixed LocalDevVPN endpoint, never user/defaults input.
+    address.sin_port = in_port_t(port).bigEndian
+    // The transport is a LocalDevVPN host with a discovered port, never user/defaults input.
     _ = LocalTunnelEndpoint.host.withCString { inet_pton(AF_INET, $0, &address.sin_addr) }
     return address
 }

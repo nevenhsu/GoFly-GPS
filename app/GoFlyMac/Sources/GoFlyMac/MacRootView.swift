@@ -174,8 +174,7 @@ private struct DeviceListScreen: View {
         VStack(spacing: 0) {
             ForEach(model.visibleDevices, id: \.connectionID) { device in
                 Button {
-                    model.select(device.id, transport: device.transport)
-                    model.inspectSelected()
+                    model.openDevice(device)
                 } label: {
                     HStack(spacing: 14) {
                         Image(systemName: "iphone").font(.system(size: 22)).frame(width: 28)

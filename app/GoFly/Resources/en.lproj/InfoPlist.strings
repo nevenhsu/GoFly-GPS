@@ -1,1 +1,2 @@
 "NSLocationWhenInUseUsageDescription" = "Optionally show your GPS location on the map. GoFly device services work without location access.";
+"NSLocalNetworkUsageDescription" = "Find this iPhone's local pairing service port so GoFly can reach its device services.";

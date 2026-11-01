@@ -1,1 +1,2 @@
 "NSLocationWhenInUseUsageDescription" = "选择在地图上显示你的 GPS 位置；不允许定位仍可使用 GoFly 设备服务。";
+"NSLocalNetworkUsageDescription" = "查找此 iPhone 本机配对服务的端口，让 GoFly 能连接设备服务。";
