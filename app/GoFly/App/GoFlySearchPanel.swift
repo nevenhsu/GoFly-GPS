@@ -473,29 +473,22 @@ private struct PasteableSearchTextField: UIViewRepresentable {
         let controls = SearchTextFieldAccessoryView()
         controls.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-        let pasteButton = UIButton(type: .system)
-        pasteButton.configuration = .plain()
+        let pasteReceiver = GoFlySystemPasteControl.PasteReceiver { [weak textField] pasted in
+            let trimmed = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            textField?.text = trimmed
+            textField?.sendActions(for: .editingChanged)
+        }
+        let pasteConfiguration = UIPasteControl.Configuration()
+        pasteConfiguration.displayMode = .iconOnly
+        pasteConfiguration.cornerStyle = .capsule
+        pasteConfiguration.baseForegroundColor = GoFlyStyle.pasteSymbolUIColor
+        pasteConfiguration.baseBackgroundColor = .clear
+        let pasteButton = UIPasteControl(configuration: pasteConfiguration)
+        pasteButton.target = pasteReceiver
         pasteButton.translatesAutoresizingMaskIntoConstraints = false
-        pasteButton.backgroundColor = .clear
         pasteButton.accessibilityLabel = goFlyString("search.paste")
         pasteButton.accessibilityIdentifier = "search.paste"
-        pasteButton.addAction(UIAction { [weak textField] _ in
-            guard let pasted = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !pasted.isEmpty else { return }
-            textField?.text = pasted
-            textField?.sendActions(for: .editingChanged)
-        }, for: .touchUpInside)
-        let pasteGlyph = UIImageView(image: GoFlyIcon.uiImage(.paste))
-        pasteGlyph.tintColor = GoFlyStyle.pasteSymbolUIColor
-        pasteGlyph.translatesAutoresizingMaskIntoConstraints = false
-        pasteGlyph.isUserInteractionEnabled = false
-        pasteButton.addSubview(pasteGlyph)
-        NSLayoutConstraint.activate([
-            pasteGlyph.centerXAnchor.constraint(equalTo: pasteButton.centerXAnchor),
-            pasteGlyph.centerYAnchor.constraint(equalTo: pasteButton.centerYAnchor),
-            pasteGlyph.widthAnchor.constraint(equalToConstant: 20),
-            pasteGlyph.heightAnchor.constraint(equalToConstant: 20)
-        ])
         controls.addSubview(pasteButton)
         NSLayoutConstraint.activate([
             pasteButton.leadingAnchor.constraint(equalTo: controls.leadingAnchor),
@@ -535,6 +528,7 @@ private struct PasteableSearchTextField: UIViewRepresentable {
         )
         context.coordinator.clearButton = clearButton
         context.coordinator.pasteButton = pasteButton
+        context.coordinator.pasteReceiver = pasteReceiver
         context.coordinator.onTextChange = onTextChange
         context.coordinator.onFocusChange = onFocusChange
         context.coordinator.onSubmit = onSubmit
@@ -568,6 +562,8 @@ private struct PasteableSearchTextField: UIViewRepresentable {
         var onSubmit: () -> Void
         weak var clearButton: UIButton?
         weak var pasteButton: UIView?
+        /// UIPasteControl holds its target weakly.
+        var pasteReceiver: GoFlySystemPasteControl.PasteReceiver?
 
         init(onTextChange: @escaping (String) -> Void,
              onFocusChange: @escaping (Bool) -> Void,
@@ -606,26 +602,18 @@ private final class SearchTextFieldAccessoryView: UIView {
     override var intrinsicContentSize: CGSize { CGSize(width: 44, height: 44) }
 }
 
-/// Figma's transparent paste affordance. Clipboard reads happen only in this
-/// explicit user action, then follow the existing search parser/callback.
+/// Figma's transparent paste affordance, drawn by the system paste control so
+/// iOS does not ask "Allow Paste" on every read.
 struct GoFlyPasteButton: View {
     let accessibilityLabel: String
     let accessibilityIdentifier: String
     let onPaste: (String) -> Void
 
     var body: some View {
-        Button {
-            guard let pasted = UIPasteboard.general.string else { return }
-            onPaste(pasted)
-        } label: {
-            GoFlyIcon(.paste, size: 18, maximumSize: 20)
-                .foregroundStyle(GoFlyTextColor.secondary)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityIdentifier(accessibilityIdentifier)
+        GoFlySystemPasteControl(accessibilityLabel: accessibilityLabel,
+                                accessibilityIdentifier: accessibilityIdentifier,
+                                background: .clear, onPaste: onPaste)
+            .frame(width: 44, height: 44)
     }
 }
 

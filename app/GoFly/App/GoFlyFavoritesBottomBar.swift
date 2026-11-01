@@ -84,9 +84,10 @@ struct GoFlyFavoritesBottomBar: View {
 }
 
 /// Uses the system paste affordance so the clipboard is read only after a direct tap.
-private struct GoFlySystemPasteControl: UIViewRepresentable {
+struct GoFlySystemPasteControl: UIViewRepresentable {
     let accessibilityLabel: String
     let accessibilityIdentifier: String
+    var background: UIColor = GoFlyStyle.inputSurfaceUIColor
     let onPaste: (String) -> Void
 
     func makeCoordinator() -> PasteReceiver { PasteReceiver(onPaste: onPaste) }
@@ -96,7 +97,7 @@ private struct GoFlySystemPasteControl: UIViewRepresentable {
         configuration.displayMode = .iconOnly
         configuration.cornerStyle = .capsule
         configuration.baseForegroundColor = GoFlyStyle.pasteSymbolUIColor
-        configuration.baseBackgroundColor = GoFlyStyle.inputSurfaceUIColor
+        configuration.baseBackgroundColor = background
         let control = UIPasteControl(configuration: configuration)
         control.target = context.coordinator
         control.accessibilityLabel = accessibilityLabel
