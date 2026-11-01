@@ -471,35 +471,24 @@ public final class MovementContinuationController: ObservableObject {
                 positionHold?.intent?.lease == demand.lease
         }
     }
-    /// Diagnostics only: names the first `ownerReady` condition that holds a
-    /// demand back. Logged once per movement and reason, so a stuck request
-    /// leaves one record instead of one per drain.
+    /// Diagnostics only: records the owner snapshot and the active movement
+    /// that hold a demand back, once per movement and state, so a stuck
+    /// request leaves one record instead of one per drain.
     private func logOwnerBlocked(_ demand: MovementContinuationDemand) {
         let owner = service.movementAuthority.snapshot
-        let reason: String
-        if owner.lease != demand.lease { reason = "leaseMismatch" }
-        else if owner.health != .confirmedHealthy { reason = "ownerNotHealthy" }
-        else if owner.runState != .running { reason = "ownerNotRunning" }
-        else if service.movementConnection == .unavailable { reason = "connectionUnavailable" }
-        else if service.coldClearPending { reason = "coldClearPending" }
-        else {
-            switch demand.kind {
-            case .finiteRoute, .roundTrip:
-                reason = route.phase != .running ? "routeNotRunning" : "routeIntentMismatch"
-            case .wander:
-                if ![.preparing, .moving].contains(joystick.phase) { reason = "joystickPhase.\(joystick.phase)" }
-                else if !joystick.wanderEnabled { reason = "wanderDisabled" }
-                else { reason = "joystickIntentMismatch" }
-            case .fixedPosition:
-                reason = positionHold?.phase != .running ? "holdNotRunning" : "holdIntentMismatch"
-            }
-        }
-        let key = "\(demand.movementID.uuidString)/\(reason)"
+        let active = ActiveMovement(route: route, joystick: joystick, positionHold: positionHold)?.diagnosticsLabel ?? "none"
+        let state = "\(owner.lease == demand.lease)/\(owner.health)/\(owner.runState)/\(active)"
+        let key = "\(demand.movementID.uuidString)/\(state)"
         guard key != lastBlockedKey else { return }
         lastBlockedKey = key
         diagnose("background.blocked", category: .background, level: .notice, [
             "kind": .text(demand.kind.rawValue),
-            "why": .text(reason),
+            "leaseMatches": .flag(owner.lease == demand.lease),
+            "health": .text(String(describing: owner.health)),
+            "runState": .text(String(describing: owner.runState)),
+            "connection": .text(String(describing: service.movementConnection)),
+            "coldClearPending": .flag(service.coldClearPending),
+            "active": .text(active),
             "movement": .text(demand.movementID.uuidString)
         ])
     }

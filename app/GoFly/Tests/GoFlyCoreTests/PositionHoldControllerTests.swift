@@ -174,6 +174,12 @@ struct PositionHoldControllerTests {
         #expect(controller.elapsedSeconds == 0)
         #expect(controller.completedCycles == 0)
         #expect(controller.canRetry)
+        #expect(controller.pauseCause == .connection, "A missed heartbeat is a connection pause, never the person's")
+        let route = RouteExecutionController(planner: StraightPlanner(), commands: service, search: NoPlaceSearch())
+        let joystick = JoystickMovementController(commands: service)
+        #expect(ActiveMovement(route: route, joystick: joystick, positionHold: controller)
+            == ActiveMovement(kind: .positionHold, runState: .paused, pauseCause: .connection,
+                              resumeAction: .retryPositionHold, canResume: true))
     }
 
     @Test func ValidBackgroundGrantContinuesAndExpiryPauses() async throws {
@@ -205,6 +211,7 @@ struct PositionHoldControllerTests {
         clock.advance(by: .seconds(5))
         await wait { controller.phase == .paused }
         #expect(controller.elapsedSeconds == 5)
+        #expect(controller.pauseCause == .background)
     }
 
     @Test func StopAndNativeUnconfirmedResultCannotReviveTheHold() async throws {
@@ -328,4 +335,13 @@ private actor PositionHoldDevice: DeviceService {
         }
         replies.removeFirst().resume(returning: outcome)
     }
+}
+
+private struct StraightPlanner: RoutePlanning {
+    func plan(from: GeoCoordinate, to: GeoCoordinate) async throws -> [GeoCoordinate] { [from, to] }
+    func planWalking(from: GeoCoordinate, to: GeoCoordinate) async throws -> [GeoCoordinate] { [from, to] }
+}
+
+private struct NoPlaceSearch: PlaceSearching {
+    func search(query: String) async throws -> [MapPlace] { [] }
 }

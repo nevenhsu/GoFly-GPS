@@ -15,7 +15,11 @@ public enum PositionHoldPhase: String, Equatable, Sendable {
 /// one finite hold and ends it at the configured duration.
 @MainActor
 public final class PositionHoldController: ObservableObject {
-    @Published public private(set) var phase: PositionHoldPhase = .idle
+    @Published public private(set) var phase: PositionHoldPhase = .idle {
+        didSet { if phase != .paused { pauseCause = nil } }
+    }
+    /// Why the hold paused; nil unless `phase` is `.paused`.
+    @Published public private(set) var pauseCause: ActiveMovement.PauseCause?
     @Published public private(set) var isRecoveringConnection = false
     @Published public private(set) var intent: JoystickMovementIntent?
     @Published public private(set) var elapsedSeconds: Double = 0
@@ -120,7 +124,7 @@ public final class PositionHoldController: ObservableObject {
               continuingLease == operation.lease,
               (service.movementAuthority.permitsDispatch(for: operation.lease)
                 || (isRecoveringConnection && service.movementAuthority.permitsConnectionRepair(for: operation.lease))) else {
-            if phase == .running || phase == .preparing { pause(reason: .userPaused) }
+            if phase == .running || phase == .preparing { pause(.background) }
             return
         }
         // Only time spent in the background counts toward the run time.
@@ -131,7 +135,7 @@ public final class PositionHoldController: ObservableObject {
     /// discarded by pause(), and no command is submitted until retry creates a
     /// new point and lease.
     public func continuationDidBecomeUnavailable() {
-        if phase == .running || phase == .preparing { pause(reason: .userPaused) }
+        if phase == .running || phase == .preparing { pause(.background) }
     }
 
     @discardableResult
@@ -168,7 +172,7 @@ public final class PositionHoldController: ObservableObject {
     func finishConnectionRecovery(succeeded: Bool) {
         guard isRecoveringConnection, let operation = intent else { return }
         isRecoveringConnection = false
-        guard succeeded else { pause(reason: .userPaused); return }
+        guard succeeded else { pause(.connection); return }
         // The repair is a fresh timing baseline, not acknowledged execution
         // time during the connection outage.
         lastAcknowledgementAt = clock.now
@@ -259,7 +263,7 @@ public final class PositionHoldController: ObservableObject {
             guard installsLease || self.isEligible(operation, allowUnknownHealth: true),
                   let input = self.service.joystickInputRevision(executionID: operation.id,
                                                                   lease: operation.lease) else {
-                self.pause(reason: .userPaused)
+                self.pause(self.ineligibleCause)
                 return
             }
             guard await self.send(operation: operation, token: token, input: input) else { return }
@@ -280,7 +284,7 @@ public final class PositionHoldController: ObservableObject {
             guard self.isEligible(operation), self.nextSequence < UInt64.max,
                   let input = self.service.joystickInputRevision(executionID: operation.id,
                                                                   lease: operation.lease) else {
-                self.pause(reason: .userPaused)
+                self.pause(self.ineligibleCause)
                 return
             }
             guard await self.send(operation: operation, token: token, input: input) else { return }
@@ -302,7 +306,7 @@ public final class PositionHoldController: ObservableObject {
                   nextSequence < UInt64.max,
                   let input = service.joystickInputRevision(executionID: operation.id,
                                                             lease: operation.lease) else {
-                pause(reason: .userPaused)
+                pause(ineligibleCause)
                 return
             }
             guard await send(operation: operation, token: token, input: input) else { return }
@@ -338,13 +342,13 @@ public final class PositionHoldController: ObservableObject {
         case .notSent(let failure):
             // ServiceController emits interrupted/ended for an unsent native
             // command. If it did not, pausing still prevents any further write.
-            if phase == .running { pause(reason: .userPaused) }
+            if phase == .running { pause(.connection) }
             diagnose("positionHold.stepNotSent", level: .notice, [
                 "failure": .text(failure.localizationKey)
             ])
             return false
         case .inputCancelled, .cancelled:
-            if phase == .running { pause(reason: .userPaused) }
+            if phase == .running { pause(.connection) }
             return false
         }
     }
@@ -356,12 +360,12 @@ public final class PositionHoldController: ObservableObject {
         var completes = false
         if let previous = lastAcknowledgementAt {
             guard now >= previous else {
-                pause(reason: .userPaused)
+                pause(.connection)
                 return false
             }
             let gap = now - previous
             guard gap <= maximumAcknowledgementGap else {
-                pause(reason: .userPaused)
+                pause(.connection)
                 return false
             }
             if gap > .zero, let since = countingSince, now > since {
@@ -416,26 +420,33 @@ public final class PositionHoldController: ObservableObject {
             guard id == operation.id else { return }
             diagnose("positionHold.interrupted", level: .notice,
                 ["failure": .text(failure.localizationKey)])
-            pause(reason: .userPaused)
+            pause(.connection)
         case .availabilityChanged:
             guard !isRecoveringConnection else { return }
             guard phase == .running || phase == .preparing else { return }
-            if service.movementConnection == .unavailable { pause(reason: .userPaused) }
+            if service.movementConnection == .unavailable { pause(.connection) }
         }
     }
 
-    private func pause(reason: MovementContinuationWithdrawalReason) {
+    /// A write could not be admitted: in the foreground the connection or lease
+    /// failed; in the background the runtime no longer admits it.
+    private var ineligibleCause: ActiveMovement.PauseCause { foreground ? .connection : .background }
+
+    private func pause(_ cause: ActiveMovement.PauseCause) {
         guard phase == .running || phase == .preparing, let operation = intent else { return }
         if isRecoveringConnection { service.cancelConnectionRecovery(); isRecoveringConnection = false }
         invalidateWork()
         phase = .paused
+        pauseCause = cause
         if service.movementAuthority.snapshot.lease == operation.lease {
             service.markSimulationPositionUnverified()
         }
         if service.joystickInputRevision(executionID: operation.id, lease: operation.lease) != nil {
             _ = service.releaseJoystick(executionID: operation.id, lease: operation.lease, disposition: .pause)
         }
-        withdraw(reason)
+        // The continuation reads any owner pause as a withdrawal; the cause
+        // above is what the person sees.
+        withdraw(.userPaused)
     }
 
     private func markUnknown(operation: JoystickMovementIntent, failure: DeviceServiceFailure) {

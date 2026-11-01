@@ -38,9 +38,13 @@ struct GoFlyMapToastStack: View {
 
     private func retryInterruptedRoute() { goFlyRetryInterruptedRoute(route: route, recovery: recovery) }
 
+    private var active: ActiveMovement? {
+        ActiveMovement(route: route, joystick: joystick, positionHold: positionHold)
+    }
+
     /// The person pressed Pause: the resume panel already says so, no toast.
     private var isUserPausedRoute: Bool {
-        mode == .route && route.phase == .paused && route.suspensionReason == nil
+        mode == .route && active?.kind == .route && active?.isPausedByUser == true
     }
 
     /// The person paused the wander: same as a route, no toast. A recovery
@@ -52,8 +56,7 @@ struct GoFlyMapToastStack: View {
     }
 
     private var isUserPausedWander: Bool {
-        mode == .joystick && joystick.wanderEnabled && joystick.phase == .paused
-            && joystick.suspensionReason == nil
+        mode == .joystick && active?.kind == .wander && active?.isPausedByUser == true
     }
 
     /// The one toast button for an error key. Retry stays in the current mode:
@@ -237,10 +240,11 @@ struct GoFlyMapToastStack: View {
             }
             if sceneSettled, !repairOwnsNotice, !isUnconfirmedTeleportFailure,
                !isUserPausedRoute, !isUserPausedWander, (continuation.noticeKey != nil && !notices.isDismissed(.continuation)) || isResumeState {
-            let routePaused = mode == .route && (route.phase == .paused || route.phase == .interrupted)
-            let holdPaused = positionHold.phase == .paused || positionHold.phase == .completed
-            let wanderPaused = mode == .joystick && joystick.wanderEnabled && !joystick.isAwaitingNextTarget
-                && [.paused, .suspended, .interrupted].contains(joystick.phase)
+            let resumable = active?.resumeAction
+            let routePaused = mode == .route && (resumable == .resumeRoute || resumable == .retryInterruptedRoute)
+            let holdPaused = resumable == .retryPositionHold
+            let wanderPaused = mode == .joystick && resumable == .resumeWander
+            let resumeAction = routePaused || holdPaused || wanderPaused ? resumable : nil
 
             let title: String = routePaused ? goFlyString("route.pausedToast.title")
                 : (holdPaused ? goFlyString("background.positionPaused")
@@ -255,14 +259,17 @@ struct GoFlyMapToastStack: View {
                     message: message,
                     actionTitle: goFlyString(routePaused || holdPaused ? "common.continue" : "common.retry"),
                     onAction: {
-                        if routePaused { if route.phase == .interrupted { retryInterruptedRoute() } else { _ = route.resume() } }
-                        else if holdPaused { _ = positionHold.retry() }
-                        else if wanderPaused { _ = joystick.resume() }
-                        else { showingSettings = true }
+                        switch resumeAction {
+                        case .retryInterruptedRoute: retryInterruptedRoute()
+                        case .resumeRoute: _ = route.resume()
+                        case .retryPositionHold: _ = positionHold.retry()
+                        case .resumeWander: _ = joystick.resume()
+                        case nil: showingSettings = true
+                        }
                     },
                     onDismiss: { notices.dismiss(.continuation) },
                     identifier: "map.continuationNotice",
-                    actionEnabled: routePaused ? (route.phase == .interrupted || route.canResume) : (holdPaused ? positionHold.canRetry : true),
+                    actionEnabled: resumeAction == nil || active?.canResume == true,
                     isFloating: true
                 )
             }

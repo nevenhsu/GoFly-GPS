@@ -132,6 +132,9 @@ final class GoFlyMovementModel: ObservableObject {
     }
 
     var status: GoFlySessionStatus { presentation.status }
+    var activeMovement: ActiveMovement? {
+        ActiveMovement(route: route, joystick: joystick, positionHold: positionHold)
+    }
 
     private func queuePresentationUpdate() {
         guard !presentationUpdateQueued else { return }
@@ -140,11 +143,9 @@ final class GoFlyMovementModel: ObservableObject {
             await Task.yield()
             guard let self else { return }
             self.presentationUpdateQueued = false
-            let running = self.route.phase == .running || self.joystick.phase == .moving || self.positionHold.phase == .running
-                || self.joystick.isAwaitingNextTarget
-            let paused = self.route.phase == .paused || self.joystick.phase == .paused || self.positionHold.phase == .paused
-                || self.route.phase == .interrupted || self.joystick.phase == .interrupted
-                || self.route.phase == .unknown || self.joystick.phase == .unknown || self.positionHold.phase == .unknown
+            let active = self.activeMovement
+            let running = active?.isRunning == true
+            let paused = active?.isPaused == true
             // A silent automatic repair shows the connecting pill, not an error;
             // only its failure becomes one.
             let silentRepair = self.recovery.isSilentRepairInProgress
@@ -1353,17 +1354,22 @@ struct GoFlyMapView: View {
         }
     }
 
+    private var activeMovement: ActiveMovement? { movement.activeMovement }
+
     private var isResumeState: Bool {
         if continuation.noticeKey != nil && !notices.isDismissed(.continuation) { return true }
-        if !route.canEdit, route.phase == .paused || route.phase == .interrupted { return true }
-        if mode == .joystick, joystick.wanderEnabled, !joystick.wanderNeedsReplan, !joystick.isAwaitingNextTarget,
-           [.paused, .suspended, .interrupted].contains(joystick.phase) { return true }
-        if mode == .teleport, positionHold.phase == .paused { return true }
-        return false
+        guard let active = activeMovement, active.isResumable else { return false }
+        switch active.kind {
+        case .route: return true
+        case .wander: return mode == .joystick && !joystick.wanderNeedsReplan
+        case .positionHold: return mode == .teleport
+        case .joystick: return false
+        }
     }
 
     private var isTeleportHoldRecovery: Bool {
-        mode == .teleport && (positionHold.phase == .paused || positionHold.phase == .completed)
+        guard mode == .teleport, let active = activeMovement, active.kind == .positionHold else { return false }
+        return active.runState == .paused || active.runState == .completed
     }
 
 
