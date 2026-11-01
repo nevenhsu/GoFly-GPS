@@ -19,6 +19,8 @@
 "service.resetSucceeded.message" = "You can restart the simulation.";
 "service.stopped" = "Stopped";
 "service.stoppedGPSPending" = "Stopped · GPS unconfirmed";
+"service.connecting" = "Connecting…";
+"service.readyButton" = "Ready";
 "service.preparing" = "Preparing service…";
 "service.ready" = "Service ready · No active task";
 "service.stopping" = "Stopping…";
@@ -352,6 +354,8 @@
 // Automatic wander
 "joystick.wander" = "Wander";
 "joystick.startWander" = "Start";
+"joystick.startingWander" = "Starting…";
+"joystick.cancelStartingHint" = "Double-tap to cancel starting.";
 "joystick.stopWander" = "Stop";
 "joystick.changePlace" = "Change";
 "joystick.randomDestination" = "Random destination";

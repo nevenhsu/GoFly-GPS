@@ -165,16 +165,17 @@ struct GoFlyDeviceSnapshot {
     }
 
     var signingExpiryStatus: String {
-        if GoFlyUITestOverrides.frame == "F9" { return "2026-11-15" }
+        if GoFlyUITestOverrides.frame == "F9" { return "2026-11-08" }
         return signingExpiry ?? goFlyString("settings.notObtained")
     }
 
     var daysLeftStatus: String {
-        if GoFlyUITestOverrides.frame == "F9" { return String(format: goFlyString("settings.device.daysFormat"), 26) }
+        if GoFlyUITestOverrides.frame == "F9" { return String(format: goFlyString("settings.device.daysFormat"), 7) }
         guard let signingExpiry, let date = ISO8601DateFormatter().date(from: signingExpiry) else {
-            return String(format: goFlyString("settings.device.daysFormat"), 26)
+            return goFlyString("settings.notObtained")
         }
-        let days = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
+        let calendar = Calendar.current
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: date)).day ?? 0
         return String(format: goFlyString("settings.device.daysFormat"), max(0, days))
     }
 

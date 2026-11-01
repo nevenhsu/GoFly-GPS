@@ -84,11 +84,6 @@ struct GoFlyMapToastStack: View {
         recovery.checkConnection()
     }
 
-    /// No real GPS and no last simulated position: the person must pin one.
-    private var needsJoystickOriginHint: Bool {
-        sceneSettled && scenePhase == .active && joystickOrigin.needsPinHint
-    }
-
     var body: some View {
         VStack(spacing: 8) {
             if let searchPasteWarning {
@@ -123,15 +118,6 @@ struct GoFlyMapToastStack: View {
                     title: goFlyString(key),
                     onDismiss: { notices.clearFavoriteRouteFailure() },
                     identifier: "route.favoriteSaveError",
-                    isFloating: true
-                )
-            }
-            if needsJoystickOriginHint {
-                GoFlyStatusBanner(
-                    tone: .warning,
-                    title: goFlyString("joystick.pinOriginHint"),
-                    onDismiss: { joystickOrigin.dismissHint() },
-                    identifier: "joystick.pinOriginHint",
                     isFloating: true
                 )
             }

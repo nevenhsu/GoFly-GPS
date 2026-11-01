@@ -2,7 +2,7 @@ import GoFlyCore
 import SwiftUI
 
 enum GoFlyBackgroundDuration {
-    /// Short form for the F6 row value (Figma "12 hr").
+    /// Short form for the F6 row value (Figma "1 hr").
     @MainActor static func summary(seconds: Int) -> String {
         let hours = seconds / 3600, minutes = seconds % 3600 / 60
         let h = goFlyString("settings.background.duration.hr")

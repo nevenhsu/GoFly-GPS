@@ -49,21 +49,26 @@ struct JoystickOriginControllerTests {
         await device.finish(.acknowledged)
     }
 
-    @Test func aMissingFixEndsTheRequestAndShowsTheHintUntilDismissed() {
+    @Test func touchingWithoutAnOriginTeleportsToTheMapCentre() async throws {
+        let device = JoystickControlledDevice(), service = ServiceController(service: device); service.setMovementConnectionAvailable(true)
+        let (origin, host) = controller(service)
+        let center = try #require(GeoCoordinate(latitude: 25.03, longitude: 121.56))
+        host.mapCenter = center
+
+        origin.establishFromMap()
+        #expect(origin.request.isSetting && origin.request.intentID != nil)
+        await wait { await device.waiting }
+        #expect(await device.coordinates == [center])
+        await device.finish(.acknowledged)
+    }
+
+    @Test func aMissingFixEndsTheRequest() {
         let service = ServiceController(service: JoystickControlledDevice()); service.setMovementConnectionAvailable(true)
         let (origin, _) = controller(service)
 
         origin.ensure()
         origin.fixUnavailable()
         #expect(origin.request == JoystickOriginRequest())
-        #expect(origin.fetchFailed && origin.needsPinHint)
-
-        origin.dismissHint()
-        #expect(!origin.needsPinHint)
-        origin.fixRejected()
-        #expect(origin.needsPinHint, "A new failure shows the hint again")
-        origin.fixAccepted(nil)
-        #expect(!origin.fetchFailed && !origin.needsPinHint)
     }
 
     @Test func anInvalidAcceptedFixEndsAWaitingRequestWithoutTeleporting() {
@@ -85,7 +90,7 @@ struct JoystickOriginControllerTests {
         origin.fixUnavailable()
         origin.receive(.availabilityChanged)
         #expect(host.fixRequests == 0 && origin.request == JoystickOriginRequest())
-        #expect(!origin.fetchFailed && !origin.needsPinHint)
+        #expect(origin.request == JoystickOriginRequest())
     }
 
     @Test func availabilityRetriesOnlyInAnActiveSceneWithNoRequest() {
@@ -164,10 +169,12 @@ private final class RecordingOriginHost {
     var joystickMode = true
     var sceneActive = true
     var fixRequests = 0
+    var mapCenter: GeoCoordinate?
     var host: JoystickOriginHost {
         JoystickOriginHost(
             isJoystickMode: { self.joystickMode },
             isSceneActive: { self.sceneActive },
-            requestLocationFix: { self.fixRequests += 1 })
+            requestLocationFix: { self.fixRequests += 1 },
+            mapCenter: { self.mapCenter })
     }
 }

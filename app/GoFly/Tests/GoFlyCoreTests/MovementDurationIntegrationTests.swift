@@ -6,6 +6,9 @@ import Testing
 @Suite @MainActor
 struct MovementDurationIntegrationTests {
     @Test func roundTripFiniteDurationStopsAfterTwelveHoursAndFinishesOnce() async throws {
+        let savedDuration = BackgroundRunDuration.shared.seconds
+        BackgroundRunDuration.shared.seconds = 43_200
+        defer { BackgroundRunDuration.shared.seconds = savedDuration }
         let clock = DurationIntegrationClock()
         let device = DurationIntegrationDevice()
         let service = ServiceController(service: device)
@@ -137,6 +140,9 @@ struct MovementDurationIntegrationTests {
     }
 
     @Test func wanderFiniteDurationStopsAfterTwelveHoursAndFinishesOnce() async throws {
+        let savedDuration = BackgroundRunDuration.shared.seconds
+        BackgroundRunDuration.shared.seconds = 43_200
+        defer { BackgroundRunDuration.shared.seconds = savedDuration }
         let clock = DurationIntegrationClock()
         let device = DurationIntegrationDevice()
         let service = ServiceController(service: device)

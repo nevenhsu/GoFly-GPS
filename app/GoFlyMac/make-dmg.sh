@@ -41,7 +41,7 @@ trap 'rm -rf "$STAGING_ROOT"' EXIT
   -I -B "$NOTICES_GENERATOR" "$STAGING_ROOT/THIRD-PARTY-NOTICES.md"
 
 /usr/bin/hdiutil create -quiet -volname GoFly -srcfolder "$STAGING_ROOT" \
-  -format UDZO "$TEMP_DMG"
+  -format ULMO "$TEMP_DMG"
 /bin/mv -f "$TEMP_DMG" "$OUTPUT"
 HASH="$(/usr/bin/shasum -a 256 "$OUTPUT" | /usr/bin/awk '{print $1}')"
 printf '%s  %s\n' "$HASH" "$(/usr/bin/basename "$OUTPUT")" > "$CHECKSUM"

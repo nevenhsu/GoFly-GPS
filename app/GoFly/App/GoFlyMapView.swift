@@ -316,20 +316,6 @@ struct GoFlyMapView: View {
     }
 
     private var isWanderMap: Bool { mode == .joystick && joystick.wanderEnabled && route.picker == nil }
-    private var shouldAutoResolveJoystickOrigin: Bool {
-#if DEBUG && targetEnvironment(simulator)
-        !GoFlyUITestOverrides.isFrameMode
-#else
-        true
-#endif
-    }
-    /// Single entry for the automatic joystick origin: joystick mode, not a
-    /// fixture, and the movement connection (VPN/tunnel) is available.
-    private func autoResolveJoystickOrigin() {
-        guard mode == .joystick else { return }
-        guard shouldAutoResolveJoystickOrigin, service.movementConnection == .available else { return }
-        joystickOrigin.ensure()
-    }
     private var activeSearch: CandidateController {
         route.picker?.candidates ?? (isWanderMap ? wanderSearch : search)
     }
@@ -370,6 +356,12 @@ struct GoFlyMapView: View {
                     // the queued wander starts once native work drains.
                     .onChange(of: service.nativeBusy) { _, busy in
                         if !busy, wander.hasAcknowledgedPendingStart,
+                           scenePhase == .active, !recovery.isChecking { wander.resumePending() }
+                    }
+                    // One Start press: the origin teleport's ACK can precede the moment the
+                    // joystick owner may enable wander, so also resume when it becomes enabled.
+                    .onChange(of: joystick.canSetWanderEnabled && joystick.canStartWanderPlanning) { _, ready in
+                        if ready, wander.hasAcknowledgedPendingStart,
                            scenePhase == .active, !recovery.isChecking { wander.resumePending() }
                     }
                     .accessibilityHidden(presentedSheet != nil || showingSearch || showingImportedRoutes
@@ -457,14 +449,14 @@ struct GoFlyMapView: View {
                 joystickOrigin.attach(JoystickOriginHost(
                     isJoystickMode: { mode == .joystick },
                     isSceneActive: { sceneActivity.isActive },
-                    requestLocationFix: { location.requestRecenter() }))
+                    requestLocationFix: { location.requestRecenter() },
+                    mapCenter: { projection?.upperThirdCoordinate ?? projection?.centerCoordinate }))
                 wander.attach(wanderPlanningHost)
                 movement.attachMapAdmission {
                     !showingSettings && !showingSearch && !showingRouteList && !showingImportedRoutes
                         && !showingAllImportedPoints && presentedSheet == nil && route.picker == nil
                 }
                 location.start()
-                autoResolveJoystickOrigin()
                 if cameraIntent == nil {
                     if mode == .route, let planned = route.plannedRoute {
                         cameraIntent = GoFlyCameraIntent(route: planned)
@@ -746,8 +738,7 @@ struct GoFlyMapView: View {
                 if mode != .joystick { wander.cancelAll() }
                 if mode == .joystick {
                     service.warmupSession()
-                    autoResolveJoystickOrigin()
-                    if !recovery.isChecking { wander.resumePending() }
+                        if !recovery.isChecking { wander.resumePending() }
                 }
                 if mode == .teleport && (positionHold.phase == .paused || positionHold.phase == .completed) {
                     sheetDetent = .collapsed
@@ -797,10 +788,7 @@ struct GoFlyMapView: View {
             }
             .onChange(of: service.movementConnection) { _, state in
                 if state == .available {
-                    // The movement permission (tunnel) just opened: a launch-time
-                    // origin that was waiting for it can now be established.
-                    autoResolveJoystickOrigin()
-                    if scenePhase == .active && !recovery.isChecking { wander.resumePending() }
+                        if scenePhase == .active && !recovery.isChecking { wander.resumePending() }
                 } else {
                     wander.cancelUncommitted()
                 }
@@ -812,9 +800,6 @@ struct GoFlyMapView: View {
 
     private func observeMapMovement<Content: View>(_ content: Content) -> some View {
         content
-            .onReceive(service.joystickEvents) { event in
-                if shouldAutoResolveJoystickOrigin { joystickOrigin.receive(event) }
-            }
             .onReceive(GoFlyPathMonitor.shared.changes) { _ in recovery.networkPathDidChange() }
             .onChange(of: joystick.wanderEnabled) { _, enabled in
                 if !enabled { wanderSearch.resetSelection() }
@@ -1120,7 +1105,7 @@ struct GoFlyMapView: View {
                 // SwiftUI state update when the candidate/wander overlay uses
                 // projection coordinates. Otherwise each MapKit layout pass
                 // needlessly invalidates the whole map sheet hierarchy.
-                if activeCandidate != nil || isWanderMap, projection != $0 {
+                if activeCandidate != nil || isWanderMap || mode == .joystick || projection == nil, projection != $0 {
                     projection = $0
                 }
             }
@@ -1362,7 +1347,9 @@ struct GoFlyMapView: View {
                                 wander.replan(to: nil)
                             },
                             onStartWander: { wander.start() },
+                            onNeedsOrigin: { joystickOrigin.establishFromMap() },
                             canStartWander: canRequestWanderStart,
+                            isStartingWander: wander.isStarting,
                             onStopWander: { wander.stop() },
                             onSettings: { showingSettings = true }
                         )
@@ -1688,7 +1675,7 @@ struct GoFlyMapView: View {
 
     /// Fallback wander planning origins around the visible map center.
     private func mapWanderOriginCandidates() -> [GeoCoordinate] {
-        guard let center = projection?.centerCoordinate else { return [] }
+        guard let center = projection?.upperThirdCoordinate ?? projection?.centerCoordinate else { return [] }
         let latitudeOffset = min(max(projection?.searchRegionLatitudeDelta ?? 0.02, 0.005), 0.04) / 4
         let longitudeOffset = min(max(projection?.searchRegionLongitudeDelta ?? 0.02, 0.005), 0.04) / 4
         return [center,

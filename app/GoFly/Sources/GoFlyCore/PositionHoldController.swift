@@ -194,6 +194,7 @@ public final class PositionHoldController: ObservableObject {
     private func takeOverLastPosition() {
         guard foreground, phase == .idle || phase == .completed,
               service.movementAuthority.snapshot.lease == nil,
+              !service.hasLiveMovingJoystick,
               let coordinate = service.unclearedSimulatedCoordinate else { return }
         let operation = JoystickMovementIntent(lease: MovementTaskLease(), fixedPosition: coordinate)
         let revision = service.movementAdmissionRevision

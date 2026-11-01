@@ -128,8 +128,25 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         task = Task { [weak self] in
             defer { Task { @MainActor [weak self] in self?.finishPhysicalOperation(physicalID) } }
             guard let self, self.generation == token, self.phase == .preparing, !Task.isCancelled else { return }
-            let outcome = await self.commands.beginJoystick(operation, expectedMovementAdmissionRevision: admission)
+            var outcome = await self.commands.beginJoystick(operation, expectedMovementAdmissionRevision: admission)
+            // The origin ACK also starts the position hold, whose native
+            // preparation can still be busy when a wander start arrives. That
+            // refusal is transient; a second press used to be the retry.
+            var retries = 0
+            while case .cancelled = outcome, self.wanderEnabled, gestureID == nil, retries < 6,
+                  self.generation == token, self.phase == .preparing, !Task.isCancelled {
+                retries += 1
+                try? await Task.sleep(for: .milliseconds(500))
+                guard self.generation == token, self.phase == .preparing, !Task.isCancelled,
+                      self.commands.canBeginJoystick else { continue }
+                outcome = await self.commands.beginJoystick(
+                    operation, expectedMovementAdmissionRevision: self.commands.movementAdmissionRevision)
+            }
             guard self.generation == token, self.phase == .preparing, !Task.isCancelled else { return }
+            diagnose("joystick.beginOutcome", category: .movement, level: .notice, [
+                "prepared": .flag({ if case .prepared = outcome { return true } else { return false } }()),
+                "retries": .count(retries), "wander": .flag(self.wanderEnabled)
+            ])
             switch outcome {
             case .prepared:
                 self.phase = .moving
@@ -517,8 +534,17 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             let seconds = manual ? MovementCadence.manualSeconds : MovementCadence.pathSeconds
             do { try await clock.sleep(for: manual ? MovementCadence.manual : MovementCadence.path) } catch { return }
             guard generation == token, phase == .moving, !Task.isCancelled,
-                  let revision = commands.joystickInputRevision(executionID: operation.id, lease: operation.lease) else { return }
-            if wanderNeedsReplan, input == nil { return }
+                  let revision = commands.joystickInputRevision(executionID: operation.id, lease: operation.lease) else {
+                diagnose("joystick.runEnded", category: .movement, level: .notice, [
+                    "why": .text(generation != token ? "generation" : phase != .moving ? "phase.\(phase.rawValue)" : Task.isCancelled ? "cancelled" : "noInputRevision"),
+                    "wander": .flag(wanderEnabled)
+                ])
+                return
+            }
+            if wanderNeedsReplan, input == nil {
+                diagnose("joystick.runEnded", category: .movement, level: .notice, ["why": .text("needsReplan")])
+                return
+            }
             guard nextSequence < UInt64.max else {
                 continuationDidBecomeUnavailable()
                 return
@@ -539,7 +565,14 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
                         maximumDistanceMeters: speed.metersPerSecond * seconds) {
                 recipe = .target(step); capturedRouteRevision = nil; routeStepDistance = nil
             }
-            else { return }
+            else {
+                diagnose("joystick.runEnded", category: .movement, level: .notice, [
+                    "why": .text("noRecipe"), "wander": .flag(wanderEnabled),
+                    "needsTarget": .flag(wanderNeedsTarget), "hasRoute": .flag(wanderRoute != nil),
+                    "hasTarget": .flag(wanderTarget != nil)
+                ])
+                return
+            }
             let capturedTargetID = wanderTarget?.id, capturedNeedsTarget = wanderNeedsTarget
             let outcome = await commands.sendJoystickStep(executionID: operation.id, lease: operation.lease,
                 sequence: nextSequence, expectedInputRevision: revision, recipe: recipe)

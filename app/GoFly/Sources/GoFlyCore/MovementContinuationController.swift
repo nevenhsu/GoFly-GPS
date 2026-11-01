@@ -86,6 +86,7 @@ public final class MovementContinuationController: ObservableObject {
     // Retain the physical submission until even an uncooperative callee returns.
     private var submitTask: Task<Void, Never>?
     private var submissionID: UUID?
+    private var lastBlockedKey: String?
     private var lastAcknowledgement: MovementAcknowledgement?
     private var cleanupQueued = false
     private var handlingRuntimeLoss = false
@@ -314,8 +315,12 @@ public final class MovementContinuationController: ObservableObject {
         drainPending(); synchronize()
     }
     private func drainPending() {
-        guard sceneActive, submitTask == nil, let epoch = pending,
-              epoch.demand.goal != nil, ownerReady(epoch.demand) else { return }
+        guard sceneActive, submitTask == nil, let epoch = pending, epoch.demand.goal != nil else { return }
+        guard ownerReady(epoch.demand) else {
+            logOwnerBlocked(epoch.demand)
+            return
+        }
+        lastBlockedKey = nil
         if let current = candidate {
             // A pending prepare cannot replace the healthy previous owner.
             guard service.movementAuthority.snapshot.lease != current.request.lease else { return }
@@ -335,6 +340,11 @@ public final class MovementContinuationController: ObservableObject {
             guard let self else { return }
             guard self.sceneActive, self.candidate?.request.requestID == id,
                   self.ownerReady(epoch.demand) else {
+                diagnose("background.submitAborted", category: .background, level: .notice, [
+                    "kind": .text(epoch.demand.kind.rawValue),
+                    "scene": .flag(self.sceneActive),
+                    "candidate": .flag(self.candidate?.request.requestID == id)
+                ])
                 self.submissionReturned(id, accepted: false); return
             }
             let accepted = await self.runtime.begin(request, isForeground: true)
@@ -417,26 +427,14 @@ public final class MovementContinuationController: ObservableObject {
         case .unknown: health = "unknown"
         case nil: health = "none"
         }
-        let runState: String
-        switch owner.runState {
-        case .running: runState = "running"
-        case .paused: runState = "paused"
-        case nil: runState = "none"
-        }
-        let connection: String
-        switch service.movementConnection {
-        case .connecting: connection = "connecting"
-        case .available: connection = "available"
-        case .unavailable: connection = "unavailable"
-        }
         diagnose("background.retire", category: .background, level: .notice, [
             "reason": .text(reason.diagnosticsLabel),
             "line": .count(line),
             "kind": .text(String(describing: current.request.kind)),
             "owner_health": .text(health),
-            "owner_run": .text(runState),
+            "owner_run": .text(owner.runState.map { String(describing: $0) } ?? "none"),
             "owner_match": .flag(owner.lease == current.request.lease),
-            "conn": .text(connection),
+            "conn": .text(String(describing: service.movementConnection)),
             "cold_clear": .flag(service.coldClearPending)
         ])
         candidate = nil // Retire identity before potentially reentrant driver callbacks.
@@ -473,6 +471,38 @@ public final class MovementContinuationController: ObservableObject {
                 positionHold?.intent?.lease == demand.lease
         }
     }
+    /// Diagnostics only: names the first `ownerReady` condition that holds a
+    /// demand back. Logged once per movement and reason, so a stuck request
+    /// leaves one record instead of one per drain.
+    private func logOwnerBlocked(_ demand: MovementContinuationDemand) {
+        let owner = service.movementAuthority.snapshot
+        let reason: String
+        if owner.lease != demand.lease { reason = "leaseMismatch" }
+        else if owner.health != .confirmedHealthy { reason = "ownerNotHealthy" }
+        else if owner.runState != .running { reason = "ownerNotRunning" }
+        else if service.movementConnection == .unavailable { reason = "connectionUnavailable" }
+        else if service.coldClearPending { reason = "coldClearPending" }
+        else {
+            switch demand.kind {
+            case .finiteRoute, .roundTrip:
+                reason = route.phase != .running ? "routeNotRunning" : "routeIntentMismatch"
+            case .wander:
+                if ![.preparing, .moving].contains(joystick.phase) { reason = "joystickPhase.\(joystick.phase)" }
+                else if !joystick.wanderEnabled { reason = "wanderDisabled" }
+                else { reason = "joystickIntentMismatch" }
+            case .fixedPosition:
+                reason = positionHold?.phase != .running ? "holdNotRunning" : "holdIntentMismatch"
+            }
+        }
+        let key = "\(demand.movementID.uuidString)/\(reason)"
+        guard key != lastBlockedKey else { return }
+        lastBlockedKey = key
+        diagnose("background.blocked", category: .background, level: .notice, [
+            "kind": .text(demand.kind.rawValue),
+            "why": .text(reason),
+            "movement": .text(demand.movementID.uuidString)
+        ])
+    }
     private func forwardProgress() {
         guard let current = candidate, let progress = current.epoch.progress else { return }
         diagnose("background.progress", category: .background, [
@@ -506,6 +536,9 @@ public final class MovementContinuationController: ObservableObject {
             // state and buffers real ACK progress before its launch/return.
             // It never creates consent, grants admission, or submits work.
             self.forwardProgress()
+            // A request made before its owner's lease was installed waits here;
+            // the owner confirming is a domain change, not only an ACK.
+            self.drainPending()
             self.synchronize()
         }
     }

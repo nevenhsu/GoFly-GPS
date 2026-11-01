@@ -19,6 +19,8 @@
 "service.resetSucceeded.message" = "可以重新啟動模擬";
 "service.stopped" = "已停止";
 "service.stoppedGPSPending" = "已停止・GPS 待確認";
+"service.connecting" = "連線中…";
+"service.readyButton" = "已就緒";
 "service.preparing" = "準備服務中…";
 "service.ready" = "服務待命・無移動任務";
 "service.stopping" = "停止中…";
@@ -363,6 +365,8 @@
 // Automatic wander
 "joystick.wander" = "漫步";
 "joystick.startWander" = "自動漫步";
+"joystick.startingWander" = "啟動中…";
+"joystick.cancelStartingHint" = "點兩下以取消啟動。";
 "joystick.stopWander" = "停止漫步";
 "joystick.changePlace" = "更換地點";
 "joystick.randomDestination" = "隨機目的地";

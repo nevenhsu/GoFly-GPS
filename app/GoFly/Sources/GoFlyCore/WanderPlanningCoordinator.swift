@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 /// Screen state wander planning reads and the effects it hands back. The map
@@ -64,7 +65,19 @@ public final class WanderPlanningCoordinator: ObservableObject {
     private let planSegment: SegmentPlanner
     private var host = WanderPlanningHost.detached
 
-    private var planningTask: Task<Void, Never>?
+    /// A start was requested and has not become a running wander yet: planning,
+    /// the origin teleport, or its deferred hand-off.
+    @Published public private(set) var isStarting = false
+    private func refreshStarting() {
+        // A pending start whose origin request was cancelled will never be
+        // acknowledged, so it must not keep the Start button busy.
+        let starting = planningTask != nil || (pendingStart != nil && joystickOrigin.request.isSetting)
+        if isStarting != starting { isStarting = starting }
+    }
+
+    private var planningTask: Task<Void, Never>? {
+        didSet { refreshStarting() }
+    }
     private var planningID: UUID?
     private var replanningTask: Task<Void, Never>? {
         didSet { if isReplanning != (replanningTask != nil) { isReplanning = replanningTask != nil } }
@@ -72,14 +85,19 @@ public final class WanderPlanningCoordinator: ObservableObject {
     private var replanningID: UUID?
     private var activeCheckpoint: Checkpoint?
     private var interruptedCheckpoint: Checkpoint?
-    private var pendingStart: PendingStart?
+    private var pendingStart: PendingStart? {
+        didSet { refreshStarting() }
+    }
     private var deferredStart = WanderStartRequestGate()
 
     public init(service: ServiceController, joystick: JoystickMovementController,
                 origin: JoystickOriginController, planSegment: @escaping SegmentPlanner) {
         self.service = service; self.joystick = joystick; self.joystickOrigin = origin
         self.planSegment = planSegment
+        originSubscription = origin.$request.dropFirst().receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshStarting() }
     }
+    private var originSubscription: AnyCancellable?
 
     public func attach(_ host: WanderPlanningHost) { self.host = host }
 
@@ -412,10 +430,22 @@ public final class WanderPlanningCoordinator: ObservableObject {
     }
 
     public func stop() {
+        cancelStartup()
         replanningTask?.cancel()
         replanningTask = nil
         replanningID = nil
         _ = joystick.setWanderEnabled(false)
+    }
+
+    /// A cancelled start leaves nothing pending, so Start is available again.
+    private func cancelStartup() {
+        if pendingStart != nil, joystickOrigin.request.isSetting { joystickOrigin.cancel() }
+        planningTask?.cancel()
+        planningTask = nil
+        planningID = nil
+        pendingStart = nil
+        activeCheckpoint = nil
+        deferredStart.cancel()
     }
 
     /// The scene left the foreground or the connection dropped: drop planning

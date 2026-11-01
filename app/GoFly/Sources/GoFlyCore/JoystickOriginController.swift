@@ -20,12 +20,16 @@ public struct JoystickOriginHost {
     public var isSceneActive: @MainActor () -> Bool
     /// Ask for one fresh real location fix.
     public var requestLocationFix: @MainActor () -> Void
+    /// The visible map's origin point (one third down the screen, clear of the panel), when known.
+    public var mapCenter: @MainActor () -> GeoCoordinate?
 
     public init(isJoystickMode: @escaping @MainActor () -> Bool,
                 isSceneActive: @escaping @MainActor () -> Bool,
-                requestLocationFix: @escaping @MainActor () -> Void) {
+                requestLocationFix: @escaping @MainActor () -> Void,
+                mapCenter: @escaping @MainActor () -> GeoCoordinate? = { nil }) {
         self.isJoystickMode = isJoystickMode; self.isSceneActive = isSceneActive
         self.requestLocationFix = requestLocationFix
+        self.mapCenter = mapCenter
     }
 
     static let detached = JoystickOriginHost(isJoystickMode: { false }, isSceneActive: { false },
@@ -38,9 +42,6 @@ public struct JoystickOriginHost {
 @MainActor
 public final class JoystickOriginController: ObservableObject {
     @Published public internal(set) var request = JoystickOriginRequest()
-    /// Set only after fetching a real fix failed or came back stale.
-    @Published public private(set) var fetchFailed = false
-    @Published private var hintDismissed = false
 
     private let service: ServiceController
     private let joystick: JoystickMovementController
@@ -55,14 +56,14 @@ public final class JoystickOriginController: ObservableObject {
     /// The teleport intent is the automatic joystick origin, which never moves the camera.
     public func isOrigin(_ intentID: UUID) -> Bool { request.isSetting && request.intentID == intentID }
 
-    /// No real GPS and no last simulated position: the person must pin one.
-    public var needsPinHint: Bool {
-        host.isJoystickMode() && service.movementConnection == .available && fetchFailed && !hintDismissed
-            && !request.isSetting && request.intentID == nil
-            && joystick.requiresOrigin && service.displayPositionMarker == nil && service.canTeleport
+    /// The person touched the joystick with no origin: take the visible map's upper-third
+    /// point as the origin and start simulating there.
+    public func establishFromMap() {
+        guard host.isJoystickMode(), !request.isSetting, joystick.requiresOrigin,
+              service.canTeleport, let center = host.mapCenter() else { return }
+        request.isSetting = true
+        submit(center)
     }
-
-    public func dismissHint() { hintDismissed = true }
 
     public func cancel() { request = JoystickOriginRequest() }
 
@@ -107,25 +108,17 @@ public final class JoystickOriginController: ObservableObject {
 
     /// The location source stopped without a fix.
     public func fixUnavailable() {
-        noteFetchFailure()
         if request.awaitsFix, host.isJoystickMode() { request.isSetting = false }
     }
 
     /// The service rejected the fix as stale or inaccurate.
-    public func fixRejected() { noteFetchFailure() }
+    public func fixRejected() { }
 
     /// The service accepted a real fix; `coordinate` is nil when it is not a valid coordinate.
     public func fixAccepted(_ coordinate: GeoCoordinate?) {
-        fetchFailed = false
         guard request.awaitsFix, host.isJoystickMode() else { return }
         guard let coordinate else { request.isSetting = false; return }
         submit(coordinate)
-    }
-
-    private func noteFetchFailure() {
-        guard host.isJoystickMode(), joystick.requiresOrigin, service.displayPositionMarker == nil else { return }
-        fetchFailed = true
-        hintDismissed = false
     }
 
     // MARK: Teleports

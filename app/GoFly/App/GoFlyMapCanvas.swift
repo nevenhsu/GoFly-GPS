@@ -36,6 +36,8 @@ struct GoFlyMapProjection: Equatable {
     let viewport: CGRect
     let cameraHeadingDegrees: Double
     let centerCoordinate: GeoCoordinate?
+    /// The map point one third down the screen: above the bottom panel, where wander puts the arrow.
+    let upperThirdCoordinate: GeoCoordinate?
     let searchRegionLatitudeDelta: Double
     let searchRegionLongitudeDelta: Double
 
@@ -105,6 +107,9 @@ struct GoFlyMapProjection: Equatable {
         self.cameraHeadingDegrees = map.camera.heading
         self.centerCoordinate = GeoCoordinate(latitude: map.centerCoordinate.latitude,
                                               longitude: map.centerCoordinate.longitude)
+        let upperThird = map.convert(CGPoint(x: map.bounds.midX, y: map.bounds.minY + map.bounds.height / 3),
+                                     toCoordinateFrom: map)
+        self.upperThirdCoordinate = GeoCoordinate(latitude: upperThird.latitude, longitude: upperThird.longitude)
         self.searchRegionLatitudeDelta = map.region.span.latitudeDelta
         self.searchRegionLongitudeDelta = map.region.span.longitudeDelta
     }

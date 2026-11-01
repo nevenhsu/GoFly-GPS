@@ -274,12 +274,16 @@ struct ServiceSettingsView: View {
 
     private var statusPillTextKey: String {
         if shouldReset { return "device.status.interrupted" }
+        if service.phase == .preparing { return "status.pill.connecting" }
+        if movement.status == .started && service.phase != .ready { return "status.pill.stopped" }
         if GoFlyUITestOverrides.frame == "F1" { return "status.pill.started" }
         return movement.status.textKey
     }
 
     private var statusPillTone: GoFlyStatusTone {
         if shouldReset { return .danger }
+        if service.phase == .preparing { return .warning }
+        if movement.status == .started && service.phase != .ready { return GoFlySessionStatus.stopped.tone }
         if GoFlyUITestOverrides.frame == "F1" { return .success }
         return movement.status.tone
     }
@@ -320,8 +324,13 @@ struct ServiceSettingsView: View {
         service.phase == .repairRequired || service.canForceReset || GoFlyUITestOverrides.frame == "F1.a"
     }
 
+    /// Prepared but not moving: the button reports readiness; Stop appears once a task runs.
+    private var isIdleReady: Bool { service.phase == .ready && !service.hasSimulated }
+
     private func buttonTitle(isReset: Bool, isStop: Bool) -> String {
         if isReset { return goFlyString("service.reset") }
+        if service.phase == .preparing { return goFlyString("service.connecting") }
+        if isIdleReady { return goFlyString("service.readyButton") }
         if isStop { return goFlyString("service.stop") }
         return goFlyString("service.start")
     }

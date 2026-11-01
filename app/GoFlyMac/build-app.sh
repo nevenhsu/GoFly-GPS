@@ -72,9 +72,14 @@ cp "$APP_SOURCE/Bridge/Device/__init__.py" "$APP_SOURCE/Bridge/Device/gofly_devi
   --exclude='/NativeBridge/build.sh' --exclude='/NativeBridge/prepare-build.py' \
   --exclude='/NativeBridge/*.patch' --exclude='/NativeBridge/upstream.json' \
   --exclude='.DS_Store' \
+  --exclude='/.build/' --exclude='/.swiftpm/' --exclude='/work/' \
   "$WORKSPACE_ROOT/app/GoFly/" "$RESOURCES/iOSProject/"
 if [ ! -d "$RESOURCES/iOSProject/GoFly.xcodeproj" ]; then
   echo "The bundled iOS project is incomplete." >&2
+  exit 1
+fi
+if [ -e "$RESOURCES/iOSProject/.build" ]; then
+  echo "The bundled iOS project contains a local build cache." >&2
   exit 1
 fi
 if /usr/bin/find "$RESOURCES/iOSProject" \( -name Tests -o -name UITests -o -name scripts -o -name build.sh -o -name prepare-build.py \) -print -quit | /usr/bin/grep -q .; then
@@ -104,6 +109,11 @@ mkdir -p "$PYTHON_ROOT/lib/python3.14/site-packages"
   --no-compile --no-deps --only-binary=:all: \
   --target "$PYTHON_ROOT/lib/python3.14/site-packages" \
   -r "$APP_SOURCE/requirements.txt"
+
+# Drop interpreter parts the bridge never imports (tests, IDLE, demos, bytecode caches).
+PYLIB="$PYTHON_ROOT/lib/python3.14"
+rm -rf "$PYLIB/test" "$PYLIB/idlelib" "$PYLIB/turtledemo"
+/usr/bin/find "$PYTHON_ROOT" -name __pycache__ -type d -prune -exec rm -rf {} +
 
 NATIVE_ARCHIVE="$WORKSPACE_ROOT/work/gofly-ios/native/libidevice_ffi.a"
 if [ ! -f "$NATIVE_ARCHIVE" ] || [ -L "$NATIVE_ARCHIVE" ]; then

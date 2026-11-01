@@ -227,12 +227,12 @@ public protocol ContinuedProcessingDriving: AnyObject {
 }
 
 /// How long a background-continued movement (fixed position, round trip, wander)
-/// may run. The user adjusts it in Settings; from 1 minute to 24 hours 59 minutes (default 12 hours).
+/// may run. The user adjusts it in Settings; from 1 minute to 24 hours 59 minutes (default 1 hour).
 public final class BackgroundRunDuration: @unchecked Sendable {
     public static let shared = BackgroundRunDuration()
     public static let maximumSeconds: TimeInterval = 89_940
     public static let minimumSeconds: TimeInterval = 60
-    public static let defaultSeconds: TimeInterval = 43_200
+    public static let defaultSeconds: TimeInterval = 3_600
 
     private let lock = NSLock()
     private var stored = BackgroundRunDuration.defaultSeconds

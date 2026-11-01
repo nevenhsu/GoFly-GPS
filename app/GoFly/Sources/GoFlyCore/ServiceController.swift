@@ -1514,6 +1514,11 @@ extension ServiceController {
 }
 
 extension ServiceController {
+    /// A wander or manual joystick that has begun but not ended. Its lease is
+    /// installed by its first write, so until then the authority looks free.
+    var hasLiveMovingJoystick: Bool {
+        joystickOwners.values.contains { !$0.ended && $0.intent.fixedPosition == nil }
+    }
     public var canBeginJoystick: Bool {
         let snapshot = movementAuthority.snapshot
         return canTeleport && (snapshot.lease == nil || snapshot.health == .confirmedHealthy)

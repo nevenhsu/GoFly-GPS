@@ -12,7 +12,9 @@ struct GoFlyJoystickPanel: View {
     var bottomPadding: CGFloat? = nil
     var onRandomDestination: () -> Void = { }
     var onStartWander: () -> Void = { }
+    var onNeedsOrigin: () -> Void = { }
     var canStartWander: Bool?
+    var isStartingWander = false
     var onStopWander: () -> Void = { }
     var onSettings: () -> Void = { }
     @State private var showingSpeedSheet = false
@@ -28,7 +30,8 @@ struct GoFlyJoystickPanel: View {
                         .padding(.top, 24)
                         .accessibilityIdentifier("joystick.settings")
                 } else {
-                    GoFlyManualJoystickPad(controller: controller, cameraHeadingDegrees: cameraHeadingDegrees)
+                    GoFlyManualJoystickPad(controller: controller, cameraHeadingDegrees: cameraHeadingDegrees,
+                                           onNeedsOrigin: onNeedsOrigin)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 24)
                     wanderActions
@@ -90,7 +93,7 @@ struct GoFlyJoystickPanel: View {
 
     @ViewBuilder
     private var wanderActions: some View {
-        if controller.wanderEnabled {
+        if controller.wanderEnabled && controller.phase != .preparing {
             HStack(spacing: 12) {
                 Button(action: onStopWander) { Text(goFlyString("joystick.stopWander")) }
                     .buttonStyle(GoFlyActionStyle(fixedHeight: 56))
@@ -100,10 +103,22 @@ struct GoFlyJoystickPanel: View {
                     .accessibilityIdentifier("joystick.randomDestination")
             }
         } else {
-            Button(action: onStartWander) { Text(goFlyString("joystick.startWander")) }
-                .buttonStyle(GoFlyActionStyle(primary: true, fixedHeight: 56))
-                .goFlySteadyDisabled(!(canStartWander ?? controller.canSetWanderEnabled))
-                .accessibilityIdentifier("joystick.wander")
+            let starting = isStartingWander || controller.wanderEnabled
+            // While starting, one press cancels the start.
+            Button(action: starting ? onStopWander : onStartWander) {
+                if starting {
+                    HStack(spacing: 8) {
+                        ProgressView().accessibilityHidden(true)
+                        Text(goFlyString("joystick.startingWander"))
+                    }
+                } else {
+                    Text(goFlyString("joystick.startWander"))
+                }
+            }
+            .buttonStyle(GoFlyActionStyle(primary: true, fixedHeight: 56))
+            .goFlySteadyDisabled(!starting && !(canStartWander ?? controller.canSetWanderEnabled))
+            .accessibilityHint(starting ? goFlyString("joystick.cancelStartingHint") : "")
+            .accessibilityIdentifier("joystick.wander")
         }
     }
 }
@@ -169,6 +184,7 @@ struct GoFlyWanderDestinationRow: View {
 private struct GoFlyManualJoystickPad: View {
     @ObservedObject var controller: JoystickMovementController
     let cameraHeadingDegrees: Double
+    var onNeedsOrigin: () -> Void = { }
     @Environment(\.scenePhase) private var scenePhase
     @GestureState private var touching = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -195,7 +211,10 @@ private struct GoFlyManualJoystickPad: View {
             .onEnded { _ in finishTouch() })
         .onChange(of: touching) { _, touching in
             if !touching { finishTouch() }
-            else { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+            else {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                if controller.requiresOrigin { onNeedsOrigin() }
+            }
         }
         .onChange(of: cameraHeadingDegrees) { _, _ in
             guard let fingerID, admitted, !endedWhileHeld, scenePhase == .active,
