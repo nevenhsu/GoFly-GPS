@@ -13,6 +13,8 @@ public final class ConnectionRecoveryController: ObservableObject {
     private let route: RouteExecutionController
     private let joystick: JoystickMovementController
     private let positionHold: PositionHoldController?
+    /// Route first, then the hold, then the joystick: the order a recovery's execution ID is matched in.
+    private var movementOwners: [any MovementOwner] { [route] + (positionHold.map { [$0] } ?? []) + [joystick] }
     @Published public private(set) var automaticRepairInProgress = false
     /// True while the repair was started automatically (not by the Retry button).
     private var automaticRepairIsSilent = false
@@ -20,7 +22,10 @@ public final class ConnectionRecoveryController: ObservableObject {
     /// banner or toast is shown until it fails.
     public var isSilentRepairInProgress: Bool { automaticRepairInProgress && automaticRepairIsSilent }
     private var automaticRepairTask: Task<Void, Never>?
-    private var automaticRepairAttempted: MovementTaskLease?
+    /// The last automatic (not Retry) repair: within one task lease at most
+    /// one starts per `automaticRepairSpacing` (ADR 0001).
+    private var lastAutomaticRepair: (lease: MovementTaskLease, startedAt: Duration)?
+    static let automaticRepairSpacing: Duration = .seconds(60)
     private var failedAutomaticRepair: MovementConnectionRecovery?
     public var canRetryAutomaticRepair: Bool {
         failedAutomaticRepair.map { service.movementAuthority.snapshot.lease == $0.lease } == true
@@ -171,7 +176,8 @@ public final class ConnectionRecoveryController: ObservableObject {
     /// A manual check joins an in-flight check; it never starts a second probe.
     public func checkConnection() {
         if canRetryAutomaticRepair, let failedAutomaticRepair, canCheck {
-            automaticRepairAttempted = nil
+            // An explicit Retry is not counted and restarts the spacing.
+            lastAutomaticRepair = nil
             if service.requestConnectionRecovery(failure: failedAutomaticRepair.failure, explicitlyRequested: true) { return }
         }
         guard sceneActive, isManualProbeEligible else { return }
@@ -364,21 +370,22 @@ public final class ConnectionRecoveryController: ObservableObject {
 
     private func beginAutomaticRepair(_ recovery: MovementConnectionRecovery) -> Bool {
         guard !automaticRepairInProgress else { return true }
-        guard automaticRepairAttempted != recovery.lease else { return false }
+        if !recovery.explicitlyRequested {
+            // A failed attempt waits for Retry; a recent one shows the loss instead of repairing again.
+            guard failedAutomaticRepair?.lease != recovery.lease else { return false }
+            if let last = lastAutomaticRepair, last.lease == recovery.lease,
+               clock.now - last.startedAt < Self.automaticRepairSpacing { return false }
+        }
         let suspended: Bool
         if !recovery.resumesTask {
             // Explicit Retry repairs the connection of a user-paused task;
             // its scheduler stays paused until the separate Resume action.
             suspended = service.movementAuthority.snapshot.runState == .paused
-        } else if route.intent?.id == recovery.executionID {
-            suspended = route.suspendForConnectionRecovery()
-        } else if positionHold?.intent?.id == recovery.executionID {
-            suspended = positionHold?.suspendForConnectionRecovery() == true
-        } else if joystick.intent?.id == recovery.executionID {
-            suspended = joystick.suspendForConnectionRecovery()
+        } else if let owner = movementOwners.first(where: { $0.movementID == recovery.executionID }) {
+            suspended = owner.suspendForConnectionRecovery()
         } else { return false }
         guard suspended else { return false }
-        automaticRepairAttempted = recovery.lease
+        if !recovery.explicitlyRequested { lastAutomaticRepair = (recovery.lease, clock.now) }
         automaticRepairIsSilent = !recovery.explicitlyRequested
         automaticRepairInProgress = true
         generation &+= 1
@@ -387,9 +394,9 @@ public final class ConnectionRecoveryController: ObservableObject {
         connectionState = recovery.failure == .operationTimedOut ? .timedOut : .unavailable
         checkNoticeVisible = false
         route.recoveryProbeDidFinish(); joystick.recoveryProbeDidFinish()
-        // One automatic attempt per task lease runs silently; a Retry in flight
-        // replaces the earlier failure. Retry stays unavailable until this
-        // attempt settles, and a failed attempt waits for an explicit Retry.
+        // An automatic attempt runs silently; a Retry in flight replaces the
+        // earlier failure. Retry stays unavailable until this attempt settles,
+        // and a failed attempt waits for an explicit Retry.
         failedAutomaticRepair = nil
         automaticRepairTask = Task { [weak self] in
             guard let self else { return }
@@ -398,9 +405,7 @@ public final class ConnectionRecoveryController: ObservableObject {
             await Task.yield()
             let success = await self.service.repairConnection(recovery)
             if success {
-                self.route.finishConnectionRecovery(succeeded: true)
-                self.joystick.finishConnectionRecovery(succeeded: true)
-                self.positionHold?.finishConnectionRecovery(succeeded: true)
+                for owner in self.movementOwners { owner.finishConnectionRecovery(succeeded: true) }
             } else if self.service.movementConnection == .unavailable {
                 // Preserve the suspended logical task for the explicit retry
                 // action. Periodic probes never reset this attempt budget.
@@ -410,7 +415,6 @@ public final class ConnectionRecoveryController: ObservableObject {
             self.automaticRepairTask = nil
             self.lastProbeFinishedAt = self.clock.now
             if success || self.service.movementConnection != .unavailable {
-                self.automaticRepairAttempted = nil
                 self.failedAutomaticRepair = nil
                 // An automatic repair recovers silently: no "recovered" notice.
                 self.finishConnectionRecovery(recovered: recovery.explicitlyRequested)

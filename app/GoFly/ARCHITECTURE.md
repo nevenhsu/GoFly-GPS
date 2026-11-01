@@ -15,14 +15,14 @@
    上一筆原生呼叫實際返回後才執行下一筆。
 2. `PointDispatchGate` 是最後派送門檻；native adapter 真正送點前同步 `claim()`。已 dispatched 的呼叫
    不能被取消或 Stop 假裝撤回。
-   Teleport、路線與搖桿／漫步共用同一個 native session owner。`DeviceSessionKeeper`（GoFlyCore）是唯一決定
-   session 重用、重建、重試與閒置關閉的 module；`NativeDeviceService` 只做單次嘗試（ADR 0001）。裝置可能仍有
-   模擬位置時（任何已派送的寫入之後，直到 clear ACK），session 不因閒置關閉；只有 clear 之後才套用閒置 30 秒
-   後在下次操作前重建。服務／通道錯誤在派送前會回收舊 session 並安全重試一次；2026-10-23 使用者另授權
-   session 中斷時自動恢復同一模擬座標：已派送的暫時性服務／通道／adapter timeout 錯誤，只能在同 lease、
-   執行中、未停止且仍具前景或有效背景授權時，重建 session 並重新確認同一絕對座標一次。兩種重試都算自動重連，
-   60 秒內最多一次（2026-10-25）；使用者明確重試不計入並重新計時。keeper 的重連失敗或超出次數後，服務層不再
-   自動 rebuild：任務暫停並等使用者按「重試」，只有明確重試才走 `ServiceController.repairConnection`。
+   Teleport、路線與搖桿／漫步共用同一個 native session owner。`DeviceSessionKeeper`（GoFlyCore）決定
+   session 重用、閒置關閉與寫入失敗後是否關閉 session；每筆寫入只嘗試一次，不自行重試；`NativeDeviceService`
+   也只做單次嘗試。裝置可能仍有模擬位置時（任何已派送的寫入之後，直到 clear ACK），session 不因閒置關閉；
+   只有 clear 之後才套用閒置 30 秒後在下次操作前重建。已派送的暫時性服務／通道／adapter timeout 錯誤，
+   由 `ConnectionRecoveryController` 決定自動重連：只在同 lease、執行中、未停止且仍具前景或有效背景授權時，
+   經 `ServiceController.repairConnection` 在 FIFO 內重建 session 並重新確認同一絕對座標。同一任務內自動重連
+   每 60 秒最多一次（ADR 0001；2026-11-01 程式補上此間隔，先前成功後立即重置）；使用者明確重試不計入並重新
+   計時。自動重連失敗，或 60 秒內再次中斷時，任務停下並顯示連線中斷，等使用者按「重試」。
    任務執行中探測失敗只更新連線狀態，不暫停任務，由下一筆寫入決定是否重連。原始不確定結果
    只有真實恢復 ACK 才可解除；失敗、身分／配對錯誤及外層 watchdog 到期仍走原本未知／Stop 流程。
    連線檢查不定時輪詢：只在回到前景、網路路徑變化（唯一的 `GoFlyPathMonitor`）、未知／中斷狀態的後續狀態

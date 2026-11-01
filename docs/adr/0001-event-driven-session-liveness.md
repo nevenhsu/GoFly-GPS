@@ -19,3 +19,4 @@ GoFly iOS 的 device session 存活由 `GoFlyCore` 的 `DeviceSessionKeeper` 單
 - 瞬移維持的背景進度缺口上限改為 45 秒（心跳間隔的 3 倍）。路線與漫步仍是 15 秒。
 - 12 小時背景進度到期只結束系統背景任務，不 clear、不關 session。
 - 「channel 開著時 iOS 會維持最後座標」是推論，要以實機驗證 15 秒心跳版本來確認（2026-10-25）。
+- 2026-11-01 修正：自動重連的 60 秒預算由 `ConnectionRecoveryController` 執行，重建本身經 `ServiceController.repairConnection` 排在同一 FIFO。`DeviceSessionKeeper` 每筆寫入只嘗試一次、不自行重試，因為重連前必須先暫停路線、搖桿或瞬移維持的 writer，keeper 位於 FIFO 之下看不到它們。規則本身（每 60 秒最多一次、明確重試不計入）不變；先前程式在成功重連後立即重置預算，已改回依 ADR 間隔。

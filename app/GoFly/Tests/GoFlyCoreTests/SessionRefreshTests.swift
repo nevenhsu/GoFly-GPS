@@ -88,6 +88,34 @@ struct SessionRefreshTests {
         f.recovery.releaseForInactiveScene()
     }
 
+    /// ADR 0001: at most one automatic repair per 60 seconds within a task, so
+    /// a long hold survives a later Wi-Fi drop but a flapping link is not
+    /// rebuilt again and again.
+    @Test func automaticRepairsAreSpacedSixtySecondsApartWithinATask() async throws {
+        let f = try fixture()
+        try await start("route", f)
+        await f.device.failNextPoint()
+        f.clock.advance(by: .seconds(5))
+        await wait { await f.device.rebuilds == 1 && !f.recovery.automaticRepairInProgress && !f.service.nativeBusy }
+        #expect(f.route.phase == .running)
+
+        f.monitorClock.advance(by: .seconds(61))
+        await wait { f.clock.sleepingCount > 0 }
+        await f.device.failNextPoint()
+        f.clock.advance(by: .seconds(5))
+        await wait { await f.device.rebuilds == 2 && !f.recovery.automaticRepairInProgress && !f.service.nativeBusy }
+        #expect(f.route.phase == .running, "A drop a minute later is repaired silently again")
+
+        await wait { f.clock.sleepingCount > 0 }
+        await f.device.failNextPoint()
+        f.clock.advance(by: .seconds(5))
+        await wait { f.route.phase != .running && !f.service.nativeBusy }
+        #expect(await f.device.rebuilds == 2, "A second drop within 60 seconds is not rebuilt automatically")
+        #expect(!f.recovery.isSilentRepairInProgress)
+        _ = f.service.stopSimulation()
+        f.recovery.releaseForInactiveScene()
+    }
+
     @Test(arguments: ["fixed", "route", "wander"])
     func ordinaryPendingPointKeepsDisplayStableWithoutInventingACK(mode: String) async throws {
         let f = try fixture()

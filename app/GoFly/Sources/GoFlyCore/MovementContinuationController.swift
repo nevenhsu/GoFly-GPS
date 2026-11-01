@@ -458,18 +458,12 @@ public final class MovementContinuationController: ObservableObject {
         guard owner.lease == demand.lease, owner.health == .confirmedHealthy,
               owner.runState == .running, service.movementConnection != .unavailable,
               !service.coldClearPending else { return false }
-        switch demand.kind {
-        case .finiteRoute, .roundTrip:
-            return route.phase == .running && route.intent?.id == demand.movementID && route.intent?.lease == demand.lease
-        case .wander:
-            // Service emits its first accepted ACK before the controller's
-            // async return; the installed healthy owner is already real.
-            return [.preparing, .moving].contains(joystick.phase) && joystick.wanderEnabled &&
-                joystick.intent?.id == demand.movementID && joystick.intent?.lease == demand.lease
-        case .fixedPosition:
-            return positionHold?.phase == .running && positionHold?.intent?.id == demand.movementID &&
-                positionHold?.intent?.lease == demand.lease
+        let movementOwner: (any MovementOwner)? = switch demand.kind {
+        case .finiteRoute, .roundTrip: route
+        case .wander: joystick
+        case .fixedPosition: positionHold
         }
+        return movementOwner?.isContinuationReady(movementID: demand.movementID, lease: demand.lease) == true
     }
     /// Diagnostics only: records the owner snapshot and the active movement
     /// that hold a demand back, once per movement and state, so a stuck

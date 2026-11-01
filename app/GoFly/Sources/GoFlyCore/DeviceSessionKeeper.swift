@@ -34,8 +34,8 @@ public struct DeviceSessionAttempt: Equatable, Sendable {
 /// While the device may hold a simulated position the session is never closed
 /// for idleness: closing the location channel can return the device to real
 /// GPS, and only an explicit clear may do that. The keeper never reconnects
-/// or retries a write by itself: the one automatic repair belongs to
-/// `ConnectionRecoveryController`, which runs it silently once per task lease.
+/// or retries a write by itself: automatic repair belongs to
+/// `ConnectionRecoveryController`, at most once per 60 seconds per task (ADR 0001).
 public final class DeviceSessionKeeper {
     public static let defaultMaximumIdleNanoseconds: UInt64 = 30_000_000_000
     /// The deadline of one write attempt. It is deliberately shorter than the
