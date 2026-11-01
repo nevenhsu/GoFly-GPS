@@ -108,8 +108,11 @@ public final class WanderPlanningCoordinator: ObservableObject {
     }
     /// The start teleport was acknowledged but the wander waits for native work to drain.
     public var hasAcknowledgedPendingStart: Bool { pendingStart?.originAcknowledged == true }
-    /// The teleport intent is the automatic origin of a wander start.
-    public func isStartOrigin(_ intentID: UUID) -> Bool { pendingStart?.teleportIntentID == intentID }
+    /// The teleport intent is the automatic origin of a wander start, either
+    /// planned here or an origin fix a Start press is waiting for.
+    public func isStartOrigin(_ intentID: UUID) -> Bool {
+        pendingStart?.teleportIntentID == intentID || deferredStart.originIntentID == intentID
+    }
 
     // MARK: Startup
 

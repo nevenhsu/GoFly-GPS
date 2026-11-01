@@ -308,9 +308,11 @@ struct GoFlyMapView: View {
         mapPlaces = movement.placeResolver
         let origin = JoystickOriginController(service: service, joystick: movement.joystick)
         _joystickOrigin = StateObject(wrappedValue: origin)
-        _wander = StateObject(wrappedValue: WanderPlanningCoordinator(
+        let wanderCoordinator = WanderPlanningCoordinator(
             service: service, joystick: movement.joystick, origin: origin,
-            planSegment: { [route = movement.route] in try await route.planWanderSegment(from: $0, to: $1) }))
+            planSegment: { [route = movement.route] in try await route.planWanderSegment(from: $0, to: $1) })
+        movement.positionHold.suppressesHold = { [weak wanderCoordinator] in wanderCoordinator?.isStartOrigin($0) == true }
+        _wander = StateObject(wrappedValue: wanderCoordinator)
         _checkpoints = StateObject(wrappedValue: SessionCheckpointSaver(
             store: recoveryStore, backgroundTasks: UIKitBackgroundSaveTasks()))
     }

@@ -59,6 +59,10 @@ public final class PositionHoldController: ObservableObject {
     private var nextSequence: UInt64 = 1
     private var sleepingHeartbeat = false
     private var takeoverTask: Task<Void, Never>?
+    /// Teleports whose ACK must not start a hold because another owner takes
+    /// over the same position at once (the origin of an automatic wander). A
+    /// hold racing it would install its own lease and wipe the wander.
+    public var suppressesHold: @MainActor (UUID) -> Bool = { _ in false }
 
     /// The held coordinate is resent this often. The open location channel
     /// keeps the position; the resend proves liveness and feeds background
@@ -176,7 +180,8 @@ public final class PositionHoldController: ObservableObject {
         // The service publishes the acknowledgement from the same main-actor
         // completion stack that clears nativeBusy. Start asynchronously and
         // let beginPositionHold perform the atomic post-ACK admission check.
-        guard foreground, phase == .idle || phase == .completed else { return }
+        guard foreground, phase == .idle || phase == .completed,
+              !suppressesHold(acknowledgement.intent.id) else { return }
         start(after: acknowledgement)
     }
 
