@@ -111,9 +111,6 @@ public final class JoystickOriginController: ObservableObject {
         if request.awaitsFix, host.isJoystickMode() { request.isSetting = false }
     }
 
-    /// The service rejected the fix as stale or inaccurate.
-    public func fixRejected() { }
-
     /// The service accepted a real fix; `coordinate` is nil when it is not a valid coordinate.
     public func fixAccepted(_ coordinate: GeoCoordinate?) {
         guard request.awaitsFix, host.isJoystickMode() else { return }

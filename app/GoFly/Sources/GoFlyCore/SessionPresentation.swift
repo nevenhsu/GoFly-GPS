@@ -35,8 +35,9 @@ public struct MovementConnectionRecovery: Equatable, Sendable {
     public let failure: DeviceServiceFailure
     public let resumesTask: Bool
     /// A user Retry is explicit. An automatic request (false) is the one silent
-    /// repair attempt per task lease, made after the device keeper's own
-    /// reconnect failed or ran out of budget; a failure then waits for Retry.
+    /// repair attempt per task lease that `ConnectionRecoveryController` makes
+    /// after a failed write (the device keeper never retries); a failure then
+    /// waits for Retry.
     public let explicitlyRequested: Bool
 }
 

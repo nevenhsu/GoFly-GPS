@@ -76,8 +76,7 @@ public final class DeviceSessionKeeper {
     /// the recovery controller decides about the single automatic repair.
     public func deliver(_ coordinate: GeoCoordinate, dispatch: PointDispatchGate,
                         using link: any DeviceSessionLink) -> PointDeliveryOutcome {
-        attempt(coordinate, dispatch: dispatch, recovering: false,
-                deadline: now() &+ pointBudgetNanoseconds, link: link)
+        attempt(coordinate, dispatch: dispatch, deadline: now() &+ pointBudgetNanoseconds, link: link)
     }
 
     /// The adapter closed the session itself (clear, rebuild).
@@ -90,17 +89,13 @@ public final class DeviceSessionKeeper {
         mayHoldSimulatedPosition = false
     }
 
-    private func attempt(_ coordinate: GeoCoordinate, dispatch: PointDispatchGate, recovering: Bool,
+    private func attempt(_ coordinate: GeoCoordinate, dispatch: PointDispatchGate,
                          deadline: UInt64, link: any DeviceSessionLink) -> PointDeliveryOutcome {
-        if recovering {
-            guard dispatch.hasDispatched else { return .notSent(.operationCancelled) }
-        } else {
-            guard case .available = dispatch.state else { return .notSent(.operationCancelled) }
-        }
+        guard case .available = dispatch.state else { return .notSent(.operationCancelled) }
         discardIfIdle(link)
         let wasOwned = link.ownsSession
         let result = link.attemptPoint(to: coordinate, dispatch: dispatch,
-                                       recovering: recovering, deadline: deadline)
+                                       recovering: false, deadline: deadline)
         if result.reachedDispatch, dispatch.hasDispatched { mayHoldSimulatedPosition = true }
         if shouldRebuild(after: result.outcome, sessionWasOwned: wasOwned) {
             close(link)

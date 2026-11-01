@@ -990,7 +990,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
 
     public func continuationDidBecomeUnavailable() {
         if isRecoveringConnection { _ = pause() }
-                releaseForUnavailable(reason: .backgroundUnavailable)
+        releaseForUnavailable(reason: .backgroundUnavailable)
     }
 
     private func releaseForUnavailable(reason: RouteSuspensionReason) {

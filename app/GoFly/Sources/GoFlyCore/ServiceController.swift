@@ -1553,7 +1553,8 @@ extension ServiceController {
     }
 
     /// Resends the held position without changing the task, its lease or the
-    /// displayed position. A failed write requests the one silent repair.
+    /// displayed position. A dispatched write without an ACK greys the arrow;
+    /// the next write decides about a repair.
     @discardableResult
     public func sendKeepAlive() async -> Bool {
         guard let target = keepAliveTarget else { return false }

@@ -1994,7 +1994,6 @@ struct GoFlyMapView: View {
             return
         }
         guard let accepted = service.realLocation else {
-            joystickOrigin.fixRejected()
             location.rejectedFix()
             return
         }
