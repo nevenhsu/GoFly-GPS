@@ -48,9 +48,7 @@ import GoFlyMacCore
             #expect(await waitForRequests(1, runner))
             let preflight = try #require(await runner.requests.last)
             await runner.returnData(try response(preflight, stage: "preflight", outcome: "ready"))
-            #expect(await waitUntilIdle(model))
-            model.apply()
-            #expect(await waitForRequests(2, runner))
+            #expect(await waitForRequests(2, runner), "A ready preflight continues straight into apply.")
             let apply = try #require(await runner.requests.last)
             await runner.returnData(try response(apply, stage: stage, outcome: code == nil ? "ready" : "unknown", code: code))
             #expect(await waitUntilIdle(model))
@@ -87,9 +85,6 @@ import GoFlyMacCore
         let preflight = try #require(await runner.requests.first)
         #expect(preflight.setupID == original.setupID)
         await runner.returnData(try response(preflight, stage: "preflight", outcome: "ready"))
-        #expect(await waitUntilIdle(model))
-        #expect(model.canApply)
-        model.apply()
         guard await waitForRequests(2, runner) else { Issue.record("Apply did not reach the runner"); return }
         let applying = try #require(await runner.requests.last)
         #expect(applying.options == options)
@@ -211,7 +206,7 @@ import GoFlyMacCore
         #expect(app.route == .install, "A corrupt transaction must remain reachable without environment readiness.")
     }
 
-    @Test func devicePickerRetiresUnappliedPreflight() async throws {
+    @Test func readyPreflightContinuesIntoApplyWithoutASecondClick() async throws {
         let runner = HeldSetupRunner()
         let setup = MacSetupModel(runner: runner, journal: ModelJournal(nil))
         let app = MacAppModel(live: SetupReadOnlyChecker(), setup: setup)
@@ -223,12 +218,49 @@ import GoFlyMacCore
         guard await waitForRequests(1, runner) else { Issue.record("Preflight did not reach the runner"); return }
         let request = try #require(await runner.requests.last)
         await runner.returnData(try response(request, stage: "preflight", outcome: "ready"))
-        #expect(await waitUntilIdle(setup))
-        #expect(setup.canApply)
+        guard await waitForRequests(2, runner) else { Issue.record("Apply did not follow the ready preflight"); return }
+        let apply = try #require(await runner.requests.last)
+        #expect(apply.action == .apply && apply.setupID == request.setupID && apply.mode == .install)
         app.openDevices(firstInstall: true)
-        #expect(setup.pendingTransaction == nil && setup.options == nil && setup.snapshot == nil)
-        setup.apply()
-        #expect(await runner.requests.count == 1, "A preflight for the prior selection cannot install after switching devices.")
+        #expect(app.route != .deviceList, "The device list stays locked while apply runs.")
+        await runner.fail(.unavailable)
+        #expect(await waitUntilIdle(setup))
+    }
+
+    @Test func rescanAfterSwappingPhonesLeavesTheUnfinishedPhoneForTheNewOne() async throws {
+        let original = try MacSetupTransactionIdentity(setupID: UUID(), deviceID: device, teamID: "ABCDE12345")
+        let journal = ModelJournal(original)
+        let setup = MacSetupModel(runner: HeldSetupRunner(), journal: journal)
+        let swapped = "00008110-ffffffffffffffff"
+        let app = MacAppModel(live: SwappedPhoneChecker(phoneID: swapped, phoneName: "Lilian’s iPhone"), setup: setup,
+                              preferences: UserDefaults(suiteName: "gofly.tests.\(UUID().uuidString)")!)
+        await app.restoreSetup()
+        app.checkEnvironment()
+        for _ in 0..<200 where app.busy { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(app.devicePageState == .restartRequired)
+        app.refreshDevices()
+        for _ in 0..<400 where app.busy || app.inspection == nil { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(app.selectedID == swapped)
+        #expect(app.devicePageState == .readyToInstall, "The new phone starts fresh instead of showing Start over.")
+        #expect(!setup.hasUnfinishedTransaction)
+        #expect(try await journal.readPendingTransaction() == original, "Only the producer's next apply abandons the old journal.")
+        #expect(app.sidebarDevices.map(\.displayName) == ["Lilian’s iPhone"])
+    }
+
+    @Test func startOverKeepsThePhoneInTheSidebar() async throws {
+        let runner = HeldSetupRunner()
+        let original = try MacSetupTransactionIdentity(setupID: UUID(), deviceID: device, teamID: "ABCDE12345")
+        let setup = MacSetupModel(runner: runner, journal: ModelJournal(original))
+        let app = MacAppModel(live: SetupReadOnlyChecker(), setup: setup,
+                              preferences: UserDefaults(suiteName: "gofly.tests.\(UUID().uuidString)")!)
+        await app.restoreSetup()
+        #expect(app.sidebarDevices.map(\.id) == [device])
+        app.restartInterruptedSetup()
+        guard await waitForRequests(1, runner) else { Issue.record("Restart preflight did not reach the runner"); return }
+        #expect(!setup.hasUnfinishedTransaction && setup.isBusy)
+        #expect(app.sidebarDevices.map(\.id) == [device], "The phone being restarted stays listed.")
+        await runner.fail(.unavailable)
+        #expect(await waitUntilIdle(setup))
     }
 
     @Test func onlyObservedCompleteJournalCanReleaseTheLocalSelection() async throws {
@@ -265,8 +297,6 @@ import GoFlyMacCore
         guard await waitForRequests(2, runner) else { Issue.record("New preflight did not reach the runner"); return }
         let next = try #require(await runner.requests.last)
         await runner.returnData(try response(next, stage: "preflight", outcome: "ready"))
-        #expect(await waitUntilIdle(setup))
-        setup.apply()
         guard await waitForRequests(3, runner) else { Issue.record("New apply did not reach the runner"); return }
         await runner.fail(.unavailable)
         #expect(await waitUntilIdle(setup))
@@ -287,10 +317,8 @@ import GoFlyMacCore
         guard await waitForRequests(1, runner) else { Issue.record("Preflight did not reach the runner"); return }
         let preflight = try #require(await runner.requests.last)
         await runner.returnData(try response(preflight, stage: "preflight", outcome: "ready"))
-        #expect(await waitUntilIdle(setup))
-        await journal.set(original)
-        setup.apply()
         guard await waitForRequests(2, runner) else { Issue.record("Apply did not reach the runner"); return }
+        await journal.set(original)
         guard await waitForRequests(3, runner, attempts: 800) else {
             await runner.fail(.cancelled)
             _ = await waitUntilIdle(setup)
@@ -615,10 +643,32 @@ private struct RenewChecker: MacChecking {
         case .inspect:
             payload = ["device": ["id": "00008110-001234567890abcd", "name": "iPhone", "transport": "usb"],
                        "developerMode": true, "installed": true, "vpnInstalled": true]
+        case .registeredDevices:
+            payload = ["devices": []]
         }
         return try JSONSerialization.data(withJSONObject: [
             "requestID": request.requestID, "status": "ok", "payload": payload
         ])
+    }
+}
+
+/// A Mac with one USB phone attached that has no GoFly yet.
+private struct SwappedPhoneChecker: MacChecking {
+    let phoneID: String
+    let phoneName: String
+    func check(_ request: CheckRequest) async throws -> Data {
+        let payload: [String: Any]
+        switch request.action {
+        case .devices:
+            payload = ["devices": [["id": phoneID, "name": "", "transport": "usb"]]]
+        case .inspect:
+            payload = ["device": ["id": phoneID, "name": phoneName, "transport": "usb"],
+                       "developerMode": true, "installed": false, "vpnInstalled": false]
+        default:
+            return try await SetupReadOnlyChecker().check(request)
+        }
+        return try JSONSerialization.data(withJSONObject: ["requestID": request.requestID,
+                                                           "status": "ok", "payload": payload])
     }
 }
 

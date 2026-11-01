@@ -223,7 +223,8 @@
 "device.d14.stage.done" = "Done";
 "device.d14.stage.interrupted" = "Interrupted";
 "device.d14.stage.pending" = "Not started";
-"device.d14.sidebar" = "Signing renewal incomplete";
+"device.d14.sidebar.renew" = "Signing renewal incomplete";
+"device.d14.sidebar.install" = "Installation incomplete";
 "device.d14.restart" = "Start over";
 "device.team" = "Development team";
 "device.team.pending" = "No team selected";
@@ -377,6 +378,10 @@
 "auto-renew.notification.failed.title" = "GoFly could not renew signing automatically";
 "auto-renew.notification.failed.body" = "Open GoFly to check the connection or restart using USB.";
 "setup.failure.generic" = "Installation is incomplete. Check the device status again.";
+"setup.failure.deviceLimit" = "Your Apple account has reached its limit of registered iPhones, so Apple won’t sign GoFly for this phone. Use an iPhone already registered to this account, or remove a phone from the account and try again.";
+"setup.deviceLimit.title" = "Phones registered to this account (%d)";
+"setup.deviceLimit.unnamed" = "iPhone (name unknown)";
+"setup.deviceLimit.note" = "Read from this account’s signing profiles on this Mac. GoFly can’t remove phones from a free account; once a slot frees up, choose “Start over”.";
 "setup.sidebar.installing" = "Installing…";
 "setup.sidebar.waiting" = "Waiting for iPhone…";
 "setup.stage.preflight" = "Installation check";

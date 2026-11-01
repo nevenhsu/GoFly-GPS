@@ -76,9 +76,9 @@ GoFly 只打開 App Store、Xcode、系統設定和網頁，不代替使用者�
 
 ## 5. 裝置（日常唯一的畫面）
 
-**簽署有效期**：剩餘天數取自描述檔到期日（以安裝時間點簽出）。免費 Personal Team 為 7 天，到期後須重新安裝；付費開發者帳號依其描述檔（約 1 年）顯示，不壓成 7 天。Mac 與 iOS 顯示同一個值。
+**簽署有效期**：剩餘天數取自描述檔到期日（以安裝時間點簽出）。免費 Personal Team 為 7 天，到期後須重新安裝；付費開發者帳號依其描述檔（約 1 年）顯示，不壓成 7 天。Mac 與 iOS 顯示同一個值。免費或付費以 Xcode 帳號記錄的 `isFreeProvisioningTeam` 判斷，不看描述檔日期（2026-11 實測：免費 Personal Team 的描述檔仍標一年到期）：免費 Team 的到期日 = 簽名時間（`codesign` 的 Signed Time，讀不到時用描述檔建立時間）+ 7 天，且不晚於描述檔到期日；付費或無法判斷時用描述檔到期日。setup producer 檢查 App 時就套用這條規則，所以交給 iPhone 的啟用收據、Mac 顯示與自動延長簽名都用同一個日期。
 
-App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標章、剩餘天數）和「↻ 重新搜尋」，底部顯示 Mac 環境狀態（例：「Mac 環境已就緒 · Neven（個人）」，點了可以看檢查結果或換 Team）。右側顯示選取那支手機的狀態，**同一時間只有一個主要按鈕**：
+App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標章、剩餘天數）和「↻ 重新搜尋」。裝置名稱用手機「設定 › 一般 › 關於本機 › 名稱」：掃描時透過既有 USB 配對讀取（不配對、不跳信任），檢查手機後依手機記住；讀不到（未信任）才顯示「iPhone · …末六碼」。底部顯示 Mac 環境狀態（例：「Mac 環境已就緒 · Neven（個人）」，點了可以看檢查結果或換 Team）。右側顯示選取那支手機的狀態，**同一時間只有一個主要按鈕**：
 
 | 手機狀態 | 連線 | 主要按鈕 | 畫面 |
 | --- | --- | --- | --- |
@@ -92,7 +92,7 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 
 ### 5.1 首次安裝（只限 USB）
 
-1. **準備清單**（D02–D04，同一頁）：USB 已連接 → 已信任這部 Mac → 開發者模式已開啟。卡住的那一項顯示 iPhone 畫面示意圖與「點這裡」。全部打勾後出現「安裝 GoFly」，按下就開始；**沒有另外的確認頁**，裝置名稱、iOS 版本與 Team 在同一頁顯示。
+1. **準備清單**（D02–D04，同一頁）：USB 已連接 → 已信任這部 Mac → 開發者模式已開啟。卡住的那一項顯示 iPhone 畫面示意圖與「點這裡」。全部打勾後出現「安裝 GoFly」，按下就開始；**沒有另外的確認頁**，裝置名稱、iOS 版本與 Team 在同一頁顯示。安裝前的唯讀檢查（preflight）通過後直接進入安裝，不再要求第二次按「安裝」；「重新開始」相同。Mac App 的安裝、延長簽名、重新開始與重試一律帶 `allowProvisioningUpdates: true`，讓 Xcode 更新描述檔；USB 時另以 `-destination platform=iOS,id=<UDID>` 指名這支手機並加 `-allowProvisioningDeviceRegistration`，Xcode 才會把新手機登記到所選 Team（單靠 `-allowProvisioningUpdates` 不會登記）；Apple 回報 Team 登記的 iPhone 已達上限時，建置以 `device-limit-reached` 停在建置階段並說明要改用已登記的手機或先移除一支，不歸為一般失敗；同一頁列出佔用名額的手機（唯讀 `registeredDevices`：取自這部 Mac 上該 Team 的 Xcode 描述檔，名稱來自 Xcode 裝置清單或 GoFly 記住的名稱，未知時顯示「名稱不明」與末六碼）。GoFly 不提供刪除：免費 Team 沒有 Apple 的裝置管理頁或 API，私有 Apple 服務需要 GoFly 接手 Apple ID 登入，違反本規格；空出名額後按「重新開始」；描述檔不含這支手機時建置會以 `identity-mismatch` 停在建置階段。
 2. **安裝中**（D05）：建置 GoFly → 簽名 → 安裝到 iPhone → 交付配對 → 準備裝置支援。第一次簽名跳出鑰匙圈視窗時，在同一頁顯示示意圖（Mac 登入密碼、點「永遠允許」）。
 3. **在 iPhone 完成設定**（D06）：信任開發者（免費 Team）→ 安裝 LocalDevVPN → 開啟 GoFly。Mac 讀到啟用回報後才前進。
 4. **完成**（D07）：顯示實際讀回的到期日，以及「Mac App 開著時會自動延長簽名」。
@@ -119,6 +119,9 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 - Setup producer 以一筆全域現行 journal 序列化交易。`apply` 遇到任何裝置留下的未完成 journal 時，會先在原交易資料夾中耐久封存為 `journal.abandoned.json`，再移除現行指標並建立新交易；不刪除 App、配對檔或原交易資料夾。只有已證明完成的交易可封存為 `journal.completed.json`；同一 setupID 重送仍衝突。iOS 消費者在讀取前原子 rename `incoming.plist` 為 `incoming.plist.consuming`；Mac 作廢舊交接時原子 rename 到以舊交易 ID 標記的隔離路徑，再驗證並只刪除該隔離檔。若 iOS 已認領、出現替換檔或狀態不明，producer fail closed，不封存舊交易或刪除使用者資料。
 - 手機上遺留的握手控制檔（`readback-request.json`、`readback-response.json`、`incoming.json`）：「重新開始」時自動處理，不需使用者操作。完整且屬於現行啟用收據的一組依原規則封存到 `retired/<setupID>-<nonce>`；不完整（中斷）、不屬於現行收據、或封存名稱已被先前嘗試佔用的，**移入 `retired/abandoned-<uuid>` 後以全新握手檔繼續**，只搬移、不刪除，啟用收據、配對檔、支援映像與使用者資料不動；沒有控制檔時直接繼續。待消費的配對信封（`incoming.plist`）或任何 `.staging` 檔仍照原規則 fail closed。2026-10-31 依使用者要求由原先的 fail closed 改為自動修正，Python 測試通過，尚未用實機驗證。
 - 重新開 Mac App 時，如果上次有未完成的操作，同樣顯示 D14，不提供「繼續」。
+- 安裝、延長簽名或「重新開始」進行中，以及 D14 時，操作中的那支手機一律留在側欄，即使這次還沒掃描到它。
+- D14 側欄狀態依操作類型：首次安裝顯示「安裝未完成」，延長簽名顯示「延長簽名未完成」。
+- 未完成的操作只鎖住它自己那支手機。D14 時「重新搜尋」仍會更新清單；若原手機已拔掉、改接另一支 USB 手機，就自動選取新手機並從頭檢查（右側回到 D02–D04，不停在「重新開始」）；也可以直接點側欄的另一支手機。原交易的 journal 不在 Mac App 端改動，由下一次 `apply` 依上列規則封存為 `journal.abandoned.json`；若在那之前重開 Mac App，仍顯示原手機的 D14。
 
 ## 6. 畫面清單（Figma V1）
 

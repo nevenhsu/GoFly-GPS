@@ -76,6 +76,7 @@ public final class MacSetupModel {
     @ObservationIgnored private var journalIdentity: MacSetupTransactionIdentity?
     @ObservationIgnored private var previousCompletedIdentity: MacSetupTransactionIdentity?
     @ObservationIgnored private var restartSourceIdentity: MacSetupTransactionIdentity?
+    @ObservationIgnored private var setAsideIdentity: MacSetupTransactionIdentity?
 
     public init(runner: any MacSetupRunning, journal: any MacSetupJournalReading) {
         self.runner = runner
@@ -91,6 +92,28 @@ public final class MacSetupModel {
         journalIdentity != nil && snapshot?.canReplaceCompletedTransaction != true
     }
     public var locksDevice: Bool { isBusy || journalBlocked || hasUnfinishedTransaction }
+    /// An unfinished transaction locks only its own phone; another phone may
+    /// still be listed and chosen (§5.4).
+    public var locksOtherDevices: Bool { isBusy || journalBlocked }
+
+    /// Sets the unfinished D14 projection aside so another phone can start
+    /// fresh. The durable journal stays; the producer abandons it on the next
+    /// apply, and a relaunch before then shows D14 again.
+    public func setAsideUnfinished() {
+        guard isRestored, !isBusy, !journalBlocked, hasUnfinishedTransaction else { return }
+        setAsideIdentity = journalIdentity
+        journalIdentity = nil
+        restartSourceIdentity = nil
+        pendingTransaction = nil
+        options = nil
+        snapshot = nil
+        progressStage = nil
+        failure = nil
+        mode = .install
+        applyAfterPreflight = false
+        isAutomaticRenewal = false
+        autoRenewState = .idle
+    }
 
     public func resetSelection() {
         guard isRestored, !isBusy, !journalBlocked,
@@ -147,7 +170,9 @@ public final class MacSetupModel {
     }
     public func preflight() {
         guard journalIdentity == nil, options != nil else { return }
-        applyAfterPreflight = mode == .renew
+        // Pressing Install or Start over is the user's go-ahead; a ready
+        // preflight continues straight into apply (§5.1, §5.4).
+        applyAfterPreflight = true
         start(.preflight)
     }
     public func beginRenew(deviceID: String, options: MacSetupOptions,
@@ -264,10 +289,14 @@ public final class MacSetupModel {
                 do {
                     let actual = try await journal.readPendingTransaction()
                     if let actual, actual != identity {
-                        if actual == restartSourceIdentity, action == .apply,
-                           observed?.failure != nil, observed?.stage == .preflight,
-                           observed?.installationConfirmed == false,
-                           observed?.pairingImported == false, observed?.supportObserved == false {
+                        let rejectedBeforeJournal = action == .apply && observed?.failure != nil
+                            && observed?.stage == .preflight && observed?.installationConfirmed == false
+                            && observed?.pairingImported == false && observed?.supportObserved == false
+                        if actual == setAsideIdentity, rejectedBeforeJournal {
+                            // The other phone's unfinished record is untouched;
+                            // keep this phone's own retryable failure.
+                            operationFailure = observed?.failure
+                        } else if actual == restartSourceIdentity, rejectedBeforeJournal {
                             journalIdentity = actual
                             pendingTransaction = actual
                             options = nil
@@ -306,7 +335,7 @@ public final class MacSetupModel {
                         if actual != nil {
                             options = nil
                             previousCompletedIdentity = nil
-                            if actual == identity { restartSourceIdentity = nil }
+                            if actual == identity { restartSourceIdentity = nil; setAsideIdentity = nil }
                         }
                     }
                 } catch {

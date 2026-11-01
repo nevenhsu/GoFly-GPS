@@ -82,6 +82,22 @@ class ProtocolB1Tests(unittest.TestCase):
         self.assertFalse(bundle_id_matches_team("com.neven.gofly.abcdefghik", "ABCDEFGHIJ"))
         self.assertFalse(bundle_id_matches_team("com.neven.gofly.other", "ABCDEFGHIJ"))
 
+    def test_free_team_signing_lasts_seven_days_from_signing(self) -> None:
+        profile_expiry = dt.datetime(2027, 10, 26, 15, 38, tzinfo=dt.timezone.utc)
+        created = dt.datetime(2026, 10, 26, 15, 38, tzinfo=dt.timezone.utc)
+        profile = {"CreationDate": created}
+        shown = b"Authority=Apple Development: X\nSigned Time=Nov 1, 2026 at 10:24:18\xe2\x80\xafPM\n"
+        signed = dt.datetime(2026, 11, 1, 22, 24, 18).astimezone(dt.timezone.utc)
+
+        free = FormalArtifactValidator(team_is_free=lambda _team: True)
+        self.assertEqual(free.signing_expiry(profile_expiry, profile, shown, "ABCDEFGHIJ"),
+                         signed + dt.timedelta(days=7))
+        self.assertEqual(free.signing_expiry(profile_expiry, profile, b"", "ABCDEFGHIJ"),
+                         created + dt.timedelta(days=7), "Without a signing time the profile's creation anchors it.")
+        for lookup in (lambda _team: False, lambda _team: None, None):
+            validator = FormalArtifactValidator(team_is_free=lookup)
+            self.assertEqual(validator.signing_expiry(profile_expiry, profile, shown, "ABCDEFGHIJ"), profile_expiry)
+
     def test_xcode_build_uses_the_selected_team_bundle_identifier(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -118,6 +134,21 @@ class ProtocolB1Tests(unittest.TestCase):
                 self.assertIn("DEVELOPMENT_TEAM=" + team_id, arguments)
                 self.assertIn("PRODUCT_BUNDLE_IDENTIFIER=" + expected, arguments)
                 self.assertIn("GOFLY_BUNDLE_ID=" + expected, arguments)
+                self.assertNotIn("-allowProvisioningDeviceRegistration", arguments)
+
+            config = SetupConfiguration(
+                workspace, workspace / "work" / "mac-setup-env" / "bin" / "python",
+                developer, project, bundle_id_for_team("ABCDE12345"), "GoFly", root / "state",
+                development_mode=True,
+            )
+            with mock.patch("setup_adapters.subprocess.run", side_effect=fake_xcodebuild):
+                PinnedXcodeProcessAdapter(config).build(
+                    str(uuid.uuid4()), "ABCDE12345", True, register_device_id="00008160-00180cc03e00000a")
+            arguments = seen[-1]
+            self.assertIn("-allowProvisioningUpdates", arguments)
+            self.assertIn("-allowProvisioningDeviceRegistration", arguments)
+            destination = arguments[arguments.index("-destination") + 1]
+            self.assertEqual(destination, "platform=iOS,id=00008160-00180CC03E00000A")
 
     def test_json_constants_nan_and_infinity_are_safe_invalid_request(self) -> None:
         with self.assertRaisesRegex(SetupBridgeError, "invalid-request"):

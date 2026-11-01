@@ -723,7 +723,8 @@ class DeviceAdapter(Protocol):
 
 
 class ProcessAdapter(Protocol):
-    def build(self, setup_id: str, team_id: str, allow_provisioning_updates: bool = False) -> Path: ...
+    def build(self, setup_id: str, team_id: str, allow_provisioning_updates: bool = False,
+              register_device_id: str | None = None) -> Path: ...
 
 
 class SupportAdapter(Protocol):
@@ -751,7 +752,8 @@ class PinnedXcodeProcessAdapter:
         except OSError:
             pass
 
-    def build(self, setup_id: str, team_id: str, allow_provisioning_updates: bool = False) -> Path:
+    def build(self, setup_id: str, team_id: str, allow_provisioning_updates: bool = False,
+              register_device_id: str | None = None) -> Path:
         try:
             target_bundle_id = self.config.target_bundle_id
             if not bundle_id_matches_team(target_bundle_id, team_id):
@@ -802,6 +804,11 @@ class PinnedXcodeProcessAdapter:
             ]
             if allow_provisioning_updates:
                 arguments.append("-allowProvisioningUpdates")
+                # Profile updates alone never add a phone; Xcode registers only
+                # a named destination device, so a new phone needs both.
+                if register_device_id is not None:
+                    arguments += ["-destination", "platform=iOS,id=" + register_device_id.upper(),
+                                  "-allowProvisioningDeviceRegistration"]
             environment = os.environ.copy()
             environment["DEVELOPER_DIR"] = str(self.config.developer_directory)
             try:
@@ -820,7 +827,11 @@ class PinnedXcodeProcessAdapter:
             except OSError:
                 raise SetupBridgeError("operation-failed") from None
             if result.returncode != 0:
-                self._record_build_errors(transaction.parent, result.stdout + result.stderr)
+                output = result.stdout + result.stderr
+                self._record_build_errors(transaction.parent, output)
+                # Apple's per-team phone limit needs the user's action, not a retry.
+                if b"maximum number of registered iPhone devices" in output:
+                    raise SetupBridgeError("device-limit-reached")
                 raise SetupBridgeError("operation-failed")
             output = transaction / f"{TARGET_NAME}.app"
             if output.is_symlink() or not output.is_dir():
@@ -832,12 +843,70 @@ class PinnedXcodeProcessAdapter:
             raise SetupBridgeError("storage-unavailable") from None
 
 
+FREE_TEAM_SIGNING_DAYS = 7
+
+
+def xcode_team_is_free(team_id: str) -> bool | None:
+    """Read Xcode's own account record: True for a free Personal Team.
+
+    None means the team or the record could not be read.
+    """
+    try:
+        result = subprocess.run(
+            ["/usr/bin/defaults", "export", "com.apple.dt.Xcode", "-"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=20, check=False,
+        )
+        if result.returncode:
+            return None
+        values = plistlib.loads(result.stdout)
+    except Exception:
+        return None
+    groups = values.get("IDEProvisioningTeamByIdentifier") if isinstance(values, Mapping) else None
+    if not isinstance(groups, Mapping):
+        return None
+    for group in groups.values():
+        for item in group if isinstance(group, list) else []:
+            if isinstance(item, Mapping) and item.get("teamID") == team_id:
+                free = item.get("isFreeProvisioningTeam")
+                return free if isinstance(free, bool) else None
+    return None
+
+
+def _signed_time(shown: bytes) -> dt.datetime | None:
+    """Parse codesign's local "Signed Time=Nov 1, 2026 at 10:24:18 PM"."""
+    match = re.search(rb"^Signed Time=(.+)$", shown, re.MULTILINE)
+    if match is None:
+        return None
+    text = " ".join(match.group(1).decode("utf-8", "replace").split())
+    try:
+        local = dt.datetime.strptime(text, "%b %d, %Y at %I:%M:%S %p")
+    except ValueError:
+        return None
+    return local.astimezone(dt.timezone.utc)
+
+
 class FormalArtifactValidator:
     """Validate a GoFly signed artifact without using LocalGo globals."""
 
-    def __init__(self, *, command_runner: Any = None, now: dt.datetime | None = None):
+    def __init__(self, *, command_runner: Any = None, now: dt.datetime | None = None,
+                 team_is_free: Any = None):
         self.command_runner = command_runner or self._run_command
         self.now = now or dt.datetime.now(dt.timezone.utc)
+        self.team_is_free = team_is_free
+
+    def signing_expiry(self, profile_expiry: dt.datetime, profile: Mapping[str, Any],
+                       shown: bytes, team_id: str) -> dt.datetime:
+        """A free Personal Team app lasts 7 days from signing, whatever the
+        profile's own date says; a paid team uses the profile date."""
+        if self.team_is_free is None or self.team_is_free(team_id) is not True:
+            return profile_expiry
+        anchor = _signed_time(shown) or profile.get("CreationDate")
+        if not isinstance(anchor, dt.datetime):
+            return profile_expiry
+        if anchor.tzinfo is None:
+            anchor = anchor.replace(tzinfo=dt.timezone.utc)
+        return min(profile_expiry, anchor + dt.timedelta(days=FREE_TEAM_SIGNING_DAYS))
 
     @staticmethod
     def _run_command(arguments: Sequence[str], *, timeout: int = 30) -> bytes:
@@ -956,6 +1025,7 @@ class FormalArtifactValidator:
                 info, signed, profile, device_id=device_id, team_id=team_id,
                 target_bundle_id=target_bundle_id, now=self.now,
             )
+            expiry = self.signing_expiry(expiry, profile, shown, team_id)
             executable_size, executable_hash = _stream_hash(executable_path)
             profile_size, profile_hash = _stream_hash(profile_path, max_bytes=MAX_MANIFEST_BYTES)
             artifact_size, artifact_hash = _tree_hash(path)
@@ -1491,7 +1561,7 @@ class PinnedPymobiledeviceAdapter:
             # Reinspect the transaction-private immutable artifact before any
             # device client is opened.  The producer has already validated it;
             # this adapter boundary independently closes the source TOCTOU.
-            current = FormalArtifactValidator().inspect(
+            current = FormalArtifactValidator(team_is_free=xcode_team_is_free).inspect(
                 artifact.path, device_id=device_id, team_id=artifact.team_id,
                 target_bundle_id=artifact.bundle_id,
             )

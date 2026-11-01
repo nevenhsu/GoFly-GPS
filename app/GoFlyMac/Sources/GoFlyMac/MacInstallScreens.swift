@@ -30,6 +30,7 @@ struct MacInstallScreen: View {
         .background(GoFlyStyle.canvas)
         .accessibilityIdentifier("install-\(screenState.rawValue)")
         .task(id: preflightKey) { await startPreflightIfNeeded() }
+        .task(id: hitDeviceLimit) { if hitDeviceLimit { model.loadRegisteredDevices() } }
         .task(id: setup.autoRenewState) {
             guard setup.isAutomaticRenewal, setup.autoRenewState == .failed,
                   !setup.hasRecordedTransaction,
@@ -369,6 +370,39 @@ struct MacInstallScreen: View {
                 Text("\(installText("setup.incomplete.progress")) \(stageTitle(snapshot.stage))")
                     .font(GoFlyStyle.font(13)).foregroundStyle(GoFlyStyle.muted)
             }
+            if hitDeviceLimit, let devices = model.registeredDevices, !devices.isEmpty {
+                registeredDeviceList(devices)
+            }
+        }
+    }
+
+    private var hitDeviceLimit: Bool { setup.failure == .service("device-limit-reached") }
+
+    /// Phones holding this Team's registration slots. GoFly cannot remove
+    /// them; the list only shows which phones are using the slots.
+    private func registeredDeviceList(_ devices: [RegisteredDevice]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(String(format: installText("setup.deviceLimit.title"), devices.count))
+                .font(GoFlyStyle.font(13, bold: true))
+            VStack(spacing: 0) {
+                ForEach(Array(devices.enumerated()), id: \.element.id) { index, device in
+                    if index > 0 { InstallRule().padding(.leading, 20) }
+                    HStack(spacing: 16) {
+                        Text(device.name.isEmpty ? installText("setup.deviceLimit.unnamed") : device.name)
+                            .font(GoFlyStyle.font(13, bold: !device.name.isEmpty))
+                            .foregroundStyle(device.name.isEmpty ? GoFlyStyle.muted : GoFlyStyle.ink)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Text("…" + device.id.suffix(6).uppercased())
+                            .font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
+                    }
+                    .padding(.horizontal, 20).frame(minHeight: 44)
+                }
+            }
+            .background(GoFlyStyle.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            Text(installText("setup.deviceLimit.note"))
+                .font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -533,7 +567,7 @@ struct MacInstallScreen: View {
         await setup.retryBlockedJournal()
         guard let device = selectedDevice,
               let teamID = model.selectedTeam?.teamID,
-              let options = try? MacSetupOptions(teamID: teamID) else { return }
+              let options = try? MacSetupOptions(teamID: teamID, allowProvisioningUpdates: true) else { return }
         setup.resetSelection()
         do {
             try setup.configure(deviceID: device.id, options: options)
@@ -548,7 +582,7 @@ struct MacInstallScreen: View {
               setup.snapshot == nil, setup.failure == nil,
               let device = selectedDevice,
               let teamID = model.selectedTeam?.teamID,
-              let options = try? MacSetupOptions(teamID: teamID) else { return }
+              let options = try? MacSetupOptions(teamID: teamID, allowProvisioningUpdates: true) else { return }
         do {
             if setup.options == nil { try setup.configure(deviceID: device.id, options: options) }
             setup.preflight()
@@ -576,6 +610,7 @@ struct MacInstallScreen: View {
             case "app-already-installed": installText("setup.failure.alreadyInstalled")
             case "handoff-unknown": installText("setup.failure.activation")
             case "device-disconnected": installText("setup.failure.disconnected")
+            case "device-limit-reached": installText("setup.failure.deviceLimit")
             case "wifi-device-not-found", "wifi-pairing-unknown", "wifi-support-unavailable", "wifi-renew-unknown":
                 installText("setup.failure.wifi")
             default: installText("setup.failure.generic")

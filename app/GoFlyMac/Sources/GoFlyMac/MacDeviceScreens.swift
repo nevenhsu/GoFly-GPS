@@ -607,7 +607,7 @@ private struct DeviceActionButton: View {
                 .background(surface, in: Capsule())
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain).disabled(!enabled).goFlyRowFocus()
+        .buttonStyle(.plain).disabled(!enabled).goFlyRowFocus(Capsule())
     }
 
     private var surface: Color {

@@ -11,6 +11,7 @@ Every request has UUID `requestID` and `action`. Success replies echo them with 
 | `environment` | Read-only Mac, Xcode, iOS platform, storage, Apple account and Team observations. Unknown values remain unknown. |
 | `devices` | Read-only USB and Network device observations; duplicate transports remain selectable. |
 | `inspect` | Read-only inspection of one `deviceID` over the explicit `transport` (`usb` or `wifi`). Lockdown uses `autopair=false`. |
+| `registeredDevices` | Read-only list of the phones in one `teamID`'s local Xcode provisioning profiles (`id`, `name` or empty). Names come from `devicectl` when Xcode knows the phone. Never contacts Apple or changes a registration. |
 | `preflight` | Read-only validation for one fresh setup transaction. Does not pair, sign, install, or prepare device support. |
 | `apply` | Explicitly performs the install or renew transaction after preflight. |
 | `status` | Reads the current durable transaction; does not create or repair state. |

@@ -365,8 +365,37 @@ class Bridge:
             selected.setdefault((identity, transport), row)
         return list(selected.values())
 
+    def _usb_device_name(self, raw: list[Any], identity: str) -> str:
+        """Best-effort read of the iPhone's own name over an existing pairing.
+
+        usbmux rows carry no name.  An untrusted or locked phone simply keeps
+        the empty unknown value; this never pairs and never fails the scan.
+        """
+        try:
+            _, serial, connection = self._find_device(raw, identity, "usb")
+            with tempfile.TemporaryDirectory(prefix="goflymac-name-") as temporary:
+                client = self._open_lockdown(serial, connection, Path(temporary))
+                try:
+                    with quiet_dependencies():
+                        name = _await(client.get_value(key="DeviceName"))
+                finally:
+                    with contextlib.suppress(Exception):
+                        _await(getattr(client, "close")())
+        except Exception:
+            return ""
+        return name if isinstance(name, str) and 0 < len(name) <= 200 else ""
+
     def devices(self) -> dict[str, Any]:
-        return {"devices": self._device_rows(self._raw_devices())}
+        raw = self._raw_devices()
+        rows = self._device_rows(raw)
+        names: dict[str, str] = {}
+        for row in rows:
+            if row["transport"] == "usb":
+                names[row["id"]] = row["name"] or self._usb_device_name(raw, row["id"])
+        for row in rows:
+            if not row["name"]:
+                row["name"] = names.get(row["id"], "")
+        return {"devices": rows}
 
     def _teams(self) -> list[dict[str, Any]] | None:
         defaults = Path("/usr/bin/defaults")
@@ -623,6 +652,71 @@ class Bridge:
         return {"ready": ready, "checks": checks, "teams": teams or [], "xcodeVersion": xcode,
                 "projectVersion": project_version, "projectBuild": project_build}
 
+    def _profile_device_ids(self, team_id: str) -> list[str]:
+        """Union of ProvisionedDevices across this team's Xcode-managed profiles.
+
+        Free Personal Teams have no device page, so the local profiles are the
+        only record of which phones hold the team's registration slots.
+        """
+        folders = [Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles",
+                   Path.home() / "Library/MobileDevice/Provisioning Profiles"]
+        found: dict[str, None] = {}
+        for folder in folders:
+            try:
+                if folder.is_symlink() or not folder.is_dir():
+                    continue
+                paths = sorted(folder.glob("*.mobileprovision"))[:200]
+            except OSError:
+                continue
+            for path in paths:
+                if path.is_symlink() or not path.is_file():
+                    continue
+                try:
+                    status, data = _safe_process(["/usr/bin/security", "cms", "-D", "-i", str(path)], timeout=15)
+                    profile = plistlib.loads(data) if status == 0 else None
+                except Exception:
+                    continue
+                if not isinstance(profile, Mapping) or profile.get("TeamIdentifier") != [team_id]:
+                    continue
+                devices = profile.get("ProvisionedDevices")
+                for device in devices if isinstance(devices, list) else []:
+                    identity = _normalized_udid(device)
+                    if identity is not None:
+                        found.setdefault(identity, None)
+        return list(found)
+
+    def _xcode_device_names(self) -> dict[str, str]:
+        """Best-effort names for phones Xcode has seen; empty when unavailable."""
+        if not Path("/usr/bin/xcrun").is_file():
+            return {}
+        env = os.environ.copy()
+        env["DEVELOPER_DIR"] = str(self.config.developer_directory)
+        with tempfile.TemporaryDirectory(prefix="goflymac-devicectl-") as temporary:
+            output = Path(temporary) / "devices.json"
+            try:
+                status, _ = _safe_process(["/usr/bin/xcrun", "devicectl", "list", "devices",
+                                           "--json-output", str(output)], env=env, timeout=30)
+                values = json.loads(output.read_text(encoding="utf-8")) if status == 0 else None
+            except Exception:
+                return {}
+        names: dict[str, str] = {}
+        rows = values.get("result", {}).get("devices", []) if isinstance(values, Mapping) else []
+        for row in rows if isinstance(rows, list) else []:
+            if not isinstance(row, Mapping):
+                continue
+            hardware = row.get("hardwareProperties")
+            properties = row.get("deviceProperties")
+            identity = _normalized_udid(hardware.get("udid")) if isinstance(hardware, Mapping) else None
+            name = properties.get("name") if isinstance(properties, Mapping) else None
+            if identity is not None and isinstance(name, str) and 0 < len(name) <= 200:
+                names[identity] = name
+        return names
+
+    def registered_devices(self, team_id: str) -> dict[str, Any]:
+        identities = self._profile_device_ids(team_id)
+        names = self._xcode_device_names() if identities else {}
+        return {"devices": [{"id": identity, "name": names.get(identity, "")} for identity in identities]}
+
     def _find_device(self, raw: list[Any], target: str, selected_transport: str | None = None) -> tuple[Any, str, str]:
         matches: list[tuple[int, Any, str, str]] = []
         for item in raw:
@@ -779,6 +873,8 @@ class Bridge:
                 payload = self.environment()
             elif action == "devices":
                 payload = self.devices()
+            elif action == "registeredDevices":
+                payload = self.registered_devices(request["teamID"])
             else:
                 from Setup.setup_protocol import bundle_id_for_team
                 payload = self.inspect(request["deviceID"], bundle_id_for_team(request["teamID"]), request.get("transport"))
@@ -794,9 +890,14 @@ def _validate_request(request: Any) -> str:
         raise BridgeError("invalid-request")
     wire_request_id(request)
     action = wire_action(request)
-    if action not in {"environment", "devices", "inspect"}:
+    if action not in {"environment", "devices", "inspect", "registeredDevices"}:
         raise BridgeError("invalid-request")
     allowed = {"requestID", "action"}
+    if action == "registeredDevices":
+        allowed.add("teamID")
+        team_id = request.get("teamID")
+        if not isinstance(team_id, str) or TEAM_RE.fullmatch(team_id) is None:
+            raise BridgeError("invalid-request")
     if action in {"inspect"}:
         allowed.update({"deviceID", "teamID"})
         target = request.get("deviceID")
@@ -988,7 +1089,7 @@ def run_stdio(config: Config, *, stdin: Any = None, setup_producer_factory: Any 
         action = wire_action(value)
     except WireError as error:
         return wire_response(None, status="error", code=error.code)
-    if action in {"environment", "devices", "inspect"}:
+    if action in {"environment", "devices", "inspect", "registeredDevices"}:
         try:
             _validate_request(value)
             return Bridge(config).handle(value)

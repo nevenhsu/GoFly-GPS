@@ -51,7 +51,9 @@ public final class MacAppModel {
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var activeCheckID: UUID?
     @ObservationIgnored private var inspectAfterDeviceRefresh = false
+    private var deviceNames: [String: String]
     private static let selectedTeamKey = "gofly.mac.selectedTeamID"
+    private static let deviceNamesKey = "gofly.mac.deviceNames"
     private static let lastManagedDeviceIDKey = "gofly.mac.lastManagedDeviceID"
     private static let lastManagedDeviceTransportKey = "gofly.mac.lastManagedDeviceTransport"
     private static let hasOpenedBeforeKey = "gofly.mac.hasOpenedBefore"
@@ -65,6 +67,7 @@ public final class MacAppModel {
         self.preferences = preferences
         self.selectedTeamID = preferences.string(forKey: Self.selectedTeamKey)
         self.autoRenewEnabled = preferences.object(forKey: Self.autoRenewEnabledKey) as? Bool ?? true
+        self.deviceNames = preferences.dictionary(forKey: Self.deviceNamesKey) as? [String: String] ?? [:]
         self.isFirstOpen = !preferences.bool(forKey: Self.hasOpenedBeforeKey)
         preferences.set(true, forKey: Self.hasOpenedBeforeKey)
     }
@@ -110,24 +113,61 @@ public final class MacAppModel {
            selectedTransport == nil || inspection.device.transport == selectedTransport { return inspection.device }
         if let device = devices.first(where: {
             $0.id.lowercased() == selectedID?.lowercased() && (selectedTransport == nil || $0.transport == selectedTransport)
-        }) { return device }
+        }) { return withKnownName(device) }
         guard let selectedDeviceSnapshot,
               selectedDeviceSnapshot.id.lowercased() == selectedID?.lowercased(),
               selectedTransport == nil || selectedDeviceSnapshot.transport == selectedTransport else { return nil }
-        return selectedDeviceSnapshot
+        return withKnownName(selectedDeviceSnapshot)
     }
     public var visibleDevices: [ConnectedDevice] { ConnectedDevice.unique(devices, usbOnly: firstInstall) }
     public var sidebarDevices: [ConnectedDevice] {
-        var result = visibleDevices
-        if setup?.hasUnfinishedTransaction == true, let selectedDeviceSnapshot,
+        var result = visibleDevices.map(withKnownName)
+        // The phone being installed or restarted stays listed even when no
+        // scan has seen it (for example "Start over" right after relaunch).
+        if setup?.locksDevice == true, let selectedDeviceSnapshot,
            !result.contains(where: { $0.connectionID == selectedDeviceSnapshot.connectionID }) {
-            result.append(selectedDeviceSnapshot)
+            result.append(withKnownName(selectedDeviceSnapshot))
         }
         if devicePageState == .wifiUnavailable, let selectedDeviceSnapshot,
            !result.contains(where: { $0.connectionID == selectedDeviceSnapshot.connectionID }) {
-            result.append(selectedDeviceSnapshot)
+            result.append(withKnownName(selectedDeviceSnapshot))
         }
         return result
+    }
+
+    /// usbmux rows carry no name; the iPhone's own name (Settings › General ›
+    /// About › Name) arrives with inspection and is remembered per phone.
+    private func withKnownName(_ device: ConnectedDevice) -> ConnectedDevice {
+        guard device.name.isEmpty, let name = deviceNames[device.id.lowercased()] else { return device }
+        return ConnectedDevice(id: device.id, name: name, transport: device.transport,
+                               osVersion: device.osVersion, modelName: device.modelName)
+    }
+
+    /// Phones holding the selected Team's registration slots, shown when Apple
+    /// refuses a new phone. Nil until loaded or when the read fails.
+    public private(set) var registeredDevices: [RegisteredDevice]?
+
+    public func loadRegisteredDevices() {
+        guard let teamID = selectedTeam?.teamID ?? setup?.pendingTransaction?.teamID else { return }
+        Task {
+            let request = CheckRequest(action: .registeredDevices, teamID: teamID)
+            guard let data = try? await live.check(request),
+                  let list = try? ResponseDecoder.decode(data, for: request, as: RegisteredDeviceList.self) else {
+                registeredDevices = nil
+                return
+            }
+            registeredDevices = list.devices.map { device in
+                guard device.name.isEmpty, let name = deviceNames[device.id.lowercased()] else { return device }
+                return RegisteredDevice(id: device.id, name: name)
+            }
+        }
+    }
+
+    private func rememberName(of device: ConnectedDevice) {
+        let key = device.id.lowercased()
+        guard !device.name.isEmpty, deviceNames[key] != device.name else { return }
+        deviceNames[key] = device.name
+        preferences.set(deviceNames, forKey: Self.deviceNamesKey)
     }
     public var availableConnections: [ConnectedDevice] { ConnectedDevice.connectionChoices(devices, usbOnly: firstInstall) }
     public var mayInspect: Bool { ready && selected != nil }
@@ -160,10 +200,11 @@ public final class MacAppModel {
         signingExpiryDate.map(Self.signingDaysLeft)
     }
 
-    /// Free Personal Team signing lasts 7 days: whole days left, rounded up,
-    /// capped at 7. Negative means already expired.
+    /// Whole days left, rounded up. Negative means already expired. The setup
+    /// producer already caps a free Personal Team at 7 days from signing, so a
+    /// paid team's profile date is shown as is.
     static func signingDaysLeft(until date: Date) -> Int {
-        min(7, Int((date.timeIntervalSinceNow / 86_400).rounded(.up)))
+        Int((date.timeIntervalSinceNow / 86_400).rounded(.up))
     }
 
     public func signingExpiryText(for device: ConnectedDevice) -> String {
@@ -274,6 +315,7 @@ public final class MacAppModel {
                 preferences.set(device.transport.rawValue, forKey: Self.lastManagedDeviceTransportKey)
                 self.inspection = inspection
                 inspectionsByConnection[inspection.device.connectionID] = inspection
+                rememberName(of: inspection.device)
                 firstInstall = false
                 autoRenewCheckInProgress = false
                 startRenew(automatic: true)
@@ -359,8 +401,14 @@ public final class MacAppModel {
     }
 
     public func select(_ id: String, transport: ConnectedDevice.Transport? = nil) {
-        guard !busy, !setupLocksDevice,
+        guard !busy, !restoringOperations, setup?.locksOtherDevices != true,
               let choice = availableConnections.first(where: { $0.id == id && (transport == nil || $0.transport == transport) }) else { return }
+        if let pending = setup?.pendingTransaction, setup?.hasUnfinishedTransaction == true {
+            // The unfinished phone keeps D14; another phone starts fresh.
+            guard pending.deviceID != choice.id.lowercased() else { return }
+            setup?.setAsideUnfinished()
+            firstInstall = choice.transport == .usb
+        }
         if selectedID?.lowercased() != id.lowercased() || selectedTransport != choice.transport {
             setup?.resetSelection()
         }
@@ -446,7 +494,11 @@ public final class MacAppModel {
     }
 
     public func refreshDevices() {
-        guard !busy, !setupLocksDevice else { return }
+        guard !busy, !restoringOperations, setup?.locksOtherDevices != true else { return }
+        if setup?.hasUnfinishedTransaction == true {
+            refreshDevicesAroundUnfinished()
+            return
+        }
         setup?.resetSelection()
         let previousSelection = selected
         devices = []; failure = nil
@@ -495,6 +547,31 @@ public final class MacAppModel {
         }
     }
 
+    /// Rescan while D14 is shown. If the unfinished phone is still attached it
+    /// keeps D14 and "Start over"; if it was swapped for another USB phone, the
+    /// new phone is selected and inspected from scratch.
+    private func refreshDevicesAroundUnfinished() {
+        guard let pending = setup?.pendingTransaction else { return }
+        perform(.devices) { data, request in
+            let choices = ConnectedDevice.connectionChoices(
+                try ResponseDecoder.decode(data, for: request, as: DeviceList.self).devices,
+                usbOnly: false
+            )
+            self.devices = choices
+            guard !choices.contains(where: { $0.id.lowercased() == pending.deviceID }) else { return }
+            let candidates = ConnectedDevice.unique(choices, usbOnly: true)
+            guard candidates.count == 1, let device = candidates.first else { return }
+            self.setup?.setAsideUnfinished()
+            self.firstInstall = true
+            self.selectedID = device.id
+            self.selectedTransport = device.transport
+            self.selectedDeviceSnapshot = device
+            self.inspection = nil
+            self.route = .deviceDetail
+            self.inspectAfterDeviceRefresh = true
+        }
+    }
+
     public func inspectSelected() {
         guard let device = selected, ready, !setupLocksDevice else { return }
         selectedDeviceSnapshot = device
@@ -510,6 +587,7 @@ public final class MacAppModel {
             self.inspection = result
             self.selectedDeviceSnapshot = result.device
             self.inspectionsByConnection[result.device.connectionID] = result
+            self.rememberName(of: result.device)
             self.route = .deviceDetail
         }
     }
@@ -519,7 +597,7 @@ public final class MacAppModel {
               let device = selected, device.transport == .usb,
               let setup, setup.isRestored,
               let teamID = selectedTeam?.teamID,
-              let options = try? MacSetupOptions(teamID: teamID) else { return }
+              let options = try? MacSetupOptions(teamID: teamID, allowProvisioningUpdates: true) else { return }
         do {
             try setup.configure(deviceID: device.id, options: options)
             firstInstall = true
@@ -532,7 +610,7 @@ public final class MacAppModel {
     public func restartInterruptedSetup() {
         guard !busy, let setup, setup.isRestored, setup.hasUnfinishedTransaction,
               let identity = setup.pendingTransaction,
-              let options = try? MacSetupOptions(teamID: identity.teamID) else { return }
+              let options = try? MacSetupOptions(teamID: identity.teamID, allowProvisioningUpdates: true) else { return }
         do {
             try setup.beginRestart(deviceID: identity.deviceID, options: options)
             firstInstall = identity.mode == .install
@@ -620,7 +698,7 @@ public final class MacAppModel {
         guard !busy, let device = selected, inspection?.installed == true,
               let setup, setup.isRestored, !setup.isBusy,
               let team = selectedTeam?.teamID,
-              let options = try? MacSetupOptions(teamID: team) else { return }
+              let options = try? MacSetupOptions(teamID: team, allowProvisioningUpdates: true) else { return }
         if setup.hasRecordedTransaction && setup.snapshot?.canReplaceCompletedTransaction != true {
             route = .install
             return

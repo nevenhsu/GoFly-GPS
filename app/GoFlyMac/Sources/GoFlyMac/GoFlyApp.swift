@@ -363,6 +363,8 @@ private actor CaptureChecker: MacChecking {
                        "appBuild": appBuild,
                        "expiresAt": expiry,
                        "teamID": "ABCDE12345"]
+        case .registeredDevices:
+            payload = ["devices": []]
         }
         return try JSONSerialization.data(withJSONObject: [
             "requestID": request.requestID, "status": "ok", "payload": payload,

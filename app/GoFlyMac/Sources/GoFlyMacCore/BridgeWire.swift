@@ -98,7 +98,7 @@ enum SetupWireJSON {
 import Foundation
 
 /// Live requests are deliberately a closed, read-only set.
-public enum CheckAction: String, Codable, Sendable { case environment, devices, inspect }
+public enum CheckAction: String, Codable, Sendable { case environment, devices, inspect, registeredDevices }
 
 public enum MacBundleIdentifier {
     private static let prefix = "com.neven.gofly."
@@ -126,7 +126,7 @@ public struct CheckRequest: Codable, Sendable {
         self.action = action
         self.deviceID = deviceID
         self.transport = action == .inspect ? transport : nil
-        self.teamID = action == .inspect ? teamID : nil
+        self.teamID = action == .inspect || action == .registeredDevices ? teamID : nil
     }
 }
 
@@ -236,6 +236,16 @@ public struct DeviceInspection: Codable, Equatable, Sendable {
 }
 
 public struct DeviceList: Codable, Sendable { public let devices: [ConnectedDevice] }
+
+/// A phone holding one of the Team's registration slots, read from the
+/// Team's local provisioning profiles. The name is empty when unknown.
+public struct RegisteredDevice: Codable, Identifiable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public init(id: String, name: String) { self.id = id; self.name = name }
+}
+
+public struct RegisteredDeviceList: Codable, Sendable { public let devices: [RegisteredDevice] }
 
 public enum CheckFailure: Error, Equatable, Sendable {
     case bundleInvalid, unavailable, invalidResponse, timeout, cancelled, service(String)
@@ -501,7 +511,7 @@ public enum MacSetupResponseDecoder {
         "signing-required", "signature-invalid", "artifact-mismatch", "support-unavailable",
         "pairing-unknown", "pairing-rejected", "handoff-unknown", "commit-unknown",
         "transaction-unknown", "transaction-conflict", "busy", "cancelled", "timeout",
-        "storage-unavailable", "operation-failed"
+        "storage-unavailable", "operation-failed", "device-limit-reached"
     ]
 
     public static func decode(_ data: Data, for request: MacSetupRequest) throws -> MacSetupSnapshot {

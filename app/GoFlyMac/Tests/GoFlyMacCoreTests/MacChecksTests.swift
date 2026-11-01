@@ -32,6 +32,9 @@ private struct EchoChecker: MacChecking {
                        "appVersion": installedVersion.map { $0 as Any } ?? NSNull(),
                        "appBuild": installedBuild.map { $0 as Any } ?? NSNull(),
                        "expiresAt": expiresAt.map { $0 as Any } ?? NSNull()]
+        case .registeredDevices:
+            #expect(request.teamID == "ABCDE12345")
+            payload = ["devices": [["id": "device-a", "name": ""], ["id": "device-z", "name": "Old iPhone"]]]
         }
         return try JSONSerialization.data(withJSONObject: ["requestID": request.requestID,
                                                            "status": "ok", "payload": payload])
@@ -512,4 +515,20 @@ private actor HeldChecker: MacChecking {
         try crashing.run(executable: "/usr/bin/python3", arguments: ["-c", "raise RuntimeError('private diagnostic')"],
                          developerDirectory: "/Applications/Xcode.app/Contents/Developer", input: Data(), timeout: 5)
     }
+}
+
+@Test @MainActor func registeredPhonesUseRememberedNamesWhenXcodeHasNone() async throws {
+    let suite = "gofly.tests.\(UUID().uuidString)"
+    let preferences = try #require(UserDefaults(suiteName: suite))
+    defer { preferences.removePersistentDomain(forName: suite) }
+    let model = MacAppModel(live: EchoChecker(wrongDevice: false, installed: false), preferences: preferences)
+    model.checkEnvironment()
+    try await settled(model)
+    model.refreshDevices()
+    try await settled(model)
+    #expect(model.inspection?.device.name == "iPhone")
+    model.loadRegisteredDevices()
+    for _ in 0..<200 where model.registeredDevices == nil { try await Task.sleep(for: .milliseconds(5)) }
+    #expect(model.registeredDevices == [RegisteredDevice(id: "device-a", name: "iPhone"),
+                                        RegisteredDevice(id: "device-z", name: "Old iPhone")])
 }

@@ -21,6 +21,7 @@ try:
         DeviceObservation,
         FormalArtifactValidator,
         InstalledAppObservation,
+        xcode_team_is_free,
         ProcessAdapter,
         snapshot_artifact,
         build_formal_setup_input,
@@ -38,6 +39,7 @@ except ImportError:  # script execution from the packaged Setup directory
         DeviceObservation,
         FormalArtifactValidator,
         InstalledAppObservation,
+        xcode_team_is_free,
         ProcessAdapter,
         snapshot_artifact,
         build_formal_setup_input,
@@ -115,7 +117,7 @@ class SetupProducer:
         self.store = store or JournalStore(config.state_root)
         self.device = device
         self.process = process
-        self.artifact_validator = artifact_validator or FormalArtifactValidator()
+        self.artifact_validator = artifact_validator or FormalArtifactValidator(team_is_free=xcode_team_is_free)
         self.support = support
 
     def handle(self, request: SetupRequest) -> ProducerPayload:
@@ -526,6 +528,7 @@ class SetupProducer:
                 request.setup_id,
                 options.team_id,
                 options.allow_provisioning_updates,
+                register_device_id=request.device_id if request.transport == "usb" else None,
             )
         except SetupBridgeError:
             raise

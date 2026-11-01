@@ -71,10 +71,14 @@ private struct GoFlyInput: ViewModifier {
 extension View {
     func goFlyInput() -> some View { modifier(GoFlyInput()) }
     func goFlyInset() -> some View { modifier(GoFlyInset()) }
-    func goFlyRowFocus() -> some View { modifier(GoFlyRowFocus()) }
+    /// Draws the hover/focus ring in the control's own shape, so it follows a
+    /// capsule button or a row's corner radius instead of a fixed rectangle.
+    func goFlyRowFocus<S: InsettableShape>(_ shape: S) -> some View { modifier(GoFlyRowFocus(shape: shape)) }
+    func goFlyRowFocus() -> some View { goFlyRowFocus(RoundedRectangle(cornerRadius: 12, style: .continuous)) }
 }
 
-private struct GoFlyRowFocus: ViewModifier {
+private struct GoFlyRowFocus<S: InsettableShape>: ViewModifier {
+    let shape: S
     @FocusState private var focused: Bool
     @State private var hovered = false
     @Environment(\.isEnabled) private var isEnabled
@@ -82,10 +86,11 @@ private struct GoFlyRowFocus: ViewModifier {
     func body(content: Content) -> some View {
         content.focused($focused)
             .overlay {
-                RoundedRectangle(cornerRadius: 12)
+                // A negative inset grows the shape concentrically, so the
+                // focused ring keeps the same rounding just outside the edge.
+                shape.inset(by: focused ? -3 : 0)
                     .strokeBorder(focused ? GoFlyStyle.ink : GoFlyStyle.line,
                                   lineWidth: focused ? 2 : 1)
-                    .padding(focused ? -3 : 0)
                     .opacity(isEnabled && (focused || hovered) ? 1 : 0)
                     .allowsHitTesting(false)
             }

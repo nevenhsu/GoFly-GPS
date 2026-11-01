@@ -782,7 +782,7 @@ struct MacDeviceSidebar: View {
                             }
                         }
                     }
-                    .buttonStyle(.plain).goFlyRowFocus()
+                    .buttonStyle(.plain).goFlyRowFocus(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .padding(.horizontal, 12).padding(.top, 6)
                     .accessibilityIdentifier("device-\(device.connectionID)")
                 }
@@ -834,7 +834,7 @@ struct MacDeviceSidebar: View {
             }
             switch model.devicePageState {
             case .restartRequired:
-                return macText("device.d14.sidebar")
+                return macText(model.setup?.mode == .renew ? "device.d14.sidebar.renew" : "device.d14.sidebar.install")
             case .trustRequired, .developerModeRequired, .readyToInstall, .wifiNeedsUSB:
                 return macText("device.status.notInstalledGoFly")
             case .wifiUnavailable:
@@ -877,7 +877,7 @@ private struct EnvironmentActionButton: View {
                 .background(buttonSurface, in: Capsule())
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain).disabled(!enabled).goFlyRowFocus()
+        .buttonStyle(.plain).disabled(!enabled).goFlyRowFocus(Capsule())
     }
 
     private var buttonSurface: Color {

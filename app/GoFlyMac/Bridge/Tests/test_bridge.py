@@ -103,6 +103,44 @@ class BridgeTests(unittest.TestCase):
             bridge._validate_request({"requestID": RID, "action": "inspect",
                                       "deviceID": UDID, "transport": ["wifi"]})
 
+    def test_device_list_reads_the_phone_name_over_usb_without_pairing(self):
+        client = FakeClient({"UniqueDeviceID": UDID, "DeviceName": "Lilian’s iPhone"})
+        client.get_value = lambda domain=None, key=None: _name(key)
+
+        async def _name(key):
+            return "Lilian’s iPhone" if key == "DeviceName" else None
+
+        rows = [SimpleNamespace(serial=UDID, connection_type="Network"),
+                SimpleNamespace(serial=UDID.upper(), connection_type="USB")]
+        device = self.device(rows, client)
+        result = bridge.Bridge(self.config(), device).handle({"requestID": RID, "action": "devices"})
+        self.assertEqual({item["name"] for item in result["payload"]["devices"]}, {"Lilian’s iPhone"})
+        self.assertEqual(device.calls, [(UDID.upper(), "USB", False)])
+        self.assertTrue(client.closed)
+
+    def test_registered_devices_lists_the_teams_profile_phones_with_known_names(self):
+        instance = bridge.Bridge(self.config(), self.device([]))
+        other = "00008160-00180cc03e00000a"
+        instance._profile_device_ids = lambda team: [UDID, other] if team == TEAM_ID else []
+        instance._xcode_device_names = lambda: {other: "Lilian’s iPhone"}
+        result = instance.handle({"requestID": RID, "action": "registeredDevices", "teamID": TEAM_ID})
+        self.assertEqual(result["payload"]["devices"],
+                         [{"id": UDID, "name": ""}, {"id": other, "name": "Lilian’s iPhone"}])
+        with self.assertRaisesRegex(bridge.BridgeError, "invalid-request"):
+            bridge._validate_request({"requestID": RID, "action": "registeredDevices"})
+        with self.assertRaisesRegex(bridge.BridgeError, "invalid-request"):
+            bridge._validate_request({"requestID": RID, "action": "registeredDevices", "teamID": TEAM_ID,
+                                      "deviceID": UDID})
+
+    def test_device_list_keeps_unknown_name_when_the_phone_is_not_trusted(self):
+        class Untrusted(FakeDeviceModule):
+            async def open_lockdown(self, serial, connection, cache, *, autopair):
+                raise RuntimeError("not paired")
+
+        rows = [SimpleNamespace(serial=UDID, connection_type="USB")]
+        result = bridge.Bridge(self.config(), Untrusted(rows)).handle({"requestID": RID, "action": "devices"})
+        self.assertEqual(result["payload"]["devices"][0]["name"], "")
+
     def test_inspect_uses_exact_usb_autopair_false_and_developer_mode(self):
         values = {"UniqueDeviceID": UDID, "ProductVersion": "27.0", "ProductType": "iPhone16,1", "DeviceName": "Test Phone"}
         client = FakeClient(values)

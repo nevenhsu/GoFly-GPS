@@ -223,7 +223,8 @@
 "device.d14.stage.done" = "完成";
 "device.d14.stage.interrupted" = "已中斷";
 "device.d14.stage.pending" = "未開始";
-"device.d14.sidebar" = "延長簽名未完成";
+"device.d14.sidebar.renew" = "延長簽名未完成";
+"device.d14.sidebar.install" = "安裝未完成";
 "device.d14.restart" = "重新開始";
 "device.team" = "開發團隊";
 "device.team.pending" = "尚未選擇 Team";
@@ -377,6 +378,10 @@
 "auto-renew.notification.failed.title" = "GoFly 未能自動延長簽名";
 "auto-renew.notification.failed.body" = "請打開 GoFly 檢查連線，或改用 USB 重新開始。";
 "setup.failure.generic" = "安裝尚未完成，請重新檢查裝置狀態。";
+"setup.failure.deviceLimit" = "這個 Apple 帳號登記的 iPhone 已達上限，Apple 不會替這支手機簽名。請改用已登記在這個帳號的 iPhone，或從帳號移除一支手機後再試。";
+"setup.deviceLimit.title" = "已登記在這個帳號的手機（%d 支）";
+"setup.deviceLimit.unnamed" = "iPhone（名稱不明）";
+"setup.deviceLimit.note" = "取自這部 Mac 上這個帳號的簽名描述檔。GoFly 無法從免費帳號移除手機；空出名額後按「重新開始」。";
 "setup.sidebar.installing" = "正在安裝…";
 "setup.sidebar.waiting" = "等待 iPhone…";
 "setup.stage.preflight" = "安裝前檢查";
