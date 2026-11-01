@@ -5,8 +5,6 @@ import SwiftUI
 struct GoFlyPlacePinIcon: View {
     var body: some View {
         ZStack(alignment: .top) {
-            Capsule().fill(GoFlyStyle.surface)
-                .frame(width: 5, height: 24).padding(.top, 18)
             Capsule().fill(GoFlyStyle.primary)
                 .frame(width: 2, height: 23).padding(.top, 18)
             Circle().fill(GoFlyStyle.primary)

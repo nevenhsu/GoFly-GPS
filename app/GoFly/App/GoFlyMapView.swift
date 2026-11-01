@@ -1692,15 +1692,13 @@ struct GoFlyMapView: View {
             isRecoveryChecking: { recovery.isChecking },
             mapOriginCandidates: { mapWanderOriginCandidates() },
             wanderStarted: { planned in
-                cameraIntent = GoFlyCameraIntent(coordinate: service.displayPositionMarker?.coordinate ?? planned.start)
+                cameraIntent = GoFlyCameraIntent(route: planned)
             },
             segmentReplaced: { planned in
                 selectedWanderPlace = nil
                 wanderSearch.resetSelection()
-                // Every wander segment puts the arrow at 1/3 of the screen height, so
-                // the joystick panel never covers it whether expanded or collapsed.
-                cameraIntent = GoFlyCameraIntent(coordinate: service.displayPositionMarker?.coordinate ?? planned.start,
-                                                 verticalFraction: 1.0 / 3)
+                // Changing the place frames the whole new wander route.
+                cameraIntent = GoFlyCameraIntent(route: planned)
             },
             destinationCleared: {
                 selectedWanderPlace = nil

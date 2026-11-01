@@ -128,24 +128,11 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         task = Task { [weak self] in
             defer { Task { @MainActor [weak self] in self?.finishPhysicalOperation(physicalID) } }
             guard let self, self.generation == token, self.phase == .preparing, !Task.isCancelled else { return }
-            var outcome = await self.commands.beginJoystick(operation, expectedMovementAdmissionRevision: admission)
-            // The origin ACK also starts the position hold, whose native
-            // preparation can still be busy when a wander start arrives. That
-            // refusal is transient; a second press used to be the retry.
-            var retries = 0
-            while case .cancelled = outcome, self.wanderEnabled, gestureID == nil, retries < 6,
-                  self.generation == token, self.phase == .preparing, !Task.isCancelled {
-                retries += 1
-                try? await Task.sleep(for: .milliseconds(500))
-                guard self.generation == token, self.phase == .preparing, !Task.isCancelled,
-                      self.commands.canBeginJoystick else { continue }
-                outcome = await self.commands.beginJoystick(
-                    operation, expectedMovementAdmissionRevision: self.commands.movementAdmissionRevision)
-            }
+            let outcome = await self.commands.beginJoystick(operation, expectedMovementAdmissionRevision: admission)
             guard self.generation == token, self.phase == .preparing, !Task.isCancelled else { return }
             diagnose("joystick.beginOutcome", category: .movement, level: .notice, [
                 "prepared": .flag({ if case .prepared = outcome { return true } else { return false } }()),
-                "retries": .count(retries), "wander": .flag(self.wanderEnabled)
+                "wander": .flag(self.wanderEnabled)
             ])
             switch outcome {
             case .prepared:
