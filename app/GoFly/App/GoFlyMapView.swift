@@ -1777,28 +1777,12 @@ struct GoFlyMapView: View {
         let upper = min(planned.totalDistanceMeters, distance + deltaDistance)
         guard let a = planned.coordinate(at: forward ? lower : upper),
               let b = planned.coordinate(at: forward ? upper : lower), a != b else { return nil }
-        return Self.bearingDegrees(from: a, to: b)
+        return JoystickGeodesy.bearingDegrees(from: a, to: b)
     }
 
     private var joystickMarkerBearing: Double? {
         guard let marker = service.positionMarker, marker.source == .simulation else { return nil }
-        if isWanderMap, joystick.input == nil, !joystick.wanderNeedsReplan, let planned = joystick.wanderRoute {
-            let distance = joystick.wanderProgressMeters
-            if let a = planned.coordinate(at: max(0, distance - 3)),
-               let b = planned.coordinate(at: min(planned.totalDistanceMeters, distance + 3)), a != b {
-                return Self.bearingDegrees(from: a, to: b)
-            }
-        }
-        return joystick.lastAcknowledgedBearingDegrees
-    }
-
-    private static func bearingDegrees(from a: GeoCoordinate, to b: GeoCoordinate) -> Double {
-        let latitudeA = a.latitude * .pi / 180
-        let latitudeB = b.latitude * .pi / 180
-        let delta = (b.longitude - a.longitude) * .pi / 180
-        let y = sin(delta) * cos(latitudeB)
-        let x = cos(latitudeA) * sin(latitudeB) - sin(latitudeA) * cos(latitudeB) * cos(delta)
-        return (atan2(y, x) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
+        return joystick.input?.bearingDegrees ?? joystick.smoothedWanderBearingDegrees ?? joystick.lastAcknowledgedBearingDegrees
     }
 
     /// Floating search entry and settings gear; execution mode supplies its own header.

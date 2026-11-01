@@ -26,10 +26,18 @@ public final class JoystickMovementController: ObservableObject {
     @Published public private(set) var suspensionReason: WanderSuspensionReason?
     public var displayInput: JoystickInput? {
         if let input { return input }
-        guard wanderEnabled, hasAcknowledgedLease, let bearing = lastAcknowledgedBearingDegrees else { return nil }
+        guard wanderEnabled, hasAcknowledgedLease, let bearing = smoothedWanderBearingDegrees ?? lastAcknowledgedBearingDegrees else { return nil }
         return JoystickInput(bearingDegrees: bearing, strength: 1)
     }
-    public var displayBearingDegrees: Double? { input?.bearingDegrees ?? lastAcknowledgedBearingDegrees }
+    public var displayBearingDegrees: Double? { input?.bearingDegrees ?? smoothedWanderBearingDegrees ?? lastAcknowledgedBearingDegrees }
+    /// Route tangent around the committed progress. Per-step bearings are chords
+    /// from the live position and jump on jagged geometry; display uses this.
+    public var smoothedWanderBearingDegrees: Double? {
+        guard wanderEnabled, !wanderNeedsReplan, let route = wanderRoute,
+              let a = route.coordinate(at: max(0, wanderProgressMeters - 3)),
+              let b = route.coordinate(at: min(route.totalDistanceMeters, wanderProgressMeters + 3)), a != b else { return nil }
+        return JoystickGeodesy.bearingDegrees(from: a, to: b)
+    }
     /// Data-only history used by the recovery checkpoint. It never carries a
     /// native handle, input, lease, or authority proof.
     var recoveryWanderHistory: [GeoCoordinate] { wanderHistory }

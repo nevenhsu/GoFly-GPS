@@ -24,6 +24,15 @@ public enum JoystickGeodesy {
         return GeoCoordinate(latitude: resultLatitude, longitude: resultLongitude >= 180 ? resultLongitude - 360 : resultLongitude)!
     }
 
+    public static func bearingDegrees(from a: GeoCoordinate, to b: GeoCoordinate) -> Double {
+        let latitudeA = a.latitude * .pi / 180
+        let latitudeB = b.latitude * .pi / 180
+        let delta = (b.longitude - a.longitude) * .pi / 180
+        let y = sin(delta) * cos(latitudeB)
+        let x = cos(latitudeA) * sin(latitudeB) - sin(latitudeA) * cos(latitudeB) * cos(delta)
+        return (atan2(y, x) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
+    }
+
     public static func distanceMeters(from origin: GeoCoordinate, to target: GeoCoordinate) -> Double {
         if origin.latitude == target.latitude,
            abs(origin.latitude) == 90 || origin.longitude == target.longitude || abs(origin.longitude - target.longitude) == 360 { return 0 }
