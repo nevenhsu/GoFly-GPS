@@ -41,7 +41,7 @@ struct GoFlyFigmaFrameFixture: View {
         switch frame {
         case "R01":
             GoFlyStartupView()
-        case "R02", "R03", "R04", "R04.a", "R05":
+        case "R02", "R03", "R03.a", "R04", "R04.a", "R05":
             onboardingFrame
         case "R07":
             GoFlyMacSetupOnboardingView()
@@ -75,8 +75,11 @@ struct GoFlyFigmaFrameFixture: View {
         .task {
             guard onboarding.step == .welcome else { return }
             onboarding.advanceWelcome()
-            if ["R04", "R04.a", "R05"].contains(frame) {
+            if ["R03.a", "R04", "R04.a", "R05"].contains(frame) {
                 onboarding.skipLocation()
+            }
+            if ["R04", "R04.a", "R05"].contains(frame) {
+                await onboarding.allowLocalNetwork()
             }
         }
     }

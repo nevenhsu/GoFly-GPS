@@ -28,11 +28,27 @@ struct MapNoticeBoardTests {
                 "Leaving the failed point lets the others show again")
     }
 
-    @Test func wiFiLossShowsTheConnectionLostNoticeUntilDismissed() {
+    @Test func wiFiLossShowsTheWiFiIssueUntilDismissed() {
         var input = MapNoticeInputs(mode: .teleport, isWiFiConnected: false)
-        #expect(MapNoticeBoard.notices(for: input) == [.connection(key: "recovery.connectionLost", coldConfirmation: false)])
+        #expect(MapNoticeBoard.notices(for: input) == [.connectionIssue(.wifiNotConnected)])
         input.notices.dismiss(.recovery)
         #expect(ids(input).isEmpty)
+    }
+
+    @Test func aLostConnectionNamesWiFiThenLocalNetworkThenTheVPN() {
+        var input = MapNoticeInputs(mode: .route, recoveryNoticeKey: "recovery.connectionLost",
+                                    isWiFiConnected: false, localNetworkDenied: true)
+        #expect(MapNoticeBoard.notices(for: input) == [.connectionIssue(.wifiNotConnected)])
+        input.isWiFiConnected = true
+        #expect(MapNoticeBoard.notices(for: input) == [.connectionIssue(.localNetworkNotAllowed)])
+        input.localNetworkDenied = false
+        #expect(MapNoticeBoard.notices(for: input) == [.connectionIssue(.vpnNotConnected)])
+        input.recoveryNoticeKey = nil
+        #expect(ids(input).isEmpty, "A denied permission alone, without a failed check, shows nothing")
+        input.recoveryNoticeKey = "recovery.coldClearPending"
+        input.requiresColdConfirmation = true
+        input.isWiFiConnected = false
+        #expect(MapNoticeBoard.notices(for: input) == [.connection(key: "recovery.coldClearPending", coldConfirmation: true)])
     }
 
     @Test func aPauseThePersonPressedHasNoResumeNotice() {

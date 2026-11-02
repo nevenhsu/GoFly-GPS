@@ -11,6 +11,7 @@ struct ServiceSettingsView: View {
     let setupMetadata: GoFlySetupMetadata?
     @StateObject private var systemStatus = GoFlySystemStatus()
     @ObservedObject private var network = GoFlyNetworkMonitor.shared
+    @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
     @State private var serviceNoticeDismissed = false
     @State private var awaitingResetSuccessToast = false
     /// The ✕ hides the continuation notice until a different notice appears.
@@ -121,15 +122,11 @@ struct ServiceSettingsView: View {
                 settingsLink(title: "settings.location", value: locationSummary,
                              destination: { GoFlyLocationSettingsPage() })
                 settingsDivider
+                settingsLink(title: "settings.network", value: networkSummary,
+                             destination: { GoFlyNetworkSettingsPage() })
+                settingsDivider
                 settingsLink(title: "settings.vpn", value: goFlyString(recovery.connectionState.settingsStatusKey),
                              destination: { GoFlyVPNSettingsPage(recovery: recovery) })
-                settingsDivider
-                Button(action: network.openWiFiSettings) {
-                    settingsRow(titleKey: "settings.wifi",
-                                value: goFlyString(network.isWiFiConnected ? "settings.wifi.connected" : "settings.wifi.notConnected"))
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("settings.wifi")
                 settingsDivider
                 settingsLink(title: "settings.backgroundTitle", value: backgroundSummary, identifier: "settings.background",
                              destination: { GoFlyBackgroundSettingsPage(continuation: continuation) })
@@ -148,6 +145,12 @@ struct ServiceSettingsView: View {
         }
     }
 
+    private var networkNeedsAttention: Bool { !network.isWiFiConnected || localNetwork.authorization == .denied }
+    private var networkSummary: String {
+        if !network.isWiFiConnected { return goFlyString("settings.wifi.notConnected") }
+        if localNetwork.authorization == .denied { return goFlyString("settings.status.denied") }
+        return goFlyString("settings.wifi.connected")
+    }
     private var locationSummary: String { goFlyString(systemStatus.locationStatusKey) }
     private var backgroundSummary: String { goFlyString(systemStatus.backgroundStatusKey) }
 
@@ -204,7 +207,7 @@ struct ServiceSettingsView: View {
             } value: {
                 if let value {
                     if (titleKey == "settings.location" && systemStatus.locationAuthorization == .denied) ||
-                       (titleKey == "settings.wifi" && !network.isWiFiConnected) {
+                       (titleKey == "settings.network" && networkNeedsAttention) {
                         GoFlyIconLabel(title: value, icon: GoFlySymbols.warning)
                             .goFlyFont(GoFlyFont.subheadline)
                             .foregroundStyle(GoFlyTextColor.warning)
@@ -235,7 +238,7 @@ struct ServiceSettingsView: View {
         case "settings.location": .location
         case "settings.background", "settings.backgroundTitle": .background
         case "settings.vpn": .vpn
-        case "settings.wifi": .wifi
+        case "settings.network": .wifi
         case "settings.language": .language
         case "settings.appearance": .appearance
         default: .device

@@ -67,7 +67,8 @@ final class GoFlyRuntimeAssembly: ObservableObject {
             allowUITestNamespace: true)
         self.onboarding = OnboardingController(
             probe: Self.onboardingProbe(isUITestFixture: isUITestFixture),
-            location: Self.onboardingLocationAuthorization(isUITestFixture: isUITestFixture)
+            location: Self.onboardingLocationAuthorization(isUITestFixture: isUITestFixture),
+            localNetwork: GoFlyLocalNetworkAuthorization.shared
         )
         self.movement.observeDataErrors(recoveryStore: recovery, favorites: favorites,
             importedRoutes: importedRoutes, favoriteRoutes: favoriteRoutes)

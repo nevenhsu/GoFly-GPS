@@ -20,6 +20,12 @@ final class GoFlyOnboardingUITests: XCTestCase {
         XCTAssertEqual(app.alerts.count, 0)
         skip.tap()
 
+        // R03.a has no skip; the simulator grants Local Network unless told otherwise.
+        let allowLocalNetwork = app.buttons["onboarding.localNetwork.allow"]
+        XCTAssertTrue(allowLocalNetwork.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["onboarding.localNetwork.skip"].exists)
+        allowLocalNetwork.tap()
+
         let check = app.buttons["onboarding.vpn.check"]
         XCTAssertTrue(check.waitForExistence(timeout: 5))
         let failure = app.descendants(matching: .any)["onboarding.vpn.failure"]

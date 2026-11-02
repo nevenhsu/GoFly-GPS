@@ -130,6 +130,72 @@ struct GoFlyLocationSettingsPage: View {
     private var locationStatus: String { goFlyString(status.locationStatusKey) }
 }
 
+/// F1 → Network: Wi-Fi is a read-only status row; Local Network opens GoFly's
+/// page in the Settings app, the only place iOS lets the answer be changed.
+struct GoFlyNetworkSettingsPage: View {
+    @StateObject private var status = GoFlySystemStatus()
+    @ObservedObject private var network = GoFlyNetworkMonitor.shared
+    @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
+
+    var body: some View {
+        GoFlySettingsPageContainer(titleKey: "settings.network", rootIdentifier: "settings.network.page") {
+            GoFlySettingsGroup {
+                GoFlySettingsRow {
+                    GoFlySettingsValueRow {
+                        Text(goFlyString("settings.wifi"))
+                            .goFlyFont(GoFlyFont.body)
+                            .foregroundStyle(GoFlyTextColor.primary)
+                    } value: {
+                        Text(goFlyString(network.isWiFiConnected ? "settings.wifi.connected" : "settings.wifi.notConnected"))
+                            .goFlyFont(GoFlyFont.body)
+                            .foregroundStyle(network.isWiFiConnected ? GoFlyTextColor.secondary : GoFlyTextColor.warning)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("settings.network.wifi")
+
+                Divider().padding(.leading, 16)
+
+                Button(action: status.openSystemSettings) {
+                    GoFlySettingsRow {
+                        GoFlySettingsValueRow {
+                            Text(goFlyString("settings.localNetwork"))
+                                .goFlyFont(GoFlyFont.body)
+                                .foregroundStyle(GoFlyTextColor.primary)
+                        } value: {
+                            Text(localNetworkStatus)
+                                .goFlyFont(GoFlyFont.body)
+                                .foregroundStyle(localNetwork.authorization == .denied ? GoFlyTextColor.warning : GoFlyTextColor.secondary)
+                        }
+                        GoFlyIcon(GoFlySymbols.disclosure)
+                            .goFlyIconSize(size: 13, maximum: 16)
+                            .foregroundStyle(GoFlyTextColor.secondary)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.network.localNetwork")
+            }
+        }
+        .goFlyToastOverlay(topInset: 54) {
+            if status.externalOpenFailed {
+                GoFlyStatusBanner(tone: .danger, title: goFlyString("settings.externalOpenFailed"),
+                                  identifier: "settings.network.externalOpenFailed")
+            }
+        }
+        // Returning from Settings is re-read by the shared authorization itself.
+        .onAppear { localNetwork.refresh() }
+    }
+
+    private var localNetworkStatus: String {
+        switch localNetwork.authorization {
+        case .unknown: goFlyString("settings.status.notDetermined")
+        case .granted: goFlyString("settings.localNetwork.allowed")
+        case .denied: goFlyString("settings.status.denied")
+        }
+    }
+}
+
 struct GoFlyBackgroundSettingsPage: View {
     @ObservedObject var continuation: MovementContinuationController
     @StateObject private var status = GoFlySystemStatus()
@@ -217,7 +283,10 @@ struct GoFlyBackgroundSettingsPage: View {
 struct GoFlyVPNSettingsPage: View {
     @ObservedObject var recovery: ConnectionRecoveryController
     @StateObject private var status = GoFlySystemStatus()
+    @ObservedObject private var network = GoFlyNetworkMonitor.shared
+    @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
     @State private var showingHelp = false
+    @State private var issueOpenFailureKey: String?
 
     var body: some View {
         GoFlySettingsPageContainer(titleKey: "settings.vpn", rootIdentifier: "settings.vpn.page") {
@@ -324,13 +393,17 @@ struct GoFlyVPNSettingsPage: View {
                 GoFlyStatusBanner(tone: .danger, title: goFlyString("onboarding.vpn.externalOpenFailed"),
                                   identifier: "settings.vpn.externalOpenFailed")
             }
-            if recovery.connectionState == .unavailable || recovery.connectionState == .timedOut {
-                GoFlyStatusBanner(tone: .danger,
-                                  title: goFlyString(recovery.connectionState.settingsStatusKey),
-                                  message: goFlyString("settings.vpn.failureGuide"),
-                                  actionTitle: goFlyString("onboarding.vpn.help"),
-                                  onAction: { showingHelp = true },
-                                  identifier: "settings.vpn.failure")
+            if recovery.connectionState != .reachable,
+               let issue = ConnectionIssue.first(
+                isWiFiConnected: network.isWiFiConnected,
+                checkFailed: recovery.connectionState == .unavailable || recovery.connectionState == .timedOut,
+                localNetworkDenied: recovery.needsLocalNetwork || localNetwork.authorization == .denied) {
+                GoFlyConnectionIssueBanner(issue: issue, identifier: "settings.vpn.failure",
+                                           onOpenFailed: { issueOpenFailureKey = $0 })
+            }
+            if let issueOpenFailureKey {
+                GoFlyStatusBanner(tone: .danger, title: goFlyString(issueOpenFailureKey),
+                                  identifier: "settings.vpn.externalOpenFailed")
             }
         }
         .onAppear {
@@ -338,6 +411,7 @@ struct GoFlyVPNSettingsPage: View {
             if recovery.canCheck { recovery.checkConnection() }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            issueOpenFailureKey = nil
             status.refresh()
             if recovery.canCheck { recovery.checkConnection() }
         }

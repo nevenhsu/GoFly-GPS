@@ -479,16 +479,10 @@ private struct PasteableSearchTextField: UIViewRepresentable {
             textField?.text = trimmed
             textField?.sendActions(for: .editingChanged)
         }
-        let pasteConfiguration = UIPasteControl.Configuration()
-        pasteConfiguration.displayMode = .iconOnly
-        pasteConfiguration.cornerStyle = .capsule
-        pasteConfiguration.baseForegroundColor = GoFlyStyle.pasteSymbolUIColor
-        pasteConfiguration.baseBackgroundColor = .clear
-        let pasteButton = UIPasteControl(configuration: pasteConfiguration)
-        pasteButton.target = pasteReceiver
+        let pasteButton = GoFlyPasteAffordanceView(target: pasteReceiver,
+                                                   accessibilityLabel: goFlyString("search.paste"),
+                                                   accessibilityIdentifier: "search.paste")
         pasteButton.translatesAutoresizingMaskIntoConstraints = false
-        pasteButton.accessibilityLabel = goFlyString("search.paste")
-        pasteButton.accessibilityIdentifier = "search.paste"
         controls.addSubview(pasteButton)
         NSLayoutConstraint.activate([
             pasteButton.leadingAnchor.constraint(equalTo: controls.leadingAnchor),
@@ -602,8 +596,9 @@ private final class SearchTextFieldAccessoryView: UIView {
     override var intrinsicContentSize: CGSize { CGSize(width: 44, height: 44) }
 }
 
-/// Figma's transparent paste affordance, drawn by the system paste control so
-/// iOS does not ask "Allow Paste" on every read.
+/// Figma's paste affordance, drawn by the system paste control so iOS does
+/// not ask "Allow Paste" on every read. A clear base color is drawn black by
+/// the system control, so it takes the search bar's input surface instead.
 struct GoFlyPasteButton: View {
     let accessibilityLabel: String
     let accessibilityIdentifier: String
@@ -612,7 +607,7 @@ struct GoFlyPasteButton: View {
     var body: some View {
         GoFlySystemPasteControl(accessibilityLabel: accessibilityLabel,
                                 accessibilityIdentifier: accessibilityIdentifier,
-                                background: .clear, onPaste: onPaste)
+                                onPaste: onPaste)
             .frame(width: 44, height: 44)
     }
 }

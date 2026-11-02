@@ -26,6 +26,7 @@ struct GoFlyMapToastStack: View {
     /// A paused or interrupted task the person can resume.
     let isResumeState: Bool
     @ObservedObject private var network = GoFlyNetworkMonitor.shared
+    @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
     @Environment(\.scenePhase) private var scenePhase
 
     private var unconfirmedID: UUID? { service.pointState.unconfirmedID }
@@ -45,7 +46,9 @@ struct GoFlyMapToastStack: View {
             routeErrorKey: route.error?.localizationKey, isFixingRouteOrder: route.isFixingPlanningOrder,
             recoveryNoticeKey: recovery.noticeKey, requiresColdConfirmation: recovery.requiresColdConfirmation,
             repairOwnsNotice: recovery.isSilentRepairInProgress || recovery.canRetryAutomaticRepair,
-            isWiFiConnected: network.isWiFiConnected, continuationNoticeKey: continuation.noticeKey)
+            isWiFiConnected: network.isWiFiConnected,
+            localNetworkDenied: recovery.needsLocalNetwork || localNetwork.authorization == .denied,
+            continuationNoticeKey: continuation.noticeKey)
     }
 
     /// The one toast button for an error key. Retry stays in the current mode:
@@ -218,6 +221,10 @@ struct GoFlyMapToastStack: View {
                 titleIdentifier: "recovery.notice",
                 isFloating: true
             )
+        case .connectionIssue(let issue):
+            GoFlyConnectionIssueBanner(issue: issue, identifier: "recovery.connectionBanner",
+                                       titleIdentifier: "recovery.notice",
+                                       onDismiss: { notices.dismiss(.recovery) })
         case .resume(let resume):
             GoFlyStatusBanner(
                 tone: .warning,

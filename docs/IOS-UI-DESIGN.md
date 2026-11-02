@@ -719,3 +719,17 @@ Figma 內部不一致（記錄、不視為已設計）：`Toast / 系統訊息 /
 - 尚未做：規劃中 sheet 在 0.4 秒內完成時不顯示（避免閃現）；成功狀態因自動開始，實際不會停留；UI 測試截圖需重拍；未實機驗證。
 - 設定（2026-10-31 使用者指示，App 已改、設計稿 F6／F5 尚未同步）：背景執行頁刪除「背景延續」狀態卡（`GoFlyContinuationStatus` 不再顯示）；時間輸入只保留一個背景色，不再另畫選取列的 pill 底（系統滾輪自身的選取樣式不受控）；VPN 通道頁與引導頁的英文按鈕改為「Open LocalDevVPN」（中文原本已是「開啟 LocalDevVPN」）。
 - 路線執行（2026-10-31 使用者指示，App 已改、設計稿尚未同步）：來回開啟時，進度條上方標籤由「目前路線位置」改為「自動來回 (順向)」／「自動來回 (逆向)」，隨目前行進方向變化；來回關閉時仍顯示剩餘時間。
+
+## 2026-11-02 區域網路引導、三種連線錯誤 Toast、設定「網路」分頁（使用者指示）
+
+- **設計變更來源**：使用者對 04 頁 R01／R04.a／F1 的修改指示。Figma 04 頁已補畫（Light／Dark，2026-11-02）：R03.a（Light `348:22133`）、R04.a ①②③（Light `348:22293`／`348:22230`／`222:10410`）、F1 新增「網路」列、F10 · 設定 › 網路（Light `348:22558`）；Dark 對應 frame 同名加 `Dark ·` 前綴。F10 沿用 F4 樣式（無列首圖示）；R03.a 的 Hero 使用 `icon/wifi`。
+- **R03.a · 允許 GoFly 使用區域網路（新增，接在 R03 定位之後、R04 VPN 之前）**：版式同 R02／R03（120 pt Hero、28 pt 標題、15 pt 說明、狀態 pill「目前權限：尚未設定／已允許／未允許」）。只有一顆 Primary「允許區域網路」，**沒有略過**。按下即觸發系統授權；結果為允許則自動進入 R04；被拒絕（或先前已拒絕、iOS 不會再詢問）則開啟 iPhone 設定中的 GoFly 頁，讓使用者改為允許。從設定回到 App 時重新讀取已作答的權限，變為允許即自動前進。返回回到 R03。
+- **連線錯誤 Toast（全 App 共用，取代舊規則）**：所有連線檢查——R04.a 引導、設定 › VPN 通道頁、地圖首頁（B10 及失敗 probe 的「連線無法使用」toast）——共用 `ConnectionIssue` 順序，同一時間只顯示第一個符合的：
+  1. **Wi‑Fi 未連線**——「請將 iPhone 連上 Wi-Fi。」按鈕「設定」，開啟 iPhone 設定（Wi‑Fi）。Wi‑Fi 未連線時即使尚未檢查也顯示（VPN 已可達的引導／設定頁除外）。
+  2. **區域網路未允許**——「請在 GoFly 設定中允許「區域網路」。」按鈕「設定」，開啟 iPhone 設定中的 GoFly 頁。條件：檢查失敗，且權限已知被拒或最後一次 probe 找不到裝置服務（`serviceNotFound`）。
+  3. **LocalDevVPN 未連線**——「請開啟 LocalDevVPN 並連線。」按鈕「連線」，開啟 LocalDevVPN App（未安裝則開 App Store）。R04.a 另附 iOS 回報細節。
+  權限已拒但檢查未失敗時不顯示。取代：R04.a 舊單一「重試」toast、VPN 設定頁「連線說明」toast、地圖「連線無法使用／請確認 Wi-Fi 與 VPN 後重試。／重試」toast（B10 改為第 1 種）。冷恢復「待確認」與「連線已恢復」toast 不變。R04.a 底部主按鈕仍為「重新連線」。區域網路權限記憶值隨每次 probe 同步（找不到服務→未允許；可達→已允許），並於 App 回到前景時重讀已作答的權限。
+- **F1 · 設定首頁**：「權限與連線」群組順序改為 定位權限、網路（Wi‑Fi 圖示）、VPN 通道、背景；移除獨立的 Wi‑Fi 列。「網路」列右側摘要：Wi‑Fi 未連線→「未連線」、區域網路被拒→「未允許」（兩者皆以警告色），否則「已連線」。
+- **新增「網路」子頁**：兩列清單——「Wi‑Fi」顯示已連線／未連線（無箭頭、不可點）；「區域網路」顯示 已允許／未允許／尚未決定，附箭頭，點擊開啟 iPhone 設定中的 GoFly 頁。設定頁不會主動觸發授權提示，僅重讀已作答的狀態。
+- **App 實作**：`ConnectionIssue`（GoFlyCore，順序與字串 key `connection.*`）、`GoFlyConnectionIssueBanner`（三處共用 toast 與按鈕動作）、`ConnectionRecoveryController.needsLocalNetwork`、`MapNotice.connectionIssue`；`OnboardingStep.localNetwork`（`OnboardingController.allowLocalNetwork`／`refreshLocalNetworkAuthorization`，注入 `LocalNetworkAuthorizing`；未注入時略過此步）、`GoFlyLocalNetworkAuthorization`（以 Bonjour browse 偵測；iOS 無查詢 API，結果存 UserDefaults）、`GoFlyLocalNetworkOnboardingView`、`GoFlyNetworkSettingsPage`。字串新增 `onboarding.localNetwork.*`、`connection.*`、`settings.network`、`settings.localNetwork*`；「本機網路」文案統一為「區域網路」（簡中為「本地网络」）。
+- **驗收**：`swift test` 通過（含 `localNetworkStepAdvancesOnlyWhenGranted`、`aLostConnectionNamesWiFiThenLocalNetworkThenTheVPN`）；Simulator Debug 建置成功。**未做**：實機驗證（區域網路提示／拒絕偵測在模擬器以 `-gofly-ui-local-network-denied` 旗標模擬）、Light／Dark 截圖、UI 測試與 Figma frame 目錄（`Figma04FrameCatalog.json` 尚無 R03.a）。

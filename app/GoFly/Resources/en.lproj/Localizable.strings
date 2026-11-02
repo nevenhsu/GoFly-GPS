@@ -75,11 +75,6 @@
 "onboarding.vpn.checking" = "Checking…";
 "onboarding.vpn.check" = "Check connection";
 "onboarding.vpn.reconnect" = "Reconnect";
-"onboarding.vpn.unavailable" = "LocalDevVPN is disconnected or the connection timed out. Check the tunnel in Settings.";
-"onboarding.vpn.localNetwork.title" = "Local Network needed";
-"onboarding.vpn.localNetwork" = "In app Settings, allow Local Network.";
-"onboarding.vpn.localNetwork.allow" = "Settings";
-"onboarding.vpn.timedOut" = "LocalDevVPN is disconnected or the connection timed out. Check the tunnel in Settings.";
 "onboarding.vpn.failureDetail" = "iOS reported";
 "onboarding.vpn.externalOpenFailed" = "The App Store could not be opened. Open the App Store manually and search for LocalDevVPN.";
 "map.simulatedLocation" = "Confirmed simulated location";
@@ -458,7 +453,6 @@
 "settings.vpn.openLocalDevVPN" = "Open LocalDevVPN";
 "settings.vpn.externalOpenFailed" = "LocalDevVPN could not be opened. Open it manually, connect the tunnel, then return to GoFly.";
 "settings.vpn.check" = "Check";
-"settings.vpn.failureGuide" = "Make sure iPhone is on Wi‑Fi, reconnect in LocalDevVPN, then return and check the tunnel again.";
 "settings.device.pairing" = "Pairing";
 "settings.device.pairingReady" = "Paired";
 "settings.device.paired" = "Paired";
@@ -639,7 +633,6 @@
 "onboarding.vpn.step1" = "Connect to Wi‑Fi";
 "onboarding.vpn.step2" = "Open LocalDevVPN";
 "onboarding.vpn.step3" = "Tap Connect";
-"onboarding.vpn.unavailableTitle" = "Unable to connect to device service";
 
 "route.planTitle" = "Plan route";
 "route.roundTripShort" = "Round trip";
@@ -804,3 +797,23 @@
 "map.rangeShow" = "Show wander range";
 "map.rangeHide" = "Hide wander range";
 "map.fitRange" = "Fit wander range";
+
+/* Local Network onboarding (R03.a), Network settings */
+"onboarding.localNetwork.title" = "Allow GoFly to use the local network";
+"onboarding.localNetwork.message" = "GoFly reaches this iPhone’s device service through LocalDevVPN, which needs Local Network access.";
+"onboarding.localNetwork.allow" = "Allow";
+"onboarding.localNetwork.status.unknown" = "Not set";
+"onboarding.localNetwork.status.granted" = "Allowed";
+"onboarding.localNetwork.status.denied" = "Not allowed";
+"settings.network" = "Network";
+"settings.localNetwork" = "Local Network";
+"settings.localNetwork.allowed" = "Allowed";
+
+/* Connection issues, in fix order, shared by R04.a, the VPN settings page and the map */
+"connection.wifi.title" = "Wi-Fi not connected";
+"connection.wifi.message" = "Connect this iPhone to Wi-Fi.";
+"connection.localNetwork.title" = "Local Network not allowed";
+"connection.localNetwork.message" = "Allow Local Network in GoFly’s Settings.";
+"connection.vpn.title" = "LocalDevVPN not connected";
+"connection.vpn.message" = "Open LocalDevVPN and connect.";
+"connection.connect" = "Connect";

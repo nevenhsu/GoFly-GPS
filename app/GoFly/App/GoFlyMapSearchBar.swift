@@ -54,12 +54,17 @@ struct GoFlyMapSearchBar: View {
             }
             .frame(height: 50)
             .frame(maxWidth: .infinity)
-            .background(GoFlyThemeColor.surfaceInput, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // The shadow belongs to the card only: on the whole row SwiftUI also
+            // shadows each child, ringing the system paste capsule in light mode.
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(GoFlyThemeColor.surfaceInput)
+                    .goFlyShadow(.floating)
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(GoFlyStyle.fieldBorder, lineWidth: 1)
             }
-            .goFlyShadow(.floating)
 
             Button(action: onSettings) {
                 // Figma 04 · Settings / 設定 > icon / gear.

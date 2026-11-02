@@ -31,8 +31,23 @@ public protocol LocationAuthorizing: AnyObject {
     func requestAuthorization() async -> LocationAuthorization
 }
 
+/// iOS has no query API for Local Network access; the answer is learned by
+/// probing, so `.unknown` means "not asked yet or not yet observed".
+public enum LocalNetworkAuthorization: Equatable, Sendable {
+    case unknown
+    case granted
+    case denied
+}
+
+@MainActor
+public protocol LocalNetworkAuthorizing: AnyObject {
+    var authorization: LocalNetworkAuthorization { get }
+    /// Triggers the system prompt when it has never been answered and reports the outcome.
+    func requestAuthorization() async -> LocalNetworkAuthorization
+}
+
 public enum OnboardingStep: Equatable, Sendable {
-    case welcome, location, vpn, complete
+    case welcome, location, localNetwork, vpn, complete
 }
 
 public enum VPNCheckState: Equatable, Sendable {
@@ -53,9 +68,12 @@ public final class OnboardingController: ObservableObject {
     @Published public private(set) var isAdvancing = false
     @Published public private(set) var isRequestingLocation = false
     @Published public private(set) var locationAuthorization: LocationAuthorization
+    @Published public private(set) var isRequestingLocalNetwork = false
+    @Published public private(set) var localNetworkAuthorization: LocalNetworkAuthorization
 
     private let probe: any TunnelProbing
     private let location: any LocationAuthorizing
+    private let localNetwork: (any LocalNetworkAuthorizing)?
     private var navigationRevision: UInt64 = 0
     private var vpnActive = false
     private var generation: UInt64 = 0
@@ -65,10 +83,13 @@ public final class OnboardingController: ObservableObject {
     /// Local Network permission alert); it continues when the page is active again.
     private var resumeCheckWhenActive = false
 
-    public init(probe: any TunnelProbing, location: any LocationAuthorizing) {
+    public init(probe: any TunnelProbing, location: any LocationAuthorizing,
+                localNetwork: (any LocalNetworkAuthorizing)? = nil) {
         self.probe = probe
         self.location = location
+        self.localNetwork = localNetwork
         self.locationAuthorization = location.authorization
+        self.localNetworkAuthorization = localNetwork?.authorization ?? .granted
     }
 
     deinit {
@@ -84,7 +105,8 @@ public final class OnboardingController: ObservableObject {
         guard step == .location else { return }
         navigationRevision &+= 1
         isRequestingLocation = false
-        step = .vpn
+        // Without a Local Network authorizer there is nothing to ask for.
+        step = localNetwork == nil ? .vpn : .localNetwork
     }
     public func allowLocation() async {
         guard step == .location, !isRequestingLocation else { return }
@@ -100,17 +122,49 @@ public final class OnboardingController: ObservableObject {
         guard step == .location, !isRequestingLocation else { return }
         locationAuthorization = location.authorization
     }
+    /// Asks for Local Network access. Returns the answer so the page can send the
+    /// user to Settings when iOS will not prompt again; advances only when granted.
+    @discardableResult
+    public func allowLocalNetwork() async -> LocalNetworkAuthorization {
+        guard step == .localNetwork, !isRequestingLocalNetwork, let localNetwork else {
+            return localNetworkAuthorization
+        }
+        isRequestingLocalNetwork = true
+        let token = navigationRevision
+        let result = await localNetwork.requestAuthorization()
+        isRequestingLocalNetwork = false
+        guard step == .localNetwork, token == navigationRevision else { return result }
+        localNetworkAuthorization = result
+        if result == .granted { step = .vpn }
+        return result
+    }
+    /// Settings may change the permission while the page is hidden; only a
+    /// previously answered permission is re-read, so this never prompts.
+    public func refreshLocalNetworkAuthorization() async {
+        guard step == .localNetwork, !isRequestingLocalNetwork, let localNetwork,
+              localNetwork.authorization != .unknown else { return }
+        let token = navigationRevision
+        let result = await localNetwork.requestAuthorization()
+        guard step == .localNetwork, token == navigationRevision else { return }
+        localNetworkAuthorization = result
+        if result == .granted { step = .vpn }
+    }
     public func goBack() {
         switch step {
         case .location:
             navigationRevision &+= 1
             isRequestingLocation = false
             step = .welcome
+        case .localNetwork:
+            navigationRevision &+= 1
+            isRequestingLocalNetwork = false
+            locationAuthorization = location.authorization
+            step = .location
         case .vpn:
             setVPNActive(false)
             navigationRevision &+= 1
-            locationAuthorization = location.authorization
-            step = .location
+            if localNetwork == nil { locationAuthorization = location.authorization }
+            step = localNetwork == nil ? .location : .localNetwork
         case .welcome, .complete:
             break
         }

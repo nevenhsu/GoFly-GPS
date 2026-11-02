@@ -8,7 +8,7 @@ struct GoFlyOnboardingView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var settingsOpenFailed = false
 
-    private enum Page: Hashable { case location, vpn }
+    private enum Page: Hashable { case location, localNetwork, vpn }
 
     var body: some View {
         NavigationStack(path: navigationPath) {
@@ -17,6 +17,8 @@ struct GoFlyOnboardingView: View {
                     switch page {
                     case .location:
                         location
+                    case .localNetwork:
+                        GoFlyLocalNetworkOnboardingView(controller: controller)
                     case .vpn:
                         GoFlyVPNOnboardingView(controller: controller, onComplete: onComplete)
                     }
@@ -29,7 +31,8 @@ struct GoFlyOnboardingView: View {
         switch controller.step {
         case .welcome: []
         case .location: [.location]
-        case .vpn, .complete: [.location, .vpn]
+        case .localNetwork: [.location, .localNetwork]
+        case .vpn, .complete: [.location, .localNetwork, .vpn]
         }
     }
 
@@ -294,6 +297,115 @@ private struct GoFlyOnboardingFeatureIcon: View {
     }
 }
 
+/// R03.a: one primary button, no skip. A denied answer cannot be re-asked by
+/// iOS, so the next press opens GoFly's page in Settings instead.
+private struct GoFlyLocalNetworkOnboardingView: View {
+    @ObservedObject var controller: OnboardingController
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var settingsOpenFailed = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                GoFlyOnboardingEmblem(symbol: .wifi)
+                    .padding(.top, 136)
+                    .padding(.bottom, 23)
+                VStack(spacing: 15) {
+                    Text(goFlyString("onboarding.localNetwork.title"))
+                        .goFlyFont(GoFlyFont.display)
+                        .foregroundStyle(GoFlyTextColor.primary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 39)
+                        .accessibilityIdentifier("onboarding.localNetwork.title")
+                    Text(goFlyString("onboarding.localNetwork.message"))
+                        .goFlyFont(GoFlyFont.subheadline)
+                        .foregroundStyle(GoFlyTextColor.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: 287)
+                        .accessibilityIdentifier("onboarding.localNetwork")
+                }
+                .padding(.top, 4)
+                GoFlyStatusPill(text: goFlyLocalizedFormat(goFlyString("onboarding.location.statusFormat"),
+                                    goFlyString(statusKey)),
+                                tone: tone, identifier: "onboarding.localNetwork.status")
+                    .padding(.top, 9)
+            }
+            .frame(maxWidth: 520)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+        }
+        .background(GoFlyStyle.canvas)
+        .goFlyToastOverlay(topInset: 64) {
+            if settingsOpenFailed {
+                GoFlyStatusBanner(tone: .danger, title: goFlyString("settings.externalOpenFailed"))
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden()
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Button {
+                Task { await allow() }
+            } label: {
+                HStack(spacing: 8) {
+                    if controller.isRequestingLocalNetwork { ProgressView() }
+                    Text(goFlyString("onboarding.localNetwork.allow"))
+                }
+            }
+            .buttonStyle(GoFlyActionStyle(primary: true))
+            .disabled(controller.isRequestingLocalNetwork)
+            .accessibilityIdentifier("onboarding.localNetwork.allow")
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
+            .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await controller.refreshLocalNetworkAuthorization() } }
+        }
+    }
+
+    private var statusKey: String {
+        switch controller.localNetworkAuthorization {
+        case .unknown: "onboarding.localNetwork.status.unknown"
+        case .granted: "onboarding.localNetwork.status.granted"
+        case .denied: "onboarding.localNetwork.status.denied"
+        }
+    }
+
+    private var tone: GoFlyStatusTone {
+        switch controller.localNetworkAuthorization {
+        case .unknown: .neutral
+        case .granted: .success
+        case .denied: .warning
+        }
+    }
+
+    private func allow() async {
+        settingsOpenFailed = false
+        // Already refused: iOS will not prompt again, so go straight to Settings.
+        if controller.localNetworkAuthorization == .denied {
+            openSettings()
+            return
+        }
+        // A fresh answer of "denied" means the prompt was refused (or never appeared).
+        if await controller.allowLocalNetwork() == .denied { openSettings() }
+    }
+
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+            settingsOpenFailed = true
+            return
+        }
+        UIApplication.shared.open(url) { settingsOpenFailed = !$0 }
+    }
+}
+
 private struct GoFlyVPNOnboardingView: View {
     @ObservedObject var controller: OnboardingController
     let onComplete: @MainActor () -> Void
@@ -302,7 +414,8 @@ private struct GoFlyVPNOnboardingView: View {
     @State private var showingHelp = false
     @State private var externalOpenFailed = false
     @State private var externalOpenFailureKey = "onboarding.vpn.externalOpenFailed"
-
+    @ObservedObject private var network = GoFlyNetworkMonitor.shared
+    @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
 
     var body: some View {
         ScrollView {
@@ -413,6 +526,9 @@ private struct GoFlyVPNOnboardingView: View {
             controller.setVPNActive(isVisible && phase == .active)
 #endif
         }
+        .onChange(of: controller.vpnNeedsLocalNetwork) { _, needed in
+            if needed { localNetwork.markDenied() }
+        }
         .onChange(of: controller.vpnState) { _, state in
             guard state == .reachable else { return }
             controller.advanceVPN(onAdvance: onComplete)
@@ -446,31 +562,20 @@ private struct GoFlyVPNOnboardingView: View {
         }
     }
 
+    /// R04.a: the first `ConnectionIssue` that applies, shared with the map and settings.
     @ViewBuilder private var vpnToasts: some View {
-        if controller.vpnState == .unavailable || controller.vpnState == .timedOut {
-            if controller.vpnNeedsLocalNetwork {
-                // iOS asks for Local Network only once; afterwards the switch lives in Settings.
-                GoFlyStatusBanner(tone: .danger,
-                                  title: goFlyString("onboarding.vpn.localNetwork.title"),
-                                  message: goFlyString("onboarding.vpn.localNetwork"),
-                                  actionTitle: goFlyString("onboarding.vpn.localNetwork.allow"),
-                                  onAction: openAppSettings,
-                                  identifier: "onboarding.vpn.failure",
-                                  actionIdentifier: "onboarding.vpn.failure.allow")
-                    .id(controller.vpnFailureRevision)
-            } else {
-                GoFlyStatusBanner(tone: .danger,
-                                  title: goFlyString("onboarding.vpn.unavailableTitle"),
-                                  message: [goFlyString(controller.vpnState == .timedOut
-                                    ? "onboarding.vpn.timedOut" : "onboarding.vpn.unavailable"),
-                                            controller.vpnFailureDetail].compactMap { $0 }.joined(separator: "\n"),
-                                  actionTitle: goFlyString("common.retry"),
-                                  onAction: controller.checkConnection,
-                                  identifier: "onboarding.vpn.failure",
-                                  actionEnabled: !controller.isChecking && !controller.isAdvancing,
-                                  actionIdentifier: "onboarding.vpn.failure.retry")
-                    .id(controller.vpnFailureRevision)
-            }
+        if controller.vpnState != .reachable,
+           let issue = ConnectionIssue.first(
+            isWiFiConnected: network.isWiFiConnected,
+            checkFailed: controller.vpnState == .unavailable || controller.vpnState == .timedOut,
+            localNetworkDenied: controller.vpnNeedsLocalNetwork || localNetwork.authorization == .denied) {
+            GoFlyConnectionIssueBanner(issue: issue, identifier: "onboarding.vpn.failure",
+                                       detail: issue == .vpnNotConnected ? controller.vpnFailureDetail : nil,
+                                       onOpenFailed: { key in
+                                           externalOpenFailureKey = key
+                                           externalOpenFailed = true
+                                       })
+                .id(controller.vpnFailureRevision)
         }
         if externalOpenFailed {
             GoFlyStatusBanner(tone: .danger, title: goFlyString(externalOpenFailureKey),
@@ -484,11 +589,6 @@ private struct GoFlyVPNOnboardingView: View {
         case .unavailable, .timedOut: "onboarding.vpn.reconnect"
         case .unknown: "onboarding.vpn.check"
         }
-    }
-
-    private func openAppSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url)
     }
 
     private func openLocalDevVPN() {

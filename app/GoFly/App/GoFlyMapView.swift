@@ -98,10 +98,12 @@ final class GoFlyMovementModel: ObservableObject {
 #else
         let recoveryProbe: any TunnelProbing = NetworkTunnelProbe()
 #endif
-        recovery = ConnectionRecoveryController(
+        let recovery = ConnectionRecoveryController(
             service: service, route: route, joystick: joystick,
             probe: recoveryProbe, positionHold: positionHold, retainedColdSnapshot: snapshot
         )
+        self.recovery = recovery
+        GoFlyLocalNetworkAuthorization.shared.observe(recovery)
         let routeForPresentation = route
 #if DEBUG && targetEnvironment(simulator)
         let continuedProcessingDriver: any ContinuedProcessingDriving = GoFlyUITestOverrides.isFrameMode
@@ -129,7 +131,7 @@ final class GoFlyMovementModel: ObservableObject {
             route: route, joystick: joystick, initial: GoFlyPreferences.shared.movementSpeed,
             onChange: { GoFlyPreferences.shared.setMovementSpeed($0) })
         joystickOrigin = JoystickOriginController(service: service, joystick: joystick)
-        let scene = scene, recovery = recovery
+        let scene = scene
         wander = WanderPlanningCoordinator(
             service: service, joystick: joystick, origin: joystickOrigin,
             triggers: recovery.objectWillChange.map { _ in () }

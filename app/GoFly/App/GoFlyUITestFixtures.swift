@@ -223,7 +223,8 @@ enum GoFlyUITestOverrides {
         let location: LocationAuthorization = frame == "R03" ? .authorized : locationAuthorization
         return OnboardingController(
             probe: fixtureTunnelProbe(for: frame),
-            location: fixtureLocationAuthorization(authorization: location)
+            location: fixtureLocationAuthorization(authorization: location),
+            localNetwork: GoFlyLocalNetworkAuthorization.shared
         )
     }
 

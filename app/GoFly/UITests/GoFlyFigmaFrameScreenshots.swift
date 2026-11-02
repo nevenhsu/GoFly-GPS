@@ -243,12 +243,12 @@ final class GoFlyFigmaFrameScreenshots: XCTestCase {
                 }
                 if frame == "R04.a" {
                     let primary = app.buttons["onboarding.vpn.check"]
-                    let retry = app.buttons["onboarding.vpn.failure.retry"]
+                    let connect = app.buttons["onboarding.vpn.failure.vpn"]
                     let status = app.descendants(matching: .any)["onboarding.vpn.status"]
-                    XCTAssertTrue(retry.waitForExistence(timeout: 10))
+                    XCTAssertTrue(connect.waitForExistence(timeout: 10))
                     XCTAssertTrue(status.waitForExistence(timeout: 5))
                     XCTAssertEqual(primary.label, "重新連線")
-                    XCTAssertEqual(retry.label, "重試")
+                    XCTAssertEqual(connect.label, "連線")
                     XCTAssertEqual(status.label, "連線錯誤")
                 }
                 if frame == "R05" {

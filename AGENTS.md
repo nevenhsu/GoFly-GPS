@@ -26,6 +26,9 @@ and implementation specification have not been selected yet.
   variants instead of claiming they are designed. Use platform specs for
   behavior and accessibility; project safety and device-operation rules still
   govern actual operations.
+- Any task that uses the figma-console MCP must first load and follow the
+  `figma-console-mcp` skill (preflight with `figma_get_status`, parallel reads,
+  `figma_batch_*` writes, screenshot verification capped at 3 iterations).
 - Figma work is currently limited to UI/UX wireframes. Unless the user explicitly
   requests prototypes again, do not add prototype wiring, interaction tests, or
   combinatorial state screens. Keep only the wireframes needed for discussion.

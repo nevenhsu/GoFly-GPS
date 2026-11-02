@@ -87,29 +87,19 @@ struct GoFlyFavoritesBottomBar: View {
 struct GoFlySystemPasteControl: UIViewRepresentable {
     let accessibilityLabel: String
     let accessibilityIdentifier: String
-    var background: UIColor = GoFlyStyle.inputSurfaceUIColor
     let onPaste: (String) -> Void
 
     func makeCoordinator() -> PasteReceiver { PasteReceiver(onPaste: onPaste) }
 
-    func makeUIView(context: Context) -> UIPasteControl {
-        let configuration = UIPasteControl.Configuration()
-        configuration.displayMode = .iconOnly
-        configuration.cornerStyle = .capsule
-        configuration.baseForegroundColor = GoFlyStyle.pasteSymbolUIColor
-        configuration.baseBackgroundColor = background
-        let control = UIPasteControl(configuration: configuration)
-        control.target = context.coordinator
-        control.accessibilityLabel = accessibilityLabel
-        control.accessibilityIdentifier = accessibilityIdentifier
-        return control
+    func makeUIView(context: Context) -> GoFlyPasteAffordanceView {
+        GoFlyPasteAffordanceView(target: context.coordinator, accessibilityLabel: accessibilityLabel,
+                                 accessibilityIdentifier: accessibilityIdentifier)
     }
 
-    func updateUIView(_ control: UIPasteControl, context: Context) {
+    func updateUIView(_ view: GoFlyPasteAffordanceView, context: Context) {
         context.coordinator.onPaste = onPaste
-        control.target = context.coordinator
-        control.accessibilityLabel = accessibilityLabel
-        control.accessibilityIdentifier = accessibilityIdentifier
+        view.update(target: context.coordinator, accessibilityLabel: accessibilityLabel,
+                    accessibilityIdentifier: accessibilityIdentifier)
     }
 
     @MainActor
@@ -130,5 +120,103 @@ struct GoFlySystemPasteControl: UIViewRepresentable {
                 Task { @MainActor [weak self] in self?.onPaste(pasted) }
             }
         }
+    }
+}
+
+/// The paste affordance inside a search field. A plain GoFly icon button
+/// always sits underneath, so the affordance never disappears: the system
+/// paste control sometimes fails to draw after SwiftUI rebuilds the field,
+/// and without text on the clipboard it draws a dimmed, mismatched capsule.
+/// While the clipboard has text the system control (no "Allow Paste" prompt)
+/// covers the icon; a tap on the bare icon reads the clipboard directly,
+/// which iOS may confirm once. `hasStrings` itself never prompts.
+final class GoFlyPasteAffordanceView: UIView {
+    private var control: UIPasteControl
+    private let fallback = UIButton(type: .system)
+    private weak var target: (any UIPasteConfigurationSupporting)?
+    private var accessibilityIdentifierValue: String
+
+    init(target: any UIPasteConfigurationSupporting, accessibilityLabel: String, accessibilityIdentifier: String) {
+        control = UIPasteControl(configuration: UIPasteControl.Configuration())
+        accessibilityIdentifierValue = accessibilityIdentifier
+        super.init(frame: .zero)
+        clipsToBounds = true
+        fallback.setImage(GoFlyIcon.uiImage(GoFlySymbols.paste), for: .normal)
+        fallback.tintColor = GoFlyStyle.pasteSymbolUIColor
+        fallback.addAction(UIAction { [weak self] _ in self?.pasteFromFallback() }, for: .touchUpInside)
+        pin(fallback)
+        self.accessibilityLabel = accessibilityLabel
+        self.target = target
+        rebuildControl()
+        // The system control resolves its colors once; rebuild it for the new appearance.
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: GoFlyPasteAffordanceView, _: UITraitCollection) in
+            view.rebuildControl()
+        }
+        for name in [UIPasteboard.changedNotification, UIApplication.didBecomeActiveNotification] {
+            NotificationCenter.default.addObserver(self, selector: #selector(refresh), name: name, object: nil)
+        }
+    }
+
+    private func pin(_ view: UIView) {
+        view.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(view)
+        NSLayoutConstraint.activate([
+            view.leadingAnchor.constraint(equalTo: leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: trailingAnchor),
+            view.topAnchor.constraint(equalTo: topAnchor),
+            view.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    private func rebuildControl() {
+        let configuration = UIPasteControl.Configuration()
+        configuration.displayMode = .iconOnly
+        configuration.cornerStyle = .capsule
+        configuration.baseForegroundColor = GoFlyStyle.pasteSymbolUIColor.resolvedColor(with: traitCollection)
+        // A clear base color is drawn black by the system control; match the field's surface.
+        configuration.baseBackgroundColor = GoFlyStyle.inputSurfaceUIColor.resolvedColor(with: traitCollection)
+        control.removeFromSuperview()
+        control = UIPasteControl(configuration: configuration)
+        pin(control)
+        update(target: target, accessibilityLabel: accessibilityLabel ?? "",
+               accessibilityIdentifier: accessibilityIdentifierValue)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layer.cornerRadius = min(bounds.width, bounds.height) / 2
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil { refresh() }
+    }
+
+    func update(target: (any UIPasteConfigurationSupporting)?, accessibilityLabel: String, accessibilityIdentifier: String) {
+        self.target = target
+        self.accessibilityLabel = accessibilityLabel
+        accessibilityIdentifierValue = accessibilityIdentifier
+        control.target = target
+        for view in [control, fallback] as [UIView] {
+            view.accessibilityLabel = accessibilityLabel
+        }
+        // UI tests find the visible one by the shared identifier.
+        control.accessibilityIdentifier = accessibilityIdentifier
+        fallback.accessibilityIdentifier = accessibilityIdentifier
+        refresh()
+    }
+
+    @objc private func refresh() {
+        let hasText = UIPasteboard.general.hasStrings
+        control.isHidden = !hasText
+        fallback.isAccessibilityElement = !hasText
+    }
+
+    private func pasteFromFallback() {
+        guard UIPasteboard.general.hasStrings, let target else { return }
+        target.paste?(itemProviders: UIPasteboard.general.itemProviders)
     }
 }

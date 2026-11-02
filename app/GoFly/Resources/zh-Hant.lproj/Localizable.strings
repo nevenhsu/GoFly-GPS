@@ -74,7 +74,6 @@
 "onboarding.vpn.step1" = "連上 Wi‑Fi";
 "onboarding.vpn.step2" = "開啟 LocalDevVPN";
 "onboarding.vpn.step3" = "點 Connect";
-"onboarding.vpn.unavailableTitle" = "無法連線到裝置服務";
 "onboarding.vpn.help.step1.title" = "下載 LocalDevVPN";
 "onboarding.vpn.help.step2.title" = "開啟 LocalDevVPN";
 "onboarding.vpn.help.step3.title" = "點 Connect";
@@ -86,11 +85,6 @@
 "onboarding.vpn.checking" = "檢查中…";
 "onboarding.vpn.check" = "檢查連線";
 "onboarding.vpn.reconnect" = "重新連線";
-"onboarding.vpn.unavailable" = "LocalDevVPN 未連線，或連線逾時。請至設定檢查通道。";
-"onboarding.vpn.localNetwork.title" = "需要本機網路權限";
-"onboarding.vpn.localNetwork" = "到 App 設定，將「本機網路」改為允許。";
-"onboarding.vpn.localNetwork.allow" = "設定";
-"onboarding.vpn.timedOut" = "LocalDevVPN 未連線，或連線逾時。請至設定檢查通道。";
 "onboarding.vpn.failureDetail" = "iOS 回報";
 "onboarding.vpn.externalOpenFailed" = "無法開啟 App Store。請手動開啟 App Store，搜尋 LocalDevVPN。";
 "map.simulatedLocation" = "目前模擬位置";
@@ -470,7 +464,6 @@
 "settings.vpn.openLocalDevVPN" = "開啟 LocalDevVPN";
 "settings.vpn.externalOpenFailed" = "無法開啟 LocalDevVPN。請手動開啟並連接通道，再返回 GoFly。";
 "settings.vpn.check" = "檢查連線";
-"settings.vpn.failureGuide" = "請確認 iPhone 連著 Wi‑Fi，在 LocalDevVPN 重新連接，再返回重新檢查通道。";
 "settings.device.pairing" = "配對狀態";
 "settings.device.pairingReady" = "已配對";
 "settings.device.paired" = "已配對";
@@ -803,3 +796,23 @@
 "map.rangeShow" = "顯示漫步範圍";
 "map.rangeHide" = "隱藏漫步範圍";
 "map.fitRange" = "適配漫步範圍";
+
+/* Local Network onboarding (R03.a), Network settings */
+"onboarding.localNetwork.title" = "允許 GoFly 使用區域網路";
+"onboarding.localNetwork.message" = "GoFly 需透過 LocalDevVPN 連到本機的裝置服務，這需要「區域網路」權限。";
+"onboarding.localNetwork.allow" = "允許區域網路";
+"onboarding.localNetwork.status.unknown" = "尚未設定";
+"onboarding.localNetwork.status.granted" = "已允許";
+"onboarding.localNetwork.status.denied" = "未允許";
+"settings.network" = "網路";
+"settings.localNetwork" = "區域網路";
+"settings.localNetwork.allowed" = "已允許";
+
+/* Connection issues, in fix order, shared by R04.a, the VPN settings page and the map */
+"connection.wifi.title" = "Wi-Fi 未連線";
+"connection.wifi.message" = "請將 iPhone 連上 Wi-Fi。";
+"connection.localNetwork.title" = "區域網路未允許";
+"connection.localNetwork.message" = "請在 GoFly 設定中允許「區域網路」。";
+"connection.vpn.title" = "LocalDevVPN 未連線";
+"connection.vpn.message" = "請開啟 LocalDevVPN 並連線。";
+"connection.connect" = "連線";

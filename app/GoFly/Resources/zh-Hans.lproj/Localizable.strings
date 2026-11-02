@@ -75,11 +75,6 @@
 "onboarding.vpn.checking" = "检查中…";
 "onboarding.vpn.check" = "检查连接";
 "onboarding.vpn.reconnect" = "重新连接";
-"onboarding.vpn.unavailable" = "LocalDevVPN 未连接，或连接超时。请前往设置检查通道。";
-"onboarding.vpn.localNetwork.title" = "需要本地网络权限";
-"onboarding.vpn.localNetwork" = "到 App 设置，将“本地网络”改为允许。";
-"onboarding.vpn.localNetwork.allow" = "设置";
-"onboarding.vpn.timedOut" = "LocalDevVPN 未连接，或连接超时。请前往设置检查通道。";
 "onboarding.vpn.failureDetail" = "iOS 报告";
 "onboarding.vpn.externalOpenFailed" = "无法打开 App Store。请手动打开 App Store，搜索 LocalDevVPN。";
 "map.simulatedLocation" = "当前模拟位置";
@@ -458,7 +453,6 @@
 "settings.vpn.openLocalDevVPN" = "打开 LocalDevVPN";
 "settings.vpn.externalOpenFailed" = "无法打开 LocalDevVPN。请手动打开并连接通道，再返回 GoFly。";
 "settings.vpn.check" = "检查连接";
-"settings.vpn.failureGuide" = "请确认 iPhone 连着 Wi‑Fi，在 LocalDevVPN 重新连接，再返回重新检查通道。";
 "settings.device.pairing" = "配对状态";
 "settings.device.pairingReady" = "已配对";
 "settings.device.paired" = "已配对";
@@ -639,7 +633,6 @@
 "onboarding.vpn.step1" = "连接 Wi‑Fi";
 "onboarding.vpn.step2" = "打开 LocalDevVPN";
 "onboarding.vpn.step3" = "点 Connect";
-"onboarding.vpn.unavailableTitle" = "无法连接到设备服务";
 
 "route.planTitle" = "规划路线";
 "route.roundTripShort" = "往返";
@@ -804,3 +797,23 @@
 "map.rangeShow" = "显示漫步范围";
 "map.rangeHide" = "隐藏漫步范围";
 "map.fitRange" = "适配漫步范围";
+
+/* Local Network onboarding (R03.a), Network settings */
+"onboarding.localNetwork.title" = "允许 GoFly 使用本地网络";
+"onboarding.localNetwork.message" = "GoFly 需通过 LocalDevVPN 连到本机的设备服务，这需要“本地网络”权限。";
+"onboarding.localNetwork.allow" = "允许本地网络";
+"onboarding.localNetwork.status.unknown" = "尚未设置";
+"onboarding.localNetwork.status.granted" = "已允许";
+"onboarding.localNetwork.status.denied" = "未允许";
+"settings.network" = "网络";
+"settings.localNetwork" = "本地网络";
+"settings.localNetwork.allowed" = "已允许";
+
+/* Connection issues, in fix order, shared by R04.a, the VPN settings page and the map */
+"connection.wifi.title" = "Wi-Fi 未连接";
+"connection.wifi.message" = "请将 iPhone 连上 Wi-Fi。";
+"connection.localNetwork.title" = "本地网络未允许";
+"connection.localNetwork.message" = "请在 GoFly 设置中允许“本地网络”。";
+"connection.vpn.title" = "LocalDevVPN 未连接";
+"connection.vpn.message" = "请打开 LocalDevVPN 并连接。";
+"connection.connect" = "连接";

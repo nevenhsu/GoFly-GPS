@@ -13,8 +13,10 @@ public enum MapNotice: Equatable, Sendable, Identifiable {
     case joystickError(key: String)
     case wanderSelectionError(key: String, canRetry: Bool)
     case routeError(key: String, isFixing: Bool)
-    /// Connection lost or recovered. `coldConfirmation` offers Restore instead of Retry.
+    /// Cold-clear pending or connection recovered. `coldConfirmation` offers Restore instead of Retry.
     case connection(key: String, coldConfirmation: Bool)
+    /// A lost connection, named by its first cause in `ConnectionIssue` order.
+    case connectionIssue(ConnectionIssue)
     case resume(ResumeNotice)
 
     /// At most one notice of each case shows at a time.
@@ -28,7 +30,8 @@ public enum MapNotice: Equatable, Sendable, Identifiable {
         case .joystickError: "joystickError"
         case .wanderSelectionError: "wanderSelectionError"
         case .routeError: "routeError"
-        case .connection: "connection"
+        // Never both at once: they share the connection slot.
+        case .connection, .connectionIssue: "connection"
         case .resume: "resume"
         }
     }
@@ -66,6 +69,8 @@ public struct MapNoticeInputs: Sendable {
     /// A silent repair runs or failed and can be retried: its connection notice owns the map.
     public var repairOwnsNotice: Bool
     public var isWiFiConnected: Bool
+    /// Local Network is known to be off, or the last probe could not find the device service.
+    public var localNetworkDenied: Bool
     public var continuationNoticeKey: String?
 
     public init(mode: SessionMapMode, sceneSettled: Bool = true, notices: NoticeState = NoticeState(),
@@ -76,7 +81,7 @@ public struct MapNoticeInputs: Sendable {
                 canRetryWander: Bool = false, routeErrorKey: String? = nil, isFixingRouteOrder: Bool = false,
                 recoveryNoticeKey: String? = nil, requiresColdConfirmation: Bool = false,
                 repairOwnsNotice: Bool = false, isWiFiConnected: Bool = true,
-                continuationNoticeKey: String? = nil) {
+                localNetworkDenied: Bool = false, continuationNoticeKey: String? = nil) {
         self.mode = mode; self.sceneSettled = sceneSettled; self.notices = notices
         self.activeMovement = activeMovement; self.isResumeState = isResumeState
         self.serviceError = serviceError; self.unconfirmedID = unconfirmedID
@@ -85,7 +90,8 @@ public struct MapNoticeInputs: Sendable {
         self.canRetryWander = canRetryWander; self.routeErrorKey = routeErrorKey
         self.isFixingRouteOrder = isFixingRouteOrder; self.recoveryNoticeKey = recoveryNoticeKey
         self.requiresColdConfirmation = requiresColdConfirmation; self.repairOwnsNotice = repairOwnsNotice
-        self.isWiFiConnected = isWiFiConnected; self.continuationNoticeKey = continuationNoticeKey
+        self.isWiFiConnected = isWiFiConnected; self.localNetworkDenied = localNetworkDenied
+        self.continuationNoticeKey = continuationNoticeKey
     }
 }
 
@@ -123,10 +129,17 @@ public enum MapNoticeBoard {
         if let key = input.routeErrorKey, reports(key), input.mode == .route, !notices.isDismissed(.routeError) {
             result.append(.routeError(key: key, isFixing: input.isFixingRouteOrder))
         }
-        // Losing Wi-Fi shows the same connection-lost notice as a failed probe.
-        if let key = input.recoveryNoticeKey ?? (input.isWiFiConnected ? nil : "recovery.connectionLost"),
-           !notices.isDismissed(.recovery), !teleportFailureOwns {
-            result.append(.connection(key: key, coldConfirmation: input.requiresColdConfirmation))
+        // A lost connection (failed probe or no Wi-Fi) names its first cause;
+        // cold-clear and recovered notices keep their own toast.
+        if !notices.isDismissed(.recovery), !teleportFailureOwns {
+            let key = input.recoveryNoticeKey
+            if let key, key != "recovery.connectionLost" {
+                result.append(.connection(key: key, coldConfirmation: input.requiresColdConfirmation))
+            } else if let issue = ConnectionIssue.first(isWiFiConnected: input.isWiFiConnected,
+                                                         checkFailed: key != nil,
+                                                         localNetworkDenied: input.localNetworkDenied) {
+                result.append(.connectionIssue(issue))
+            }
         }
         if let resume = resumeNotice(input, teleportFailureOwns: teleportFailureOwns) {
             result.append(.resume(resume))

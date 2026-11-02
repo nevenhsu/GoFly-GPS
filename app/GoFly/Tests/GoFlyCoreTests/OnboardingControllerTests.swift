@@ -4,6 +4,30 @@ import Testing
 
 @Suite @MainActor
 struct OnboardingControllerTests {
+    @Test func localNetworkStepAdvancesOnlyWhenGranted() async {
+        let stub = LocalNetworkStub(answer: .denied)
+        let controller = OnboardingController(probe: ControlledProbe(), location: PermissionStub(.denied),
+                                              localNetwork: stub)
+        controller.advanceWelcome()
+        controller.skipLocation()
+        #expect(controller.step == .localNetwork)
+        #expect(await controller.allowLocalNetwork() == .denied)
+        #expect(controller.step == .localNetwork)
+        #expect(controller.localNetworkAuthorization == .denied)
+        stub.authorization = .denied
+        let granting = LocalNetworkStub(authorization: .denied, answer: .granted)
+        let second = OnboardingController(probe: ControlledProbe(), location: PermissionStub(.denied),
+                                          localNetwork: granting)
+        second.advanceWelcome()
+        second.skipLocation()
+        await second.refreshLocalNetworkAuthorization()
+        #expect(second.step == .vpn)
+        second.goBack()
+        #expect(second.step == .localNetwork)
+        second.goBack()
+        #expect(second.step == .location)
+    }
+
     @Test func backNavigationIgnoresPermissionAndVPNCallbacksFromDepartedPages() async {
         let permission = ControlledPermission()
         let probe = ControlledProbe()
@@ -215,6 +239,19 @@ struct OnboardingControllerTests {
 }
 
 @MainActor
+private final class LocalNetworkStub: LocalNetworkAuthorizing {
+    var authorization: LocalNetworkAuthorization
+    let answer: LocalNetworkAuthorization
+    init(authorization: LocalNetworkAuthorization = .unknown, answer: LocalNetworkAuthorization) {
+        self.authorization = authorization
+        self.answer = answer
+    }
+    func requestAuthorization() async -> LocalNetworkAuthorization {
+        authorization = answer
+        return answer
+    }
+}
+
 private final class PermissionStub: LocationAuthorizing {
     var authorization: LocationAuthorization
     var requests = 0
