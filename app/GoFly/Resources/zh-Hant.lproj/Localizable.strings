@@ -22,7 +22,8 @@
 "service.connecting" = "連線中…";
 "service.readyButton" = "已就緒";
 "service.preparing" = "準備服務中…";
-"service.ready" = "服務待命・無移動任務";
+"service.ready" = "待命";
+"service.running" = "執行中";
 "service.stopping" = "停止中…";
 "service.restoring" = "恢復 GPS 中…";
 "service.resetting" = "重置 VPN 通道中…";
@@ -42,7 +43,7 @@
 "location.noFix" = "無法確認目前 GPS 位置，請在可接收 GPS 訊號時重試。";
 "error.pairingRequired" = "缺少配對資料。請連接 Mac App 完成裝置準備。";
 "error.identityMismatch" = "配對資料屬於其他裝置。請在 Mac App 修復。";
-"error.devicePreparationRequired" = "這部 iPhone 需要裝置準備。請連接 Mac App 完成。";
+"error.devicePreparationRequired" = "請用 USB 連接 Mac，打開 Mac App 重新安裝。";
 "error.serviceUnavailable" = "無法連接裝置服務。請檢查 VPN 通道。";
 "error.tunnelUnavailable" = "無法連接 VPN 通道。請重新連接 LocalDevVPN 後再試。";
 "error.operationTimedOut" = "裝置未在時限內確認，請重試。";
@@ -86,15 +87,15 @@
 "onboarding.vpn.checking" = "檢查中…";
 "onboarding.vpn.check" = "檢查連線";
 "onboarding.vpn.failureDetail" = "iOS 回報";
-"onboarding.vpn.externalOpenFailed" = "無法開啟 App Store。請手動開啟 App Store，搜尋 LocalDevVPN。";
+"onboarding.vpn.externalOpenFailed" = "請手動開啟 App Store，搜尋 LocalDevVPN。";
 "map.simulatedLocation" = "目前模擬位置";
 "map.simulatedLocationWaiting" = "最後模擬位置，等待位置確認。";
 "search.placeholder" = "搜尋地點、地址或座標";
 "search.clear" = "清除搜尋";
 "search.paste" = "貼上";
-"search.pasteInvalidCoordinate" = "無效經緯度";
-"search.pastePlaceNotFound" = "找不到位置";
-"search.pasteSearchFailed" = "搜尋失敗";
+"search.pasteInvalidCoordinate" = "請貼上「緯度, 經度」格式。";
+"search.pastePlaceNotFound" = "請換個名稱或地址再試。";
+"search.pasteSearchFailed" = "請檢查網路連線後再試。";
 "search.searching" = "搜尋中…";
 "search.coordinateFormat" = "請輸入緯度, 經度。";
 "search.latitudeRange" = "緯度須介於 −90° 與 90°。";
@@ -318,7 +319,7 @@
 "favoriteRoutes.done" = "完成";
 "favoriteRoutes.saving" = "正在儲存路線…";
 "favoriteRoutes.savedTitle" = "已儲存最愛路線";
-"favoriteRoutes.savedOmittingCurrent" = "已儲存；未包含尚無有效位置的「目前位置」。";
+"favoriteRoutes.savedOmittingCurrent" = "未包含尚無有效位置的「目前位置」。";
 "favoriteRoutes.currentSnapshotHint" = "按儲存時才會擷取本次有效的目前位置。";
 "favoriteRoutes.currentOmittedHint" = "沒有有效的目前位置時，最愛路線會略過該節點，需另有至少兩個地點。";
 "favoriteRoutes.error.corruptArchive" = "最愛路線清單已損壞，暫時無法變更。";
@@ -396,7 +397,7 @@
 
 "background.title" = "背景繼續運作";
 "background.description" = "GoFly 可要求系統在 App 暫時離開畫面時繼續移動。";
-"background.systemDecidesRuntime" = "是否執行及何時執行由系統決定。「已接受」表示系統已收到要求；「執行中」表示系統已開始執行。";
+"background.systemDecidesRuntime" = "何時執行由系統決定。";
 "background.runtimeAvailable" = "系統已為此要求提供繼續運作。";
 "background.state.idle" = "待命";
 "background.state.submitting" = "送出中";
@@ -405,13 +406,13 @@
 "background.state.rejected" = "已拒絕";
 "background.state.expired" = "已到期";
 "background.state.finished" = "已結束";
-"background.unavailable" = "背景繼續運作目前不可用。請回到 GoFly 檢查工作狀態。";
-"background.expired" = "系統已結束背景繼續運作。請回到 GoFly 檢查工作狀態。";
+"background.unavailable" = "背景執行目前不可用，請開啟 GoFly 查看。";
+"background.expired" = "背景執行已結束，請開啟 GoFly 查看。";
 "background.routePaused" = "路線已暫停";
 "background.routePaused.message" = "背景工作已停止，點「繼續」接續路線。";
-"background.rejected" = "系統拒絕了背景繼續運作要求。請回到 GoFly 檢查工作狀態。";
-"background.registrationLimit" = "背景繼續運作目前暫時不可用。請回到 GoFly 檢查工作狀態。";
-"background.unsupported" = "此系統不支援背景繼續運作。請回到 GoFly 檢查工作狀態。";
+"background.rejected" = "系統拒絕背景執行，請開啟 GoFly 查看。";
+"background.registrationLimit" = "背景執行暫時不可用，請開啟 GoFly 查看。";
+"background.unsupported" = "此系統不支援背景執行。";
 "background.activity.finiteRoute" = "GoFly 路線";
 "background.activity.roundTrip" = "GoFly 來回路線";
 "background.activity.wander" = "GoFly 漫步";
@@ -446,7 +447,7 @@
 "settings.status.notDetermined" = "尚未決定";
 "settings.status.restricted" = "受限制";
 "settings.openSystemSettings" = "開啟系統設定";
-"settings.externalOpenFailed" = "無法開啟系統設定。請手動開啟，再返回 GoFly 重新檢查。";
+"settings.externalOpenFailed" = "請手動開啟，再返回 GoFly 重新檢查。";
 "settings.location.purpose" = "只需「使用 App 期間」；背景由系統背景任務延續。";
 "settings.permissionsFooter" = "只需「使用 App 期間」；背景由系統背景任務延續。";
 "settings.background.purposeTitle" = "路線與漫步";
@@ -501,7 +502,7 @@
 "setup.pairingImport.message" = "在電腦匯出這支 iPhone 的配對檔，再點下方按鈕匯入。";
 "setup.pairingImport.notImported" = "尚未匯入";
 "setup.pairingImport.action" = "匯入配對檔";
-"setup.pairingImport.failed" = "無法匯入這個配對檔。請在電腦匯出這支 iPhone 的配對檔後再試一次。";
+"setup.pairingImport.failed" = "請在電腦匯出這支 iPhone 的配對檔後再試。";
 "setup.completed.title" = "設定完成";
 "setup.completed.message" = "GoFly 已準備就緒。";
 "setup.blocked.title" = "需要完成設定";
@@ -742,7 +743,7 @@
 "gallery.button.size.small" = "小型";
 "gallery.button.size.extraSmall" = "特小";
 "gallery.button.size.inline" = "行內";
-"wander.error.planningFailed" = "無法規劃路線";
+"wander.error.planningFailed" = "請在地圖選點或重試。";
 "wander.planning" = "正在規劃路線";
 "route.pausedToast.title" = "路線模擬已暫停";
 "route.pausedToast.message" = "任務意外中斷，點選重試自中斷點恢復行進。";
@@ -819,3 +820,20 @@
 "connection.vpn.title" = "LocalDevVPN 未連線";
 "connection.vpn.message" = "請開啟 LocalDevVPN 並連線。";
 "connection.connect" = "重試";
+
+/* Toast titles: IssueCatalog.titleKey(for:) */
+"issue.title.device" = "裝置連線問題";
+"issue.title.joystick" = "搖桿無法使用";
+"issue.title.favorites" = "最愛地點";
+"issue.title.imports" = "匯入路線";
+"issue.title.favoriteRoutes" = "最愛路線";
+"issue.title.session" = "工作階段";
+"issue.title.coordinate" = "座標無效";
+"error.devicePreparationRequired.title" = "需要啟用裝置支援";
+"search.pasteInvalidCoordinate.title" = "無效經緯度";
+"search.pastePlaceNotFound.title" = "找不到位置";
+"search.pasteSearchFailed.title" = "搜尋失敗";
+"settings.externalOpenFailed.title" = "無法開啟系統設定";
+"onboarding.vpn.externalOpenFailed.title" = "無法開啟 App Store";
+"setup.pairingImport.failed.title" = "無法匯入配對檔";
+"favoriteRoutes.savedOmittingCurrent.title" = "已儲存";

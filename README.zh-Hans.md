@@ -99,7 +99,7 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 签名 Team 构建
 
 配对文件必须属于这台 iPhone；其他手机的配对文件会在第一次连接时被拦下。IPA 版不需要 Mac App；Mac 安装版仍使用原来的 USB 配对流程。2026-11-02 已用 SideStore 实机验证导入、瞬移、路线后台移动，以及手机重启后的定位；已修正自动漫步在后台运行的问题（后台中一段走完时，原地等待下一条道路规划完成，不再暂停），已实机测试成功。
 
-开发者运行 `bash app/GoFly/scripts/package-ipa.sh` 生成未签名 IPA 与 SHA-256（须先有 `work/gofly-ios/native` 中已构建的原生库）。输出一律放在 `work/dist/ipa/`；同版本的旧 IPA 与校验文件会先移到 `work/dist/ipa/archive/<UTC 时间>/`，不会被覆盖或删除。脚本不修改 Mac 构建。
+开发者运行 `bash app/GoFly/scripts/package-ipa.sh` 生成未签名 IPA 与 SHA-256（需要 Mac、安装在 `/Applications/Xcode.app` 的 Xcode 与网络）。首次运行（或原生库版本固定值变更后）会自动获取固定版本的 idevice、下载经 SHA-256 校验的 Rust 工具链，并在 `work/gofly-ios/` 构建原生库；之后会重复使用。输出一律放在 `work/dist/ipa/`；同版本的旧 IPA 与校验文件会先移到 `work/dist/ipa/archive/<UTC 时间>/`，不会被覆盖或删除。脚本不修改 Mac 构建。
 
 ## 让 AI 帮你安装
 

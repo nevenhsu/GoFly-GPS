@@ -101,7 +101,7 @@ If you'd rather not use the Mac app, [SideStore](https://sidestore.io) or [AltSt
 
 The pairing file must belong to this iPhone; a file for another phone is stopped at the first connection. The IPA does not need the Mac app; the Mac installer keeps its USB pairing flow. On 2026-11-02, import, teleport, background route movement, and positioning after an iPhone restart were verified on a device installed with SideStore; auto-wander in the background was fixed and device-tested (when a segment ends in the background it keeps running in place while the next road is planned, instead of pausing).
 
-To build the unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` (requires the prepared native archive under `work/gofly-ios/native`). Output always goes to `work/dist/ipa/`; an earlier IPA and checksum of the same version move to `work/dist/ipa/archive/<UTC time>/` instead of being overwritten or deleted. The Mac build is unchanged.
+To build the unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` on a Mac with Xcode in `/Applications/Xcode.app` and internet access. On the first run (or after the native pin changes) it fetches the pinned idevice commit, downloads the checksum-verified Rust toolchain, and builds the native library under `work/gofly-ios/`; later runs reuse it. Output always goes to `work/dist/ipa/`; an earlier IPA and checksum of the same version move to `work/dist/ipa/archive/<UTC time>/` instead of being overwritten or deleted. The Mac build is unchanged.
 
 ## Let an AI install it for you
 

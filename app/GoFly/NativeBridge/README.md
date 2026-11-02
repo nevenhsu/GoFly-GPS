@@ -57,8 +57,10 @@ app/GoFly/NativeBridge/build.sh
 The script exports the pinned commit in `upstream.json` from the local research
 checkout `work/mac-bootstrap-idevice`. To use another existing clone, set
 `GOFLY_IDEVICE_REPOSITORY` to its absolute path; its working tree is never edited.
-The pin must exist locally. A fresh clone can be placed under ignored `work/`
-from `https://github.com/jkcoxson/idevice.git` before running the script.
+When the default checkout lacks the pin, the script fetches only that commit from
+`https://github.com/jkcoxson/idevice.git` into ignored `work/`; a
+`GOFLY_IDEVICE_REPOSITORY` clone must already contain it. `package-ipa.sh` runs
+this script automatically when the native archive is missing or stale.
 
 Only a fresh archive of that commit is patched. The build-script patch asks
 cbindgen to parse the local FFI source tree directly, avoiding its implicit

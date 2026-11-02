@@ -75,9 +75,9 @@ struct GoFlyRecoveryView: View {
     private func storageBanner(_ failure: SessionRecoveryFailure) -> some View {
         let canRetry = store.loadState == .ready && store.hasUnsavedChanges
             && [.writeFailed, .unavailable, .unsafeFile].contains(failure)
-        let message = (store.hasUnsavedChanges ? goFlyString("recovery.unsaved") + " " : "")
-            + goFlyString("recovery.storageGuidance")
-        return GoFlyStatusBanner(tone: .danger, title: goFlyString(failure.localizationKey), message: message,
+        let message = goFlyString(failure.localizationKey)
+            + (store.hasUnsavedChanges ? " " + goFlyString("recovery.unsaved") : "")
+        return GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: failure.localizationKey), message: message,
             actionTitle: canRetry ? goFlyString("operation.retry") : nil,
             onAction: canRetry ? { _ = store.retrySaving() } : nil,
             identifier: "recovery.storageError", actionEnabled: !store.isSaving,

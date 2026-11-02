@@ -84,7 +84,8 @@ struct GoFlyMapToastStack: View {
             if let searchPasteWarning {
                 GoFlyStatusBanner(
                     tone: .warning,
-                    title: goFlyString(searchPasteWarning.localizationKey),
+                    title: goFlyIssueTitle(for: searchPasteWarning.localizationKey),
+                    message: goFlyString(searchPasteWarning.localizationKey),
                     onDismiss: { self.searchPasteWarning = nil },
                     identifier: "map.searchPasteWarning",
                     isFloating: true
@@ -107,7 +108,8 @@ struct GoFlyMapToastStack: View {
         case .favoriteRouteFailure(let key):
             GoFlyStatusBanner(
                 tone: .danger,
-                title: goFlyString(key),
+                title: goFlyIssueTitle(for: key),
+                message: goFlyString(key),
                 onDismiss: { notices.clearFavoriteRouteFailure() },
                 identifier: "route.favoriteSaveError",
                 isFloating: true
@@ -115,7 +117,8 @@ struct GoFlyMapToastStack: View {
         case .wanderPlanningFailed:
             GoFlyStatusBanner(
                 tone: .danger,
-                title: goFlyString("wander.error.planningFailed"),
+                title: goFlyIssueTitle(for: WanderSelectionFailure.planningFailed.rawValue),
+                message: goFlyString(WanderSelectionFailure.planningFailed.rawValue),
                 actionTitle: goFlyString("common.retry"),
                 onAction: { wander.retryFailedPlanning() },
                 onDismiss: { joystick.clearWanderError() },
@@ -125,8 +128,8 @@ struct GoFlyMapToastStack: View {
         case .serviceError(let key):
             GoFlyStatusBanner(
                 tone: .danger,
-                title: goFlyString(key),
-                message: goFlyString("status.repairGuidance"),
+                title: goFlyIssueTitle(for: key),
+                message: goFlyString(key),
                 actionTitle: issueButton(for: key).title,
                 onAction: issueButton(for: key).action,
                 onDismiss: { notices.dismiss(.serviceError) },
@@ -137,10 +140,8 @@ struct GoFlyMapToastStack: View {
             let id = unconfirmedID
             GoFlyStatusBanner(
                 tone: .danger,
-                title: goFlyString(inTeleport ? "teleport.failure.toast.title" : key),
-                message: inTeleport
-                    ? goFlyString("teleport.failure.toast.message")
-                    : goFlyString("teleport.positionUnconfirmed") + " " + goFlyString("operation.failureGuidance"),
+                title: inTeleport ? goFlyString("teleport.failure.toast.title") : goFlyIssueTitle(for: key),
+                message: goFlyString(inTeleport ? "teleport.failure.toast.message" : "teleport.positionUnconfirmed"),
                 actionTitle: goFlyString(inTeleport ? "common.retry" : "operation.settings"),
                 onAction: {
                     if inTeleport { recovery.checkConnection() }
@@ -153,8 +154,8 @@ struct GoFlyMapToastStack: View {
         case .preparedOperationFailed(let key):
             GoFlyStatusBanner(
                 tone: .danger,
-                title: goFlyString(key),
-                message: goFlyString("operation.failureGuidance"),
+                title: goFlyIssueTitle(for: key),
+                message: goFlyString(key),
                 actionTitle: goFlyString("operation.retry"),
                 onAction: {
                     if let id = service.preparedOperation?.id { _ = service.retryPreparedOperation(id: id) }
@@ -168,8 +169,8 @@ struct GoFlyMapToastStack: View {
         case .joystickError(let key):
             GoFlyStatusBanner(
                 tone: .danger,
-                title: goFlyString(key),
-                message: goFlyString("status.repairGuidance"),
+                title: goFlyIssueTitle(for: key),
+                message: goFlyString(key),
                 actionTitle: issueButton(for: key).title,
                 onAction: issueButton(for: key).action,
                 onDismiss: { notices.dismiss(.joystickError) },
@@ -179,8 +180,8 @@ struct GoFlyMapToastStack: View {
         case .wanderSelectionError(let key, let canRetry):
             GoFlyStatusBanner(
                 tone: .warning,
-                title: goFlyString(key),
-                message: goFlyString("status.repairGuidance"),
+                title: goFlyIssueTitle(for: key),
+                message: goFlyString(key),
                 actionTitle: canRetry ? goFlyString("operation.retry") : nil,
                 onAction: canRetry ? { _ = joystick.retryWander() } : nil,
                 onDismiss: { joystick.clearWanderError() },
@@ -191,7 +192,7 @@ struct GoFlyMapToastStack: View {
             let routeIssueButton = issueButton(for: key, fix: { _ = route.fixPlanningOrder() })
             GoFlyStatusBanner(
                 tone: .danger,
-                title: goFlyString("route.error.shortTitle"),
+                title: goFlyIssueTitle(for: key),
                 message: goFlyString(key),
                 actionTitle: routeIssueButton.title,
                 onAction: routeIssueButton.action,

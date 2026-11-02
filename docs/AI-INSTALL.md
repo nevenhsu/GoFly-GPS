@@ -56,7 +56,7 @@ Follow the [iOS build instructions](../app/GoFly/README.md), then run:
 bash app/GoFly/scripts/package-ipa.sh
 ```
 
-The packager requires the prepared native archive under `work/gofly-ios/native`. It changes `GoFlyRequiresMacSetup` from Boolean `true` to `false` only in the staged Payload; the source and Mac producer stay unchanged. Output is fixed at `work/dist/ipa/`; previous same-version IPA/checksum pairs move to `work/dist/ipa/archive/<UTC time>/`. Verify the final checksum and Payload policy before delivery. Packaging is not device verification.
+When `work/gofly-ios/native` is missing or was built from a different `upstream.json` or patch set, the packager first runs `app/GoFly/NativeBridge/build.sh`, which fetches the pinned idevice commit into ignored `work/mac-bootstrap-idevice` and downloads the checksum-verified Rust toolchain. It changes `GoFlyRequiresMacSetup` from Boolean `true` to `false` only in the staged Payload; the source and Mac producer stay unchanged. Output is fixed at `work/dist/ipa/`; previous same-version IPA/checksum pairs move to `work/dist/ipa/archive/<UTC time>/`. Verify the final checksum and Payload policy before delivery. Packaging is not device verification.
 
 ### Install or renew through the Mac producer
 

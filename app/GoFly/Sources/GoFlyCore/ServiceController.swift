@@ -189,6 +189,7 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
         if phase == .stopped, clearAttempted, clearState == .unknown {
             return "service.stoppedGPSPending"
         }
+        if phase == .ready, hasSimulated { return "service.running" }
         return "service.\(phase.rawValue)"
     }
     public var gpsStatusKey: String {

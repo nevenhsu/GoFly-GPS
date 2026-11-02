@@ -115,11 +115,19 @@ public enum MapNoticeBoard {
         // connection or resume notice repeats it.
         let teleportFailureOwns = input.mode == .teleport && showsUnconfirmed
             && !isConnectionFailure(input.unconfirmedFailure)
+        // A failed operation that offers Retry owns the failure: the generic service
+        // toast would only repeat it.
+        let preparedFailureShown = input.preparedFailure.map { reports($0.rawValue) && !isConnectionFailure($0) } == true
+            && !teleportFailureOwns
+        // The joystick or route notice already reports the same failure.
+        let modeNoticeKey = input.mode == .joystick && !notices.isDismissed(.joystickError) ? input.joystickErrorKey
+            : input.mode == .route && !notices.isDismissed(.routeError) ? input.routeErrorKey : nil
+        let modeNoticeRepeats = modeNoticeKey != nil && modeNoticeKey == input.serviceError?.rawValue
         var result: [MapNotice] = []
 
         if let key = notices.favoriteRouteKey { result.append(.favoriteRouteFailure(key: key)) }
         if input.wanderError == .planningFailed, input.mode == .joystick { result.append(.wanderPlanningFailed) }
-        if let error = input.serviceError, !input.repairOwnsNotice, !teleportFailureOwns,
+        if let error = input.serviceError, !input.repairOwnsNotice, !teleportFailureOwns, !preparedFailureShown, !modeNoticeRepeats,
            reports(error.rawValue), !isConnectionFailure(error), !notices.isDismissed(.serviceError) {
             result.append(.serviceError(key: error.rawValue))
         }

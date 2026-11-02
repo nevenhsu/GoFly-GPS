@@ -65,7 +65,7 @@ struct GoFlyFavoriteFailureNotice: View {
     }
 
     private func notice(_ failure: FavoritePlacesFailure) -> some View {
-        GoFlyStatusBanner(tone: .danger, title: goFlyString(failure.rawValue),
+        GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: failure.rawValue), message: goFlyString(failure.rawValue),
             onDismiss: favorites.canMutate ? { favorites.clearError() } : nil,
             identifier: "favorites.error")
     }

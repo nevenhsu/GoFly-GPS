@@ -26,7 +26,7 @@ struct GoFlySaveFavoriteRouteView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let saved = savedOmittingCurrent {
-                        GoFlyStatusBanner(tone: .success, title: goFlyString("favoriteRoutes.savedOmittingCurrent"),
+                        GoFlyStatusBanner(tone: .success, title: goFlyIssueTitle(for: "favoriteRoutes.savedOmittingCurrent"), message: goFlyString("favoriteRoutes.savedOmittingCurrent"),
                                           identifier: "favoriteRoutes.save.omittedResult")
                         Text(goFlyFavoriteRouteEndpoints(saved)).goFlyFont(GoFlyFont.body)
                     } else {

@@ -117,7 +117,7 @@ struct GoFlyLocationSettingsPage: View {
         }
         .goFlyToastOverlay(topInset: 54) {
             if status.externalOpenFailed {
-                GoFlyStatusBanner(tone: .danger, title: goFlyString("settings.externalOpenFailed"),
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "settings.externalOpenFailed"), message: goFlyString("settings.externalOpenFailed"),
                                   identifier: "settings.location.externalOpenFailed")
             }
         }
@@ -179,7 +179,7 @@ struct GoFlyNetworkSettingsPage: View {
         }
         .goFlyToastOverlay(topInset: 54) {
             if status.externalOpenFailed {
-                GoFlyStatusBanner(tone: .danger, title: goFlyString("settings.externalOpenFailed"),
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "settings.externalOpenFailed"), message: goFlyString("settings.externalOpenFailed"),
                                   identifier: "settings.network.externalOpenFailed")
             }
         }
@@ -262,7 +262,7 @@ struct GoFlyBackgroundSettingsPage: View {
         .goFlyTracksSystemPresentation(showingDuration, id: "settings.background.duration")
         .goFlyToastOverlay(topInset: 54) {
             if status.externalOpenFailed {
-                GoFlyStatusBanner(tone: .danger, title: goFlyString("settings.externalOpenFailed"),
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "settings.externalOpenFailed"), message: goFlyString("settings.externalOpenFailed"),
                                   identifier: "settings.background.externalOpenFailed")
             }
             if let key = continuation.noticeKey {
@@ -384,7 +384,7 @@ struct GoFlyVPNSettingsPage: View {
         .navigationDestination(isPresented: $showingHelp) { GoFlyVPNHelpPage() }
         .goFlyToastOverlay(topInset: 54) {
             if status.externalOpenFailed {
-                GoFlyStatusBanner(tone: .danger, title: goFlyString("onboarding.vpn.externalOpenFailed"),
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "onboarding.vpn.externalOpenFailed"), message: goFlyString("onboarding.vpn.externalOpenFailed"),
                                   identifier: "settings.vpn.externalOpenFailed")
             }
             if recovery.connectionState != .reachable,
@@ -396,7 +396,7 @@ struct GoFlyVPNSettingsPage: View {
                                            onOpenFailed: { issueOpenFailureKey = $0 })
             }
             if let issueOpenFailureKey {
-                GoFlyStatusBanner(tone: .danger, title: goFlyString(issueOpenFailureKey),
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: issueOpenFailureKey), message: goFlyString(issueOpenFailureKey),
                                   identifier: "settings.vpn.externalOpenFailed")
             }
         }
@@ -425,8 +425,6 @@ struct GoFlyDeviceSettingsPage: View {
     @ObservedObject var service: ServiceController
     let setupMetadata: GoFlySetupMetadata?
     @StateObject private var status = GoFlySystemStatus()
-    @State private var exportItem: DiagnosticsShareItem?
-    @State private var exportFailed = false
 
     var body: some View {
         GoFlySettingsPageContainer(titleKey: "settings.device", rootIdentifier: "settings.device.page") {
@@ -451,56 +449,10 @@ struct GoFlyDeviceSettingsPage: View {
                 }
 
             }
-
-            if GoFlyUITestOverrides.frame != "F9" {
-                diagnosticsSection
-            }
-        }
-        .sheet(item: $exportItem) { item in
-            GoFlyShareSheet(url: item.url)
-        }
-        .goFlyTracksSystemPresentation(exportItem != nil, id: "settings.diagnostics.share")
-        .goFlyToastOverlay(topInset: 54) {
-            if exportFailed {
-                GoFlyStatusBanner(tone: .danger,
-                                  title: goFlyString("settings.diagnostics.exportFailed"),
-                                  onDismiss: { exportFailed = false },
-                                  identifier: "settings.diagnostics.exportFailed")
-            }
         }
         .onAppear { status.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             status.refresh()
-        }
-    }
-
-    /// Keeps the diagnostics export reachable from Settings › Device after the
-    /// UI redesign; it is the only way to collect evidence without USB.
-    private var diagnosticsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(goFlyString("settings.diagnostics.title"))
-                .goFlyFont(GoFlyFont.headline)
-            Text(goFlyString("settings.diagnostics.description"))
-                .goFlyFont(GoFlyFont.subheadline)
-                .foregroundStyle(GoFlyTextColor.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            GoFlySettingsAction(
-                titleKey: "settings.diagnostics.export",
-                action: exportDiagnostics,
-                identifier: "settings.diagnostics.export"
-            )
-        }
-        .settingsCard()
-    }
-
-    private func exportDiagnostics() {
-        do {
-            exportItem = DiagnosticsShareItem(url: try Diagnostics.shared.export())
-            exportFailed = false
-            Diagnostics.shared.record("diagnostics.export", category: .device, level: .notice, [:])
-        } catch {
-            exportFailed = true
-            Diagnostics.shared.record("diagnostics.exportFailed", category: .device, level: .error, [:])
         }
     }
 
@@ -518,24 +470,6 @@ struct GoFlyDeviceSettingsPage: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(identifier)
-    }
-}
-
-private struct GoFlySettingsAction: View {
-    let titleKey: String
-    let action: () -> Void
-    var identifier: String
-    var disabled = false
-
-    var body: some View {
-        Button(action: action) {
-            Text(goFlyString(titleKey))
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
-        .disabled(disabled)
         .accessibilityIdentifier(identifier)
     }
 }

@@ -315,7 +315,7 @@ struct GoFlyFavoriteRouteFailureNotice: View {
     var body: some View {
         if let key {
             let button = goFlyIssueButton(for: key, retry: { Task { await favorites.load() } })
-            GoFlyStatusBanner(tone: .danger, title: goFlyString(key), actionTitle: button.title,
+            GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: key), message: goFlyString(key), actionTitle: button.title,
                               onAction: button.action, identifier: "favoriteRoutes.error")
                 .padding(.vertical, 8)
         }

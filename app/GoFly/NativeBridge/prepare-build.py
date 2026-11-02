@@ -26,9 +26,24 @@ def run(*args, **kwargs):
     subprocess.run(args, check=True, **kwargs)
 
 
+def fetch_pinned(repository):
+    """Fetch only the pinned commit into the ignored default checkout."""
+    if not (repository / '.git').exists():
+        run('git', 'init', '--quiet', str(repository))
+    run('git', '-C', str(repository), 'fetch', '--quiet', '--depth', '1', PIN['repository'], PIN['commit'])
+
+
 def prepare():
     BUILD.mkdir(parents=True, exist_ok=True)
-    repository = Path(os.environ.get('GOFLY_IDEVICE_REPOSITORY', str(PROJECT / 'work/mac-bootstrap-idevice')))
+    override = os.environ.get('GOFLY_IDEVICE_REPOSITORY')
+    repository = Path(override or str(PROJECT / 'work/mac-bootstrap-idevice'))
+    has_pin = subprocess.run(['git', '-C', str(repository), 'cat-file', '-e', PIN['commit'] + '^{commit}'],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+    if not has_pin:
+        # An explicit clone is never modified; the default checkout is fetched on demand.
+        if override:
+            raise SystemExit('Pinned upstream commit is missing from GOFLY_IDEVICE_REPOSITORY')
+        fetch_pinned(repository)
     commit = subprocess.check_output(['git', '-C', str(repository), 'rev-parse', PIN['commit'] + '^{commit}'], text=True).strip()
     if commit != PIN['commit']:
         raise SystemExit('Pinned upstream commit is unavailable')
@@ -102,7 +117,6 @@ def record():
             'libidevice_ffi.a': sha256(output / 'libidevice_ffi.a'),
             'swiftShimHeader': sha256(BRIDGE / 'include/idevice.h'),
             'swiftModuleMap': sha256(BRIDGE / 'include/module.modulemap'),
-            'shim-abi-check.c': sha256(output / 'shim-abi-check.c'),
         },
     }
     (output / 'manifest.json').write_text(json.dumps(metadata, indent=2) + '\n')

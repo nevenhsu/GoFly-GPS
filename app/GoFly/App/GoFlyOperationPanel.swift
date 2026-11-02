@@ -26,8 +26,8 @@ struct GoFlyOperationPanel: View {
                         .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                         .accessibilityIdentifier("operation.return")
                 } else if let failure = unconfirmedFailure {
-                    GoFlyStatusBanner(tone: .danger, title: goFlyString(failure.rawValue),
-                        message: goFlyString("teleport.positionUnconfirmed") + " " + goFlyString("operation.failureGuidance"),
+                    GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: failure.rawValue),
+                        message: goFlyString("teleport.positionUnconfirmed"),
                         actionTitle: onSettings == nil ? nil : goFlyString("operation.settings"),
                         onAction: onSettings, identifier: "operation.unconfirmed",
                         actionIdentifier: "operation.settings", titleIdentifier: reasonIdentifier)
@@ -74,8 +74,8 @@ struct GoFlyOperationPanel: View {
                 .disabled(nativeBusy)
                 .accessibilityIdentifier(cancelIdentifier)
         case .failed(let failure):
-            GoFlyStatusBanner(tone: .danger, title: goFlyString(failure.rawValue),
-                message: goFlyString("operation.failureGuidance"),
+            GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: failure.rawValue),
+                message: goFlyString(failure.rawValue),
                 actionTitle: goFlyString("operation.retry"), onAction: { onRetry(operation.id) },
                 identifier: "operation.failure", actionEnabled: !nativeBusy,
                 actionIdentifier: "operation.retry", titleIdentifier: reasonIdentifier)

@@ -34,10 +34,11 @@ public enum IssueCatalog {
         DeviceServiceFailure.pairingRequired.rawValue,
         DeviceServiceFailure.identityMismatch.rawValue,
         DeviceServiceFailure.developerModeRequired.rawValue,
-        DeviceServiceFailure.devicePreparationRequired.rawValue,
         DeviceServiceFailure.storageUnavailable.rawValue,
     ]
     private static let retryKeys: Set<String> = [
+        // Reconnecting after the iPhone is plugged into a Mac reactivates support.
+        DeviceServiceFailure.devicePreparationRequired.rawValue,
         DeviceServiceFailure.serviceUnavailable.rawValue,
         DeviceServiceFailure.tunnelUnavailable.rawValue,
         DeviceServiceFailure.operationTimedOut.rawValue,
@@ -55,6 +56,33 @@ public enum IssueCatalog {
         "route.error.currentLocationUnavailable",
     ]
     private static let validationSuffixes = [".invalidLabel", ".noSelection", ".busy", ".nothingToUndo"]
+
+    /// Keys with their own `.title` copy although they belong to a category.
+    private static let ownTitleKeys: Set<String> = [DeviceServiceFailure.devicePreparationRequired.rawValue]
+    /// Category titles from docs/IOS-ERROR-TOAST-COPY.md §2, by key prefix.
+    private static let categoryTitleKeys: [(prefix: String, titleKey: String)] = [
+        ("error.", "issue.title.device"),
+        ("route.error.", "route.error.shortTitle"),
+        ("imports.execution.", "route.error.shortTitle"),
+        ("wander.error.", "route.error.shortTitle"),
+        ("joystick.error.", "issue.title.joystick"),
+        ("favorites.error.", "issue.title.favorites"),
+        ("imports.error.", "issue.title.imports"),
+        ("favoriteRoutes.error.", "issue.title.favoriteRoutes"),
+        ("gpx.error.", "imports.error.title"),
+        ("recovery.error.", "issue.title.session"),
+        ("search.coordinateFormat", "issue.title.coordinate"),
+        ("search.latitudeRange", "issue.title.coordinate"),
+        ("search.longitudeRange", "issue.title.coordinate"),
+    ]
+
+    /// A toast's short title; the key's own copy is its second line. Keys outside
+    /// every category, and `ownTitleKeys`, use `<key>.title`.
+    public static func titleKey(for key: String) -> String {
+        guard !ownTitleKeys.contains(key),
+              let category = categoryTitleKeys.first(where: { key.hasPrefix($0.prefix) }) else { return "\(key).title" }
+        return category.titleKey
+    }
 
     public static func info(for key: String) -> IssueInfo {
         IssueInfo(scope: scope(of: key), kind: kind(of: key), action: action(for: key))

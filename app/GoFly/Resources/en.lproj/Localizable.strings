@@ -22,7 +22,8 @@
 "service.connecting" = "Connecting…";
 "service.readyButton" = "Ready";
 "service.preparing" = "Preparing service…";
-"service.ready" = "Service ready · No active task";
+"service.ready" = "Ready";
+"service.running" = "Running";
 "service.stopping" = "Stopping…";
 "service.restoring" = "Restoring GPS…";
 "service.resetting" = "Resetting VPN tunnel…";
@@ -42,7 +43,7 @@
 "location.noFix" = "A current GPS location could not be verified. Try again when a GPS signal is available.";
 "error.pairingRequired" = "Pairing data is missing. Connect to the Mac app to prepare.";
 "error.identityMismatch" = "Pairing is for another device. Repair it in the Mac app.";
-"error.devicePreparationRequired" = "This iPhone needs setup. Connect to the Mac app to finish.";
+"error.devicePreparationRequired" = "Connect your iPhone to your Mac with USB and reinstall using your Mac app.";
 "error.serviceUnavailable" = "Can't reach the device service. Check the VPN tunnel.";
 "error.tunnelUnavailable" = "Can't reach the VPN tunnel. Reconnect LocalDevVPN, then try again.";
 "error.operationTimedOut" = "The device didn't confirm in time. Try again.";
@@ -76,15 +77,15 @@
 "onboarding.vpn.checking" = "Checking…";
 "onboarding.vpn.check" = "Check connection";
 "onboarding.vpn.failureDetail" = "iOS reported";
-"onboarding.vpn.externalOpenFailed" = "The App Store could not be opened. Open the App Store manually and search for LocalDevVPN.";
+"onboarding.vpn.externalOpenFailed" = "Open the App Store and search for LocalDevVPN.";
 "map.simulatedLocation" = "Confirmed simulated location";
 "map.simulatedLocationWaiting" = "Last simulated location. Waiting for a confirmed location.";
 "search.placeholder" = "Search places, addresses or coordinates";
 "search.clear" = "Clear search";
 "search.paste" = "Paste";
-"search.pasteInvalidCoordinate" = "Invalid coordinates";
-"search.pastePlaceNotFound" = "Place not found";
-"search.pasteSearchFailed" = "Search failed";
+"search.pasteInvalidCoordinate" = "Paste coordinates as latitude, longitude.";
+"search.pastePlaceNotFound" = "Try another name or address.";
+"search.pasteSearchFailed" = "Check your internet connection and try again.";
 "search.searching" = "Searching…";
 "search.coordinateFormat" = "Enter latitude, longitude.";
 "search.latitudeRange" = "Latitude must be between −90° and 90°.";
@@ -308,7 +309,7 @@
 "favoriteRoutes.done" = "Done";
 "favoriteRoutes.saving" = "Saving route…";
 "favoriteRoutes.savedTitle" = "Favorite route saved";
-"favoriteRoutes.savedOmittingCurrent" = "Saved. Current location was unavailable and was not included in this favorite.";
+"favoriteRoutes.savedOmittingCurrent" = "Current location was unavailable and wasn’t included.";
 "favoriteRoutes.currentSnapshotHint" = "Current location will be captured when you tap Save.";
 "favoriteRoutes.currentOmittedHint" = "Unavailable current location will be left out of this favorite. At least two other places are needed.";
 "favoriteRoutes.error.corruptArchive" = "The favorite-routes list is damaged and cannot be changed.";
@@ -386,7 +387,7 @@
 
 "background.title" = "Background continuation";
 "background.description" = "GoFly can ask the system to continue a movement while the app is inactive.";
-"background.systemDecidesRuntime" = "The system decides whether and when the request runs. Accepted means the request was received; running means the system has started it.";
+"background.systemDecidesRuntime" = "The system decides when it runs.";
 "background.runtimeAvailable" = "A system continuation is available for this request.";
 "background.state.idle" = "Idle";
 "background.state.submitting" = "Submitting";
@@ -395,13 +396,13 @@
 "background.state.rejected" = "Rejected";
 "background.state.expired" = "Expired";
 "background.state.finished" = "Ended";
-"background.unavailable" = "Background continuation is unavailable. Return to GoFly to check the task state.";
-"background.expired" = "The system ended background continuation. Return to GoFly to check the task state.";
+"background.unavailable" = "Background mode unavailable. Open GoFly to check.";
+"background.expired" = "Background mode ended. Open GoFly to check.";
 "background.routePaused" = "Route paused";
 "background.routePaused.message" = "Background task ended. Resume the route.";
-"background.rejected" = "The system declined the background continuation request. Return to GoFly to check the task state.";
-"background.registrationLimit" = "Background continuation is temporarily unavailable. Return to GoFly to check the task state.";
-"background.unsupported" = "Background continuation is not supported on this system. Return to GoFly to check the task state.";
+"background.rejected" = "Background mode declined. Open GoFly to check.";
+"background.registrationLimit" = "Background mode busy. Open GoFly to check.";
+"background.unsupported" = "Background mode not supported on this system.";
 "background.activity.finiteRoute" = "GoFly route";
 "background.activity.roundTrip" = "GoFly round trip";
 "background.activity.wander" = "GoFly wander";
@@ -436,7 +437,7 @@
 "settings.status.notDetermined" = "Not determined";
 "settings.status.restricted" = "Restricted";
 "settings.openSystemSettings" = "Settings";
-"settings.externalOpenFailed" = "System Settings could not be opened. Open it manually and return to GoFly to check again.";
+"settings.externalOpenFailed" = "Open it manually, then return to GoFly.";
 "settings.location.purpose" = "Use location access to show the real position and phone heading. It does not affect simulated location.";
 "settings.background.purposeTitle" = "Route and wander";
 "settings.backgroundTitle" = "Background";
@@ -490,7 +491,7 @@
 "setup.pairingImport.message" = "On your computer, export this iPhone’s pairing file, then tap the button below to import it.";
 "setup.pairingImport.notImported" = "Not imported";
 "setup.pairingImport.action" = "Import";
-"setup.pairingImport.failed" = "Couldn’t import this pairing file. Export this iPhone’s pairing file on your computer and try again.";
+"setup.pairingImport.failed" = "Export this iPhone’s pairing file on your computer and try again.";
 "setup.completed.title" = "Setup complete";
 "setup.completed.message" = "GoFly is ready.";
 "setup.blocked.title" = "Setup is required";
@@ -743,7 +744,7 @@
 "gallery.button.size.small" = "Small";
 "gallery.button.size.extraSmall" = "Extra Small";
 "gallery.button.size.inline" = "Inline";
-"wander.error.planningFailed" = "Unable to plan route";
+"wander.error.planningFailed" = "Pick a point on the map or retry.";
 "wander.planning" = "Planning route";
 "route.pausedToast.title" = "Route simulation paused";
 "route.pausedToast.message" = "The task was interrupted. Tap Retry to resume from where it stopped.";
@@ -820,3 +821,20 @@
 "connection.vpn.title" = "LocalDevVPN not connected";
 "connection.vpn.message" = "Open LocalDevVPN and connect.";
 "connection.connect" = "Open";
+
+/* Toast titles: IssueCatalog.titleKey(for:) */
+"issue.title.device" = "Device connection issue";
+"issue.title.joystick" = "Joystick unavailable";
+"issue.title.favorites" = "Favorite places";
+"issue.title.imports" = "Imported routes";
+"issue.title.favoriteRoutes" = "Favorite routes";
+"issue.title.session" = "Saved session";
+"issue.title.coordinate" = "Invalid coordinates";
+"error.devicePreparationRequired.title" = "Device support needs activation";
+"search.pasteInvalidCoordinate.title" = "Invalid coordinates";
+"search.pastePlaceNotFound.title" = "Place not found";
+"search.pasteSearchFailed.title" = "Search failed";
+"settings.externalOpenFailed.title" = "Can’t open Settings";
+"onboarding.vpn.externalOpenFailed.title" = "Can’t open the App Store";
+"setup.pairingImport.failed.title" = "Can’t import pairing file";
+"favoriteRoutes.savedOmittingCurrent.title" = "Saved";

@@ -658,7 +658,7 @@ struct GoFlyPairingImportView: View {
                            statusIdentifier: "setup.pairingImport.status")
         .goFlyToastOverlay(topInset: 64) {
             if importFailed {
-                GoFlyStatusBanner(tone: .danger, title: goFlyString("setup.pairingImport.failed"),
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "setup.pairingImport.failed"), message: goFlyString("setup.pairingImport.failed"),
                                   identifier: "setup.pairingImport.failed")
             }
         }

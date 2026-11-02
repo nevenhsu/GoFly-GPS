@@ -31,7 +31,7 @@ struct GoFlyFavoriteEditorSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let failure = favorites.error {
-                        GoFlyStatusBanner(tone: .danger, title: goFlyString(failure.rawValue), identifier: "favorites.error")
+                        GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: failure.rawValue), message: goFlyString(failure.rawValue), identifier: "favorites.error")
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {

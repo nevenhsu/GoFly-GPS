@@ -8,16 +8,20 @@
 | --- | --- | --- | --- |
 | **重試** | 重試 | Retry | 共用的「重設工作階段並重試」：重建 VPN 通道與裝置連線（既有 `ServiceController.resetTunnel`／`rebuildClientConnection`），成功後自動重跑剛才失敗的操作 |
 | **修正** | 修正 | Fix | 僅用於路線規劃失敗；在固定搜尋上限內重排全部地點（含起點）並重新規劃，成功採用新順序，失敗保留原順序 |
-| 設定 | 設定 | Settings | 只用於需要使用者親自在實機或 Mac App 處理的事（配對、開發者模式、裝置準備、儲存空間） |
+| 設定 | 設定 | Settings | 只用於需要使用者親自在實機或 Mac App 處理的事（配對、開發者模式、儲存空間） |
 | 選檔 | 選檔 | Choose | 開檔案選擇器；GPX 錯誤與保存檔損壞（需重新匯入）共用 |
 
 **連線類失敗（`error.tunnelUnavailable`、`error.serviceUnavailable`、`error.operationTimedOut`）不再有自己的 toast**：地圖、操作面板與服務設定頁一律只顯示連線檢查的那一張（Wi‑Fi／區域網路／VPN，依序判斷），同時間不再出現其他錯誤 toast；操作面板只保留「連線無法使用」標題與重試／取消。下表這三筆文案目前沒有畫面使用，保留供內部錯誤碼與日誌。未在真機驗證。
+
+**同一失敗只留一張 toast**：操作失敗（`preparedOperationFailed`，有重試）顯示時，或搖桿／路線模式的錯誤 toast 已在報告同一個錯誤碼時，不再同時顯示 App 級通用服務錯誤 toast（`serviceError`）；只保留一張。尚未在真機驗證。
+
+**`error.devicePreparationRequired`（2026-11-03 實作文案）**：實機確認（iPhone 15 Pro，27.0.1 → 27.2）裝置支援只在 iOS 更新後失效，一般重開機不受影響；用 USB 接上裝有 Xcode 的 Mac 後，Mac 會在背景自動重新掛載，按重試即可恢復。toast 文案引導用 USB 連接 Mac 並用 Mac 端安裝工具（GoFly Mac App 或 iloader）重新安裝，文案刻意不指名；toast 標題用專屬短句，第二行就是上表文案；按鈕保留「重試」，供重新安裝後恢復。只裝 GoFly Mac App、沒有 Xcode 的 Mac 是否也會自動掛載尚未驗證。Figma F11.b 專用 toast「需要更新裝置支援」（按鈕「更新」開啟 設定 › 裝置支援）屬於手機自行更新的設計，暫緩：Apple 沒有可匿名下載 DDI 的來源，手機端下載方案尚未定案。
 
 其餘錯誤**不放按鈕**，只留關閉（×）：文案已說明該怎麼做（選起點、選地點、移除一筆再試），使用者直接在原畫面操作即可。
 
 ## 2. 文案表
 
-標題：App 級用「類別標題」，內文即下表文案。範圍欄：**A**＝App 級（全域），**P**＝頁面／資料級，**M**＝模式級。
+**所有 toast 同一格式：標題＋第二行＋按鈕（可無）**（2026-11-03）。標題用各節的類別標題，第二行就是下表文案，兩者都用短句；通用的「設定 › VPN 通道」修復指引不再當第二行。例外：`error.devicePreparationRequired` 標題「需要啟用裝置支援／Device support needs activation」；`wander.error.planningFailed` 標題「無法規劃路線」、第二行「請在地圖選點或重試。」；座標輸入錯誤（`search.coordinateFormat`、`search.latitudeRange`、`search.longitudeRange`）標題「座標無效／Invalid coordinates」。不在下表的 toast 各有 `<key>.title`：無法開啟系統設定、無法開啟 App Store、無法匯入配對檔、已儲存（最愛路線未含目前位置）、貼上搜尋（無效經緯度、找不到位置、搜尋失敗）。實作在 `IssueCatalog.titleKey(for:)`；尚未在真機驗證。範圍欄：**A**＝App 級（全域），**P**＝頁面／資料級，**M**＝模式級。
 
 ### 連線與裝置服務（A，類別標題：裝置連線問題／Device connection issue）
 
@@ -26,7 +30,7 @@
 | `error.pairingRequired` | 缺少配對資料。請連接 Mac App 完成裝置準備。 | Pairing data is missing. Connect to the Mac app to prepare. | 設定／Settings |
 | `error.identityMismatch` | 配對資料屬於其他裝置。請在 Mac App 修復。 | Pairing is for another device. Repair it in the Mac app. | 設定／Settings |
 | `error.developerModeRequired` | 請開啟開發者模式，再連接 Mac App 完成準備。 | Turn on Developer Mode, then finish setup in the Mac app. | 設定／Settings |
-| `error.devicePreparationRequired` | 這部 iPhone 需要裝置準備。請連接 Mac App 完成。 | This iPhone needs setup. Connect to the Mac app to finish. | 設定／Settings |
+| `error.devicePreparationRequired` | 請用 USB 連接 Mac，打開 Mac App 重新安裝。（標題：需要啟用裝置支援） | Connect your iPhone to your Mac with USB and reinstall using your Mac app. (Title: Device support needs activation) | 重試／Retry |
 | `error.serviceUnavailable` | 無法連接裝置服務。請檢查 VPN 通道。 | Can't reach the device service. Check the VPN tunnel. | 重試／Retry |
 | `error.tunnelUnavailable` | 無法連接 VPN 通道。請重新連接 LocalDevVPN 後再試。 | Can't reach the VPN tunnel. Reconnect LocalDevVPN, then try again. | 重試／Retry |
 | `error.operationTimedOut` | 裝置未在時限內確認，請重試。 | The device didn't confirm in time. Try again. | 重試／Retry |
@@ -141,7 +145,7 @@
 
 1. **能重試就只給「重試」**。重試 = 重設工作階段後重跑原操作，不讓使用者判斷該重置哪一層。連線類（`serviceUnavailable`、`tunnelUnavailable`、`operationTimedOut`）、存取／寫入失敗類（`unavailable`、`writeFailed`）都走這一條。Wi‑Fi 與路線規劃失敗的「重試」只重新檢查／重新規劃，不重置工作階段。
 2. **重試失敗不加新 toast**，只更新原 toast；重試中按鈕顯示進行中並停用。連續失敗 2 次後，把按鈕換成「設定」。
-3. **無法由 App 修復的**（配對、開發者模式、裝置準備、儲存空間）→「設定」。
+3. **無法由 App 修復的**（配對、開發者模式、儲存空間）→「設定」。
 4. **資料損壞、格式不支援、已達上限**：保留原檔，不重試、不自動修復，不放按鈕。
 5. **輸入驗證**（沒選起點、沒選路線、標籤太長、忙碌中、無可復原）：欄位內提示或 2 秒 snackbar，不放按鈕、不讓 Pill 變紅。
 6. **關閉 × 只是隱藏**，錯誤未解除時 Pill 仍是紅色；條件解除才恢復 Standby／Running／Paused／Stopped。

@@ -22,7 +22,8 @@
 "service.connecting" = "连接中…";
 "service.readyButton" = "已就绪";
 "service.preparing" = "准备服务中…";
-"service.ready" = "服务待命 · 无移动任务";
+"service.ready" = "待命";
+"service.running" = "运行中";
 "service.stopping" = "停止中…";
 "service.restoring" = "恢复 GPS 中…";
 "service.resetting" = "重置 VPN 通道中…";
@@ -42,7 +43,7 @@
 "location.noFix" = "无法确认当前 GPS 位置，请在可接收 GPS 信号时重试。";
 "error.pairingRequired" = "缺少配对数据。请连接 Mac App 完成设备准备。";
 "error.identityMismatch" = "配对数据属于其他设备。请在 Mac App 修复。";
-"error.devicePreparationRequired" = "这部 iPhone 需要设备准备。请连接 Mac App 完成。";
+"error.devicePreparationRequired" = "请用 USB 连接 Mac，打开 Mac App 重新安装。";
 "error.serviceUnavailable" = "无法连接设备服务。请检查 VPN 通道。";
 "error.tunnelUnavailable" = "无法连接 VPN 通道。请重新连接 LocalDevVPN 后重试。";
 "error.operationTimedOut" = "设备未在时限内确认，请重试。";
@@ -76,15 +77,15 @@
 "onboarding.vpn.checking" = "检查中…";
 "onboarding.vpn.check" = "检查连接";
 "onboarding.vpn.failureDetail" = "iOS 报告";
-"onboarding.vpn.externalOpenFailed" = "无法打开 App Store。请手动打开 App Store，搜索 LocalDevVPN。";
+"onboarding.vpn.externalOpenFailed" = "请手动打开 App Store，搜索 LocalDevVPN。";
 "map.simulatedLocation" = "当前模拟位置";
 "map.simulatedLocationWaiting" = "最后模拟位置，等待位置确认。";
 "search.placeholder" = "搜索地点、地址或坐标";
 "search.clear" = "清除搜索";
 "search.paste" = "粘贴";
-"search.pasteInvalidCoordinate" = "无效经纬度";
-"search.pastePlaceNotFound" = "找不到位置";
-"search.pasteSearchFailed" = "搜索失败";
+"search.pasteInvalidCoordinate" = "请粘贴“纬度, 经度”格式。";
+"search.pastePlaceNotFound" = "请换个名称或地址再试。";
+"search.pasteSearchFailed" = "请检查网络连接后再试。";
 "search.searching" = "搜索中…";
 "search.coordinateFormat" = "请输入纬度, 经度。";
 "search.latitudeRange" = "纬度须介于 −90° 与 90°。";
@@ -308,7 +309,7 @@
 "favoriteRoutes.done" = "完成";
 "favoriteRoutes.saving" = "正在保存路线…";
 "favoriteRoutes.savedTitle" = "已保存收藏路线";
-"favoriteRoutes.savedOmittingCurrent" = "已保存；未包含尚无有效位置的“当前位置”。";
+"favoriteRoutes.savedOmittingCurrent" = "未包含尚无有效位置的“当前位置”。";
 "favoriteRoutes.currentSnapshotHint" = "点击保存时才会获取本次有效的当前位置。";
 "favoriteRoutes.currentOmittedHint" = "没有有效的当前位置时，收藏路线会略过该节点，需另有至少两个地点。";
 "favoriteRoutes.error.corruptArchive" = "收藏路线列表已损坏，暂时无法更改。";
@@ -386,7 +387,7 @@
 
 "background.title" = "后台继续运行";
 "background.description" = "GoFly 可以请求系统在 App 暂时离开画面时继续移动。";
-"background.systemDecidesRuntime" = "是否运行以及何时运行由系统决定。“已接受”表示系统已收到请求；“运行中”表示系统已开始运行。";
+"background.systemDecidesRuntime" = "何时运行由系统决定。";
 "background.runtimeAvailable" = "系统已为此请求提供继续运行。";
 "background.state.idle" = "待机";
 "background.state.submitting" = "提交中";
@@ -395,13 +396,13 @@
 "background.state.rejected" = "已拒绝";
 "background.state.expired" = "已过期";
 "background.state.finished" = "已结束";
-"background.unavailable" = "后台继续运行目前不可用。请回到 GoFly 检查任务状态。";
-"background.expired" = "系统已结束后台继续运行。请回到 GoFly 检查任务状态。";
+"background.unavailable" = "后台运行目前不可用，请打开 GoFly 查看。";
+"background.expired" = "后台运行已结束，请打开 GoFly 查看。";
 "background.routePaused" = "路线已暂停";
 "background.routePaused.message" = "后台任务已停止，点“继续”接续路线。";
-"background.rejected" = "系统拒绝了后台继续运行请求。请回到 GoFly 检查任务状态。";
-"background.registrationLimit" = "后台继续运行目前暂时不可用。请回到 GoFly 检查任务状态。";
-"background.unsupported" = "此系统不支持后台继续运行。请回到 GoFly 检查任务状态。";
+"background.rejected" = "系统拒绝后台运行，请打开 GoFly 查看。";
+"background.registrationLimit" = "后台运行暂时不可用，请打开 GoFly 查看。";
+"background.unsupported" = "此系统不支持后台运行。";
 "background.activity.finiteRoute" = "GoFly 路线";
 "background.activity.roundTrip" = "GoFly 往返路线";
 "background.activity.wander" = "GoFly 漫步";
@@ -436,7 +437,7 @@
 "settings.status.notDetermined" = "尚未决定";
 "settings.status.restricted" = "受限制";
 "settings.openSystemSettings" = "打开系统设置";
-"settings.externalOpenFailed" = "无法打开系统设置。请手动打开，再返回 GoFly 重新检查。";
+"settings.externalOpenFailed" = "请手动打开，再返回 GoFly 重新检查。";
 "settings.location.purpose" = "定位权限用于显示真实位置和手机朝向，不影响模拟定位。";
 "settings.background.purposeTitle" = "路线与漫步";
 "settings.backgroundTitle" = "背景运行";
@@ -490,7 +491,7 @@
 "setup.pairingImport.message" = "在电脑导出这台 iPhone 的配对文件，再点下方按钮导入。";
 "setup.pairingImport.notImported" = "尚未导入";
 "setup.pairingImport.action" = "导入配对文件";
-"setup.pairingImport.failed" = "无法导入这个配对文件。请在电脑导出这台 iPhone 的配对文件后再试一次。";
+"setup.pairingImport.failed" = "请在电脑导出这台 iPhone 的配对文件后再试。";
 "setup.completed.title" = "设置完成";
 "setup.completed.message" = "GoFly 已准备就绪。";
 "setup.blocked.title" = "需要完成设置";
@@ -743,7 +744,7 @@
 "gallery.button.size.small" = "小型";
 "gallery.button.size.extraSmall" = "特小";
 "gallery.button.size.inline" = "行内";
-"wander.error.planningFailed" = "无法规划路线";
+"wander.error.planningFailed" = "请在地图选点或重试。";
 "wander.planning" = "正在规划路线";
 "route.pausedToast.title" = "路线模拟已暂停";
 "route.pausedToast.message" = "任务意外中断，点选重试自中断点恢复行进。";
@@ -820,3 +821,20 @@
 "connection.vpn.title" = "LocalDevVPN 未连接";
 "connection.vpn.message" = "请打开 LocalDevVPN 并连接。";
 "connection.connect" = "重试";
+
+/* Toast titles: IssueCatalog.titleKey(for:) */
+"issue.title.device" = "设备连接问题";
+"issue.title.joystick" = "摇杆无法使用";
+"issue.title.favorites" = "最爱地点";
+"issue.title.imports" = "已导入路线";
+"issue.title.favoriteRoutes" = "收藏路线";
+"issue.title.session" = "已存会话";
+"issue.title.coordinate" = "坐标无效";
+"error.devicePreparationRequired.title" = "需要启用设备支持";
+"search.pasteInvalidCoordinate.title" = "无效经纬度";
+"search.pastePlaceNotFound.title" = "找不到位置";
+"search.pasteSearchFailed.title" = "搜索失败";
+"settings.externalOpenFailed.title" = "无法打开系统设置";
+"onboarding.vpn.externalOpenFailed.title" = "无法打开 App Store";
+"setup.pairingImport.failed.title" = "无法导入配对文件";
+"favoriteRoutes.savedOmittingCurrent.title" = "已保存";

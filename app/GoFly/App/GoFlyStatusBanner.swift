@@ -257,6 +257,11 @@ extension View {
     }
 }
 
+/// Every toast is a short title plus the key's own copy as its second line;
+/// the title comes from `IssueCatalog.titleKey(for:)`.
+@MainActor
+func goFlyIssueTitle(for key: String) -> String { goFlyString(IssueCatalog.titleKey(for: key)) }
+
 /// Maps an error key to its one toast button (see `IssueCatalog`). The caller
 /// passes only the handlers it owns; an action without a handler shows no button.
 @MainActor

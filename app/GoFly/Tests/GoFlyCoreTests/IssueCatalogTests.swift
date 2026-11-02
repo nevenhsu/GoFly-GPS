@@ -12,11 +12,19 @@ struct IssueCatalogTests {
     @Test func routePlanningFailureRepairsOrderInsteadOfRetrying() {
         #expect(IssueCatalog.info(for: "route.error.planningFailed").action == .fix)
         #expect(IssueCatalog.info(for: "error.tunnelUnavailable").action == .retry)
+        #expect(IssueCatalog.info(for: "error.devicePreparationRequired").action == .retry)
+    }
+
+    @Test func toastTitlesComeFromTheCategoryOrTheKeysOwnTitle() {
+        #expect(IssueCatalog.titleKey(for: "error.tunnelUnavailable") == "issue.title.device")
+        #expect(IssueCatalog.titleKey(for: "error.devicePreparationRequired") == "error.devicePreparationRequired.title")
+        #expect(IssueCatalog.titleKey(for: "gpx.error.tooFewPoints") == "imports.error.title")
+        #expect(IssueCatalog.titleKey(for: "settings.externalOpenFailed") == "settings.externalOpenFailed.title")
     }
 
     @Test func setupErrorsOpenSettings() {
         for key in ["error.pairingRequired", "error.identityMismatch", "error.developerModeRequired",
-                    "error.devicePreparationRequired", "error.storageUnavailable"] {
+                    "error.storageUnavailable"] {
             #expect(IssueCatalog.info(for: key).action == .settings, "\(key)")
         }
         #expect(IssueCatalog.info(for: "error.deviceRequired").action == nil)

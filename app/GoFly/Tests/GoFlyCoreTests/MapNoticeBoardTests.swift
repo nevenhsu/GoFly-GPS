@@ -116,6 +116,21 @@ struct MapNoticeBoardTests {
         #expect(ids(joystick) == ["wanderPlanningFailed", "joystickError"])
     }
 
+    @Test func aFailedOperationWithRetryReplacesTheGenericServiceNotice() {
+        let input = MapNoticeInputs(mode: .teleport, serviceError: .devicePreparationRequired,
+                                    preparedFailure: .devicePreparationRequired)
+        #expect(ids(input) == ["preparedOperationFailed"])
+    }
+
+    @Test func aModeNoticeForTheSameFailureReplacesTheGenericServiceNotice() {
+        let joystick = MapNoticeInputs(mode: .joystick, serviceError: .devicePreparationRequired,
+                                       joystickErrorKey: "error.devicePreparationRequired")
+        #expect(ids(joystick) == ["joystickError"])
+        let route = MapNoticeInputs(mode: .route, serviceError: .devicePreparationRequired,
+                                    routeErrorKey: "error.devicePreparationRequired")
+        #expect(ids(route) == ["routeError"])
+    }
+
     @Test func aCancelledOperationIsNeverANotice() {
         #expect(ids(MapNoticeInputs(mode: .teleport, serviceError: .operationCancelled,
                                     preparedFailure: .operationCancelled)).isEmpty)

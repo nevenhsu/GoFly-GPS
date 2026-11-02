@@ -165,7 +165,7 @@ struct GoFlyOnboardingView: View {
                               identifier: "onboarding.location.deniedBanner")
         }
         if settingsOpenFailed {
-            GoFlyStatusBanner(tone: .danger, title: goFlyString("settings.externalOpenFailed"))
+            GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "settings.externalOpenFailed"), message: goFlyString("settings.externalOpenFailed"))
         }
     }
 
@@ -339,7 +339,7 @@ private struct GoFlyLocalNetworkOnboardingView: View {
         .background(GoFlyStyle.canvas)
         .goFlyToastOverlay(topInset: 64) {
             if settingsOpenFailed {
-                GoFlyStatusBanner(tone: .danger, title: goFlyString("settings.externalOpenFailed"))
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "settings.externalOpenFailed"), message: goFlyString("settings.externalOpenFailed"))
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -579,7 +579,7 @@ private struct GoFlyVPNOnboardingView: View {
                 .id(controller.vpnFailureRevision)
         }
         if externalOpenFailed {
-            GoFlyStatusBanner(tone: .danger, title: goFlyString(externalOpenFailureKey),
+            GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: externalOpenFailureKey), message: goFlyString(externalOpenFailureKey),
                               identifier: "onboarding.vpn.externalOpenFailed")
         }
     }

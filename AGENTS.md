@@ -56,7 +56,7 @@ and implementation specification have not been selected yet.
   credentials and testing scope must be configured before a security test.
 - Keep credentials and generated research output out of version control.
 - Do not run Prettier unless explicitly requested.
-- **不要自動升版號或 build。** 只有使用者明確要求時才修改；重新建置、打包 IPA／DMG、合併或發布不代表升版授權。獲授權後遵循 [升版規則](docs/VERSIONING.md)：iOS 新的 `MARKETING_VERSION` 可從 build 1 開始，同版 build 遞增；Mac build 跨版本持續遞增、不歸零。
+- **不要自動升版號或 build。** 只有使用者明確要求時才修改；重新建置、打包 IPA／DMG、合併或發布不代表升版授權。獲授權後遵循 [升版規則](docs/VERSIONING.md)：iOS 與 Mac 新的對外版本都可從 build 1 開始，同版 build 遞增。
 
 - GitHub Release 說明遵循 [Release 撰寫規格](docs/RELEASE-NOTES.md)：英文在前、繁中在後，不加語言標籤；開頭的版本／build 摘要只出現一次，中英文同步更新並在發布後讀回核對。
 

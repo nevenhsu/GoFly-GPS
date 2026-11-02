@@ -236,7 +236,7 @@ struct GoFlyImportedRoutesView: View {
         // the user can retry with a valid file.
         let actionTitle = button.title ?? goFlyString("common.retry")
         let action = button.action ?? { showingImporter = true }
-        return GoFlyStatusBanner(tone: .danger, title: goFlyString("imports.error.title"), message: goFlyString(key),
+        return GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: key), message: goFlyString(key),
                                  actionTitle: actionTitle, onAction: action, identifier: identifier)
     }
 

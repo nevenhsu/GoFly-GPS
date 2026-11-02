@@ -33,7 +33,7 @@ struct GoFlyVPNHelpPage: View {
         .navigationBarBackButtonHidden()
         .goFlyToastOverlay(topInset: 48) {
             if externalOpenFailed {
-                GoFlyStatusBanner(tone: .danger, title: goFlyString(externalOpenFailureKey),
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: externalOpenFailureKey), message: goFlyString(externalOpenFailureKey),
                                   identifier: "onboarding.vpn.help.externalOpenFailed")
             }
         }

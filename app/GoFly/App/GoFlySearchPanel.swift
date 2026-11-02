@@ -54,7 +54,7 @@ struct GoFlySearchPanel: View {
         .background(GoFlyStyle.canvas.ignoresSafeArea())
         .goFlyToastOverlay(topInset: 72) {
             if let error = search.inputError {
-                GoFlyStatusBanner(tone: .warning, title: goFlyString(error.rawValue),
+                GoFlyStatusBanner(tone: .warning, title: goFlyIssueTitle(for: error.rawValue), message: goFlyString(error.rawValue),
                                   identifier: "search.inputError")
             }
         }
