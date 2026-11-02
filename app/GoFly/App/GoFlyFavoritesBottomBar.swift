@@ -123,13 +123,12 @@ struct GoFlySystemPasteControl: UIViewRepresentable {
     }
 }
 
-/// The paste affordance inside a search field. A plain GoFly icon button
-/// always sits underneath, so the affordance never disappears: the system
-/// paste control sometimes fails to draw after SwiftUI rebuilds the field,
-/// and without text on the clipboard it draws a dimmed, mismatched capsule.
-/// While the clipboard has text the system control (no "Allow Paste" prompt)
-/// covers the icon; a tap on the bare icon reads the clipboard directly,
-/// which iOS may confirm once. `hasStrings` itself never prompts.
+/// The paste affordance inside a search field. The system paste control (no
+/// "Allow Paste" prompt) is always shown, dimmed by iOS while the clipboard
+/// has no text. A plain GoFly icon button sits underneath as a safety net:
+/// the system control sometimes fails to draw after SwiftUI rebuilds the
+/// field, and a tap on the bare icon reads the clipboard directly, which iOS
+/// may confirm once. `hasStrings` itself never prompts.
 final class GoFlyPasteAffordanceView: UIView {
     private var control: UIPasteControl
     private let fallback = UIButton(type: .system)
@@ -210,9 +209,9 @@ final class GoFlyPasteAffordanceView: UIView {
     }
 
     @objc private func refresh() {
-        let hasText = UIPasteboard.general.hasStrings
-        control.isHidden = !hasText
-        fallback.isAccessibilityElement = !hasText
+        // The system control is always shown; iOS dims it while the clipboard has no text.
+        control.isHidden = false
+        fallback.isAccessibilityElement = false
     }
 
     private func pasteFromFallback() {
