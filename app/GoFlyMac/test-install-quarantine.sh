@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_SOURCE="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE_ROOT="$(cd "$APP_SOURCE/../.." && pwd)"
-DMG_PATH="${1:-$WORKSPACE_ROOT/work/dist/GoFly-1.0.0-arm64.dmg}"
+DMG_PATH="${1:-$WORKSPACE_ROOT/work/dist/GoFly-GPS-1.0.6-arm64.dmg}"
 
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "The quarantine installation simulation requires macOS." >&2

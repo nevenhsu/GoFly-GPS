@@ -28,11 +28,11 @@ fi
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Contents/Info.plist")"
-OUTPUT="$OUTPUT_DIR/GoFly-$VERSION-arm64.dmg"
+OUTPUT="$OUTPUT_DIR/GoFly-GPS-$VERSION-arm64.dmg"
 CHECKSUM="$OUTPUT.sha256"
 /bin/mkdir -p "$OUTPUT_DIR"
 STAGING_ROOT="$(/usr/bin/mktemp -d "$OUTPUT_DIR/.GoFly-dmg.XXXXXX")"
-TEMP_DMG="$STAGING_ROOT/GoFly-$VERSION-arm64.dmg"
+TEMP_DMG="$STAGING_ROOT/GoFly-GPS-$VERSION-arm64.dmg"
 trap 'rm -rf "$STAGING_ROOT"' EXIT
 
 /usr/bin/ditto "$APP_BUNDLE" "$STAGING_ROOT/GoFly.app"

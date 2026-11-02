@@ -753,7 +753,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             let renderer = GoFlyRoutePolylineRenderer(polyline: line)
             renderer.showsPoints = routeOverlay === line && parent.showsRoutePoints
             renderer.strokeColor = UIColor(GoFlyThemeColor.mapRoute)
-            renderer.lineWidth = 4
+            // Shared by route and wander; 2 pt device trial (2026-11-02).
+            renderer.lineWidth = 2
             renderer.lineCap = .round
             renderer.lineJoin = .round
             if let routeOverlay, routeOverlay === line {
@@ -774,8 +775,8 @@ private final class GoFlyRoutePolylineRenderer: MKPolylineRenderer {
     override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
         super.draw(mapRect, zoomScale: zoomScale, in: context)
         guard showsPoints, polyline.pointCount > 2, let color = strokeColor else { return }
-        let radius = 4.5 / zoomScale
-        let ring = 2 / zoomScale
+        let radius = 3.5 / zoomScale
+        let ring = 1.5 / zoomScale
         let visible = rect(for: mapRect).insetBy(dx: -radius - ring, dy: -radius - ring)
         let vertices = polyline.points()
         var last: CGPoint?

@@ -233,7 +233,7 @@ private struct EnvironmentProgressSidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("GoFly").font(GoFlyStyle.font(17, bold: true))
+                Text("GoFly GPS").font(GoFlyStyle.font(17, bold: true))
                 Text(macText("app.forMac")).font(GoFlyStyle.font(11)).foregroundStyle(GoFlyStyle.muted)
             }
             .padding(.horizontal, 24).padding(.top, 40).padding(.bottom, 42)
@@ -736,7 +736,7 @@ struct MacDeviceSidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("GoFly").font(GoFlyStyle.font(22, bold: true))
+                Text("GoFly GPS").font(GoFlyStyle.font(22, bold: true))
                 Text(macText("app.forMac")).font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
             }
             .padding(.horizontal, 24).padding(.top, 28).padding(.bottom, 26)

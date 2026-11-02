@@ -1,5 +1,7 @@
 # GoFly Mac V1 UI 設計與實作現況
 
+正式品牌標題使用 GoFly GPS，App 內一般句子保留 GoFly，README 統一使用 GoFly GPS；詳見 [命名規範](BRANDING.md)（2026-11-02）。識別碼與技術路徑維持相容。
+
 更新日期：2026-10-27。Mac App 的唯一視覺準據是 Figma 檔 `RtPV8PXCQJ2WXK3jk3kPrq` 的 `05 · Mac Redesign（新版）`（頁面 `123:61504`），只採用 V1 的 E Mac 環境、D 裝置及對應 Dark sections。灰字說明是操作行為規則；舊 `02 · Mac App`、早期 Mac 改版畫面及 `Archive ·` sections 不作準據。
 
 流程與驗收規格見 [`MAC-INSTALLER-SPEC.md`](MAC-INSTALLER-SPEC.md)，逐票實作、軟體證據與未驗項目見 [Mac V1 TRACKER](../.scratch/gofly-mac-v1/TRACKER.md)。

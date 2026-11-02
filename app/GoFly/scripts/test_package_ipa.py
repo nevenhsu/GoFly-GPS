@@ -19,7 +19,7 @@ class SideStorePackageTests(unittest.TestCase):
             "GoFlyRequiresMacSetup": True,
             "CFBundleIdentifier": "com.neven.gofly",
             "CFBundleSupportedPlatforms": ["iPhoneOS"],
-            "CFBundleShortVersionString": "1.0.4",
+            "CFBundleShortVersionString": "1.0.6",
             "CFBundleExecutable": "GoFly",
             "BGTaskSchedulerPermittedIdentifiers": ["com.neven.gofly.movement"],
         }
@@ -33,6 +33,7 @@ class SideStorePackageTests(unittest.TestCase):
     def test_sideload_gate_disabled_without_changing_mac_source_or_other_metadata(self):
         original = (self.app / "Info.plist").read_bytes()
         output = package(self.app, self.root / "dist")
+        self.assertEqual(output.name, "GoFly-GPS-1.0.6.ipa")
         self.assertEqual((self.app / "Info.plist").read_bytes(), original)
         with zipfile.ZipFile(output) as bundle:
             actual = plistlib.loads(bundle.read("Payload/GoFly.app/Info.plist"))
@@ -44,8 +45,8 @@ class SideStorePackageTests(unittest.TestCase):
         first = output.read_bytes()
         again = package(self.app, output.parent)
         self.assertEqual(again, output)
-        archived = list((output.parent / "archive").glob("*/GoFly-1.0.4.ipa*"))
-        self.assertEqual(sorted(p.name for p in archived), ["GoFly-1.0.4.ipa", "GoFly-1.0.4.ipa.sha256"])
+        archived = list((output.parent / "archive").glob("*/GoFly-GPS-1.0.6.ipa*"))
+        self.assertEqual(sorted(p.name for p in archived), ["GoFly-GPS-1.0.6.ipa", "GoFly-GPS-1.0.6.ipa.sha256"])
         self.assertEqual(next(p for p in archived if p.suffix == ".ipa").read_bytes(), first)
 
     def test_missing_or_untyped_mac_policy_is_rejected(self):

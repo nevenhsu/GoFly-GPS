@@ -32,7 +32,7 @@ def package(app: Path, output_directory: Path) -> Path:
             raise ValueError("Use an unsigned build without profiles, signatures, or symlinks.")
 
     output_directory.mkdir(parents=True, exist_ok=True)
-    output = output_directory / f"GoFly-{version}.ipa"
+    output = output_directory / f"GoFly-GPS-{version}.ipa"
     checksum = output.with_suffix(".ipa.sha256")
     with tempfile.TemporaryDirectory(prefix=".sidestore-", dir=output_directory) as temporary:
         root = Path(temporary)

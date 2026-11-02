@@ -81,7 +81,7 @@ private struct LaunchScreen: View {
                     .frame(width: 112, height: 112)
                     .overlay { DesignAsset("WingedArrow", width: 68, tint: MacColorSystem.brandMark) }
                     .padding(.bottom, 24)
-                Text("GoFly").font(GoFlyStyle.font(32, bold: true))
+                Text("GoFly GPS").font(GoFlyStyle.font(32, bold: true))
                 Text("for Mac").font(GoFlyStyle.font(14)).foregroundStyle(GoFlyStyle.muted).padding(.top, 2)
                 if model.failure == nil {
                     GeometryReader { geometry in

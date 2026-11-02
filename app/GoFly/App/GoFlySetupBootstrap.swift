@@ -736,10 +736,10 @@ struct GoFlyStartupView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 24.5, style: .continuous))
                     .position(x: midX, y: midY - 48)
 
-                Text("GoFly")
+                Text("GoFly GPS")
                     .goFlyFont(GoFlyFont.display)
                     .foregroundStyle(GoFlyTextColor.primary)
-                    .frame(width: 120, height: 34)
+                    .frame(width: 220, height: 34)
                     .position(x: midX, y: midY + 41)
 
                 if showsProgress {

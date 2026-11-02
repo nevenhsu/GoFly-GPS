@@ -1,12 +1,12 @@
-# GoFly iOS
+# GoFly GPS iOS
 
-**開發狀態（2026-11-02）：GoFly iOS App 已開發完成。** 本專案為正式 GoFly 的獨立 iOS App，部署目標 iOS 26，App bundle 依簽署 Team ID 產生為 `com.neven.gofly.<teamid 小寫>`。原 `LocalGo` 專案中 GoFly 編譯用到的共用檔案已搬入本專案。
+**開發狀態（2026-11-02）：GoFly GPS iOS App 已開發完成。** 本專案為正式 GoFly GPS 的獨立 iOS App，部署目標 iOS 26，App bundle 依簽署 Team ID 產生為 `com.neven.gofly.<teamid 小寫>`。原 `LocalGo` 專案中 GoFly GPS 編譯用到的共用檔案已搬入本專案。
 
 已完成功能涵蓋地圖與搜尋、瞬移、路線規劃與 GPX 匯入、搖桿、自動漫步、最愛與已存路線、連線狀態與復原、背景運行設定，以及英文、繁體中文與簡體中文。安裝支援正式 Mac 安裝與配對交接，也可透過 SideStore／AltStore 安裝 IPA 並匯入本機配對檔。使用者安裝說明見[專案 README](../../README.zh-Hant.md)。
 
 開發完成與實機驗證分開記錄。2026-11-02 已用 SideStore 安裝的版本在 iPhone 15 Pro 驗證配對匯入、瞬移與路線背景移動，使用者亦回報手機重開機後仍可定位；自動漫步在背景偶爾被 iOS 暫停的問題已修正（背景中一段走完時原地等待下一條道路規劃，不再暫停），使用者已實機測試成功；尚未與 Mac 安裝版在相同情境比對。完整紀錄見 [iOS 規格的安裝入口與實機驗證](../../docs/IOS-UI-DESIGN.md#兩種安裝入口2026-11-02)。乾淨 Mac 驗收與長時間實機測試仍待完成。
 
-開啟 `GoFly.xcodeproj` 的 GoFly scheme。原生裝置庫只有 arm64 iPhone slice；模擬器可驗介面，裝置操作如實回報需要實機，不能用來驗證定位服務。
+開啟 `GoFly.xcodeproj` 的 GoFly GPS scheme。原生裝置庫只有 arm64 iPhone slice；模擬器可驗介面，裝置操作如實回報需要實機，不能用來驗證定位服務。
 
 ## 建置與檢查
 
@@ -30,7 +30,7 @@ bash app/GoFly/scripts/check.sh
 
 ## 來源
 
-三個精確沿用的 StikDebug setup 來源及 AGPL-3.0 授權雜湊見 `NativeSources.json`。原生 idevice 採 MIT 授權，固定 upstream commit、鎖定依賴及 GoFly verify-only 修改見 `NativeBridge`；Swift 僅匯入經審查的窄 header。AGPL-3.0、idevice MIT 與來源註記隨 App 放入 Legal。授權與來源稽核狀態見[授權說明](../../docs/LICENSING.md)；軟體開發完成不代表授權稽核或所有裝置驗收均已完成。
+三個精確沿用的 StikDebug setup 來源及 AGPL-3.0 授權雜湊見 `NativeSources.json`。原生 idevice 採 MIT 授權，固定 upstream commit、鎖定依賴及 GoFly GPS verify-only 修改見 `NativeBridge`；Swift 僅匯入經審查的窄 header。AGPL-3.0、idevice MIT 與來源註記隨 App 放入 Legal。授權與來源稽核狀態見[授權說明](../../docs/LICENSING.md)；軟體開發完成不代表授權稽核或所有裝置驗收均已完成。
 
 
 ## Mac 正式首次安裝與啟動交接（M1）

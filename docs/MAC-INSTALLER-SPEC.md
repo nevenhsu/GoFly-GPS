@@ -1,5 +1,7 @@
 # Mac 安裝器框架與規格
 
+正式品牌標題使用 GoFly GPS，App 內一般句子保留 GoFly，README 統一使用 GoFly GPS；詳見 [命名規範](BRANDING.md)（2026-11-02）。識別碼與技術路徑維持相容。
+
 狀態：**V1 流程設計已確認（2026-10-26）；01–11 已實作並完成軟體驗證，12 文件與色彩靜態驗證已完成；Figma Archive sections 刪除待使用者確認；DMG 已發布於 GitHub Release（2026-10-31，ad-hoc 簽署、未公證），乾淨 Mac 與 iPhone 驗收待使用者執行**。這份文件是 GoFly Mac 版流程的準據，取代舊版 M1／M2／M3 流程與 G01–G17 動作。視覺以 Figma「05 · Mac Redesign（新版）」（`123-61504`）的「V1」section 為準。DMG 打包架構沿用 [`F-dmg-architecture.md`](../.scratch/gofly-ios/decisions/F-dmg-architecture.md)。逐票證據與尚未驗證事項見 [Mac V1 TRACKER](../.scratch/gofly-mac-v1/TRACKER.md)。
 
 ## 1. 目標

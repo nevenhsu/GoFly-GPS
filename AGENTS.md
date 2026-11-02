@@ -56,6 +56,7 @@ and implementation specification have not been selected yet.
   credentials and testing scope must be configured before a security test.
 - Keep credentials and generated research output out of version control.
 - Do not run Prettier unless explicitly requested.
+- 升版與交付新建置時遵循 [升版規則](docs/VERSIONING.md)：iOS 新的 `MARKETING_VERSION` 可從 build 1 開始，同版交付遞增；Mac build 跨版本持續遞增、不歸零。
 
 ## iOS 實機測試安裝
 

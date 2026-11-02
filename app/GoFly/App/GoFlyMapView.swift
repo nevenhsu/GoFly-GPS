@@ -293,6 +293,8 @@ struct GoFlyMapView: View {
     @State private var showingFavoriteRoutes = false
     @State private var showingImportedRoutes = false
     @State private var showingAllImportedPoints = false
+    /// GPX start (0) / destination (1) picked in the point list; drawn like a selected planning node.
+    @State private var gpxSelectedEnd: Int?
     @State private var recentPlaces: [MapPlace] = []
     @State private var snackbar: GoFlySnackbarMessage?
     @State private var searchPasteWarning: GoFlySearchPasteWarning?
@@ -409,14 +411,14 @@ struct GoFlyMapView: View {
                     showingImportedRoutes = false
                 }, onFocusPoint: { coordinate in
                     showingImportedRoutes = false
-                    cameraIntent = GoFlyCameraIntent(coordinate: coordinate)
+                    focusGPXPoint(coordinate)
                 })
             }
             .navigationDestination(isPresented: $showingAllImportedPoints) {
                 if let source = route.draft.gpxSource {
                     GoFlyGPXPointsView(document: source.document, title: source.displayFilename, onFocus: { coordinate in
                         showingAllImportedPoints = false
-                        cameraIntent = GoFlyCameraIntent(coordinate: coordinate)
+                        focusGPXPoint(coordinate)
                     })
                 }
             }
@@ -984,6 +986,7 @@ struct GoFlyMapView: View {
         }
         .onChange(of: route.draft) { _, _ in
             pendingRouteNodeTapID = nil
+            gpxSelectedEnd = nil
             notices.clearFavoriteRouteFailure()
         }
         .onChange(of: route.error) { _, newError in notices.reopen(.routeError, ifPresent: newError) }
@@ -1105,6 +1108,13 @@ struct GoFlyMapView: View {
         rangeGeometry.map { GoFlyCameraIntent(range: $0) } ?? GoFlyCameraIntent(route: planned)
     }
 
+    /// Only the GPX start and destination have map nodes; other samples just move the camera.
+    private func focusGPXPoint(_ coordinate: GeoCoordinate) {
+        let points = route.plannedRoute?.points ?? []
+        gpxSelectedEnd = points.first == coordinate ? 0 : (points.last == coordinate ? 1 : nil)
+        cameraIntent = GoFlyCameraIntent(coordinate: coordinate)
+    }
+
     private func mapCanvas(viewport: CGRect, size: CGSize, attributionBottomInset: CGFloat) -> some View {
         let cameraViewport = activeCandidate == nil
             ? viewport
@@ -1117,7 +1127,8 @@ struct GoFlyMapView: View {
             routeWaypoints: mode == .route && route.draft.gpxSource == nil ? manualRouteWaypoints : [],
             showsRoutePoints: mode == .route && route.draft.gpxSource != nil,
             routeNodePlaces: mode == .route && route.draft.gpxSource == nil ? route.chosenPlaceCoordinates : [],
-            selectedRouteNode: mode == .route && route.canEdit && route.draft.gpxSource == nil ? route.selectedChosenPlaceIndex : nil,
+            selectedRouteNode: mode == .route && route.draft.gpxSource != nil ? gpxSelectedEnd
+                : (mode == .route && route.canEdit ? route.selectedChosenPlaceIndex : nil),
             wanderTarget: isWanderMap ? joystick.wanderTarget?.place : nil,
             rangeCircle: rangeCircle,
             markerBearingDegrees: activeMarkerBearing,
@@ -1431,7 +1442,7 @@ struct GoFlyMapView: View {
                     onSettings: { showingSettings = true },
                     onNotice: { notices.showFavoriteRouteFailure($0) },
                     onRetryInterrupted: { retryInterruptedRoute() },
-                    onFocusPoint: { cameraIntent = GoFlyCameraIntent(coordinate: $0) },
+                    onFocusPoint: { focusGPXPoint($0) },
                     currentLocationAvailable: service.currentRouteOrigin != nil,
                     currentRouteOrigin: { service.currentRouteOrigin },
                     isNarrow: sheetDetent == .collapsed || isMapPicking || (mode == .route && activeCandidate != nil),

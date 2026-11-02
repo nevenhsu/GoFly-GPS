@@ -78,8 +78,9 @@ struct GoFlyLocationCard: View {
                                 .goFlyFont(.buttonSmall)
                                 .lineLimit(1)
                         }
-                        // Figma: hugs its content with 12 pt left/right padding.
+                        // Wider card CTA for device review; the map-pin Go stays compact.
                         .padding(.horizontal, 12)
+                        .frame(minWidth: 104)
                         .frame(height: 40)
                     }
                     .buttonStyle(GoFlyButtonStyle(variant: .primary, size: .inline, expandsToFill: false))

@@ -197,7 +197,7 @@ func goFlyString(_ key: String) -> String {
     let english = Bundle.main.path(forResource: "en", ofType: "lproj")
         .flatMap(Bundle.init(path:))?
         .localizedString(forKey: key, value: nil, table: nil)
-    let fallback = english == key ? "GoFly" : (english ?? "GoFly")
+    let fallback = english == key ? "GoFly GPS" : (english ?? "GoFly GPS")
     let selected = Bundle.main.path(forResource: GoFlyPreferences.shared.effectiveLanguage, ofType: "lproj")
         .flatMap(Bundle.init(path:))
     return selected?.localizedString(forKey: key, value: fallback, table: nil) ?? fallback

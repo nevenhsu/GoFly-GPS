@@ -22,7 +22,7 @@ PYTHON_ARCHIVE_URL="https://github.com/astral-sh/python-build-standalone/release
 PYTHON_ARCHIVE_SHA256="953db72ff2dea68b5112231b1ba77163ec9114f87c7ece530b3ea742a3b492c5"
 
 if [ "$(uname -m)" != "arm64" ]; then
-  echo "GoFly for Mac V1 builds only on Apple Silicon (arm64)." >&2
+  echo "GoFly GPS for Mac V1 builds only on Apple Silicon (arm64)." >&2
   exit 1
 fi
 if [ ! -x "$DEVELOPER_DIR/usr/bin/xcodebuild" ]; then
@@ -135,12 +135,12 @@ bundle = Path(sys.argv[1])
 bundle_id = sys.argv[2]
 info = {
     "CFBundleIdentifier": bundle_id,
-    "CFBundleName": "GoFly for Mac",
-    "CFBundleDisplayName": "GoFly for Mac",
+    "CFBundleName": "GoFly GPS for Mac",
+    "CFBundleDisplayName": "GoFly GPS for Mac",
     "CFBundleExecutable": "GoFlyMac",
     "CFBundleIconFile": "AppIcon",
     "CFBundlePackageType": "APPL",
-    "CFBundleShortVersionString": "1.0.5",
+    "CFBundleShortVersionString": "1.0.6",
     "CFBundleVersion": "3",
     "LSMinimumSystemVersion": "15.0",
     "NSHighResolutionCapable": True,
@@ -165,4 +165,4 @@ if ! mv "$STAGING_BUNDLE" "$APP_BUNDLE"; then
   if [ -d "$STAGING_ROOT/Previous.app" ]; then mv "$STAGING_ROOT/Previous.app" "$APP_BUNDLE"; fi
   exit 1
 fi
-printf 'Built self-contained GoFly for Mac app: %s\n' "$APP_BUNDLE"
+printf 'Built self-contained GoFly GPS for Mac app: %s\n' "$APP_BUNDLE"
