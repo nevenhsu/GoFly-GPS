@@ -97,7 +97,7 @@ If you'd rather not use the Mac app, [SideStore](https://sidestore.io) or [AltSt
 1. GoFly shows **Import pairing file**. Export this iPhone's pairing file with iloader on your computer, move it to the iPhone (AirDrop or the Files app), tap **Import**, and choose it.
 2. Allow Location and Local Network, connect LocalDevVPN, and you're ready.
 
-The pairing file must belong to this iPhone; a file for another phone is stopped at the first connection. The IPA does not need the Mac app; the Mac installer keeps its USB pairing flow. On 2026-11-02, import, teleport, background route movement, and positioning after an iPhone restart were verified on a device installed with SideStore; iOS occasionally suspends auto-wander in the background.
+The pairing file must belong to this iPhone; a file for another phone is stopped at the first connection. The IPA does not need the Mac app; the Mac installer keeps its USB pairing flow. On 2026-11-02, import, teleport, background route movement, and positioning after an iPhone restart were verified on a device installed with SideStore; auto-wander in the background was fixed and device-tested (when a segment ends in the background it keeps running in place while the next road is planned, instead of pausing).
 
 To build the unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` (requires the prepared native archive under `work/gofly-ios/native`). Output always goes to `work/dist/ipa/`; an earlier IPA and checksum of the same version move to `work/dist/ipa/archive/<UTC time>/` instead of being overwritten or deleted. The Mac build is unchanged.
 

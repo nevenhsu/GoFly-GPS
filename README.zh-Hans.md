@@ -95,7 +95,7 @@ GoFly for Mac 不是定位工具。它用**你的** Xcode 签名 Team 构建 iPh
 1. GoFly 会显示「导入配对文件」。在电脑用 iloader 导出这台 iPhone 的配对文件，传到 iPhone（AirDrop 或「文件」App），点**导入配对文件**选取。
 2. 依次允许定位与本地网络，并连接 LocalDevVPN，就可以开始使用。
 
-配对文件必须属于这台 iPhone；其他手机的配对文件会在第一次连接时被拦下。IPA 版不需要 Mac App；Mac 安装版仍使用原来的 USB 配对流程。2026-11-02 已用 SideStore 实机验证导入、瞬移、路线后台移动，以及手机重启后的定位；自动漫步在后台偶尔会被 iOS 暂停。
+配对文件必须属于这台 iPhone；其他手机的配对文件会在第一次连接时被拦下。IPA 版不需要 Mac App；Mac 安装版仍使用原来的 USB 配对流程。2026-11-02 已用 SideStore 实机验证导入、瞬移、路线后台移动，以及手机重启后的定位；已修正自动漫步在后台运行的问题（后台中一段走完时，原地等待下一条道路规划完成，不再暂停），已实机测试成功。
 
 开发者运行 `bash app/GoFly/scripts/package-ipa.sh` 生成未签名 IPA 与 SHA-256（须先有 `work/gofly-ios/native` 中已构建的原生库）。输出一律放在 `work/dist/ipa/`；同版本的旧 IPA 与校验文件会先移到 `work/dist/ipa/archive/<UTC 时间>/`，不会被覆盖或删除。脚本不修改 Mac 构建。
 

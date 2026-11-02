@@ -1113,8 +1113,9 @@ struct GoFlyMapView: View {
             marker: movement.presentation.marker, candidate: activeCandidate,
             viewport: cameraViewport, cameraIntent: cameraIntent,
             route: mode == .route ? route.plannedRoute : (isWanderMap ? joystick.wanderRoute : nil),
-            // A wander segment has one destination and no intermediate stops.
-            routeWaypoints: mode == .route && route.draft.gpxSource == nil ? manualRouteWaypoints : (isWanderMap ? [] : nil),
+            // GPX and wander routes mark only their start and destination.
+            routeWaypoints: mode == .route && route.draft.gpxSource == nil ? manualRouteWaypoints : [],
+            showsRoutePoints: mode == .route && route.draft.gpxSource != nil,
             routeNodePlaces: mode == .route && route.draft.gpxSource == nil ? route.chosenPlaceCoordinates : [],
             selectedRouteNode: mode == .route && route.canEdit && route.draft.gpxSource == nil ? route.selectedChosenPlaceIndex : nil,
             wanderTarget: isWanderMap ? joystick.wanderTarget?.place : nil,

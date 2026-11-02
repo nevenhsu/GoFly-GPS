@@ -172,11 +172,10 @@ struct GoFlyRoutePanel: View {
         HStack(spacing: 12) {
             if controller.draft.gpxSource != nil {
                 // D15: an imported GPX route has no favorite star; Cancel clears it.
-                Button { _ = controller.clearImportedRoute() } label: {
-                    Text(goFlyString("common.cancel")).frame(minWidth: 72)
-                }
-                .buttonStyle(GoFlyActionStyle())
-                .accessibilityIdentifier("route.clearImported")
+                // `Button / Text · Neutral` Large, 120 × 56 like Start's height.
+                GoFlyButton(title: goFlyString("common.cancel"), variant: .neutral) { _ = controller.clearImportedRoute() }
+                    .frame(width: 120)
+                    .accessibilityIdentifier("route.clearImported")
             } else {
                 favoriteStarButton
             }
@@ -185,20 +184,13 @@ struct GoFlyRoutePanel: View {
                 Button { _ = controller.fixPlanningOrder() } label: {
                     Text(goFlyString("route.repair.fixShort")).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(GoFlyActionStyle(primary: true))
+                .buttonStyle(GoFlyButtonStyle(variant: .primary))
                 .goFlySteadyDisabled(controller.isFixingPlanningOrder)
                 .accessibilityIdentifier("route.fix")
             } else {
-                Button { _ = controller.start() } label: {
-                    HStack(spacing: 8) {
-                        GoFlyIcon(GoFlySymbols.play)
-                        Text(goFlyString("route.startShort"))
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(GoFlyActionStyle(primary: true))
-                .goFlySteadyDisabled(!isRouteUsable)
-                .accessibilityIdentifier("route.start")
+                GoFlyButton(title: goFlyString("route.startShort"), icon: GoFlySymbols.play) { _ = controller.start() }
+                    .goFlySteadyDisabled(!isRouteUsable)
+                    .accessibilityIdentifier("route.start")
             }
         }
     }
@@ -435,7 +427,7 @@ struct GoFlyRoutePanel: View {
                     Text(goFlyString("route.addStop"))
                 }
             }
-            .buttonStyle(GoFlyRouteTextButtonStyle())
+            .buttonStyle(GoFlyButtonStyle(variant: .ghostPrimary, size: .inline, expandsToFill: false))
             .disabled(!controller.canAddNode)
             .accessibilityIdentifier("route.addNode")
             .accessibilityHint(controller.draft.nodes.count == RouteDraft.maximumNodeCount ? goFlyString("route.nodeLimit") : "")
@@ -480,7 +472,7 @@ struct GoFlyRoutePanel: View {
         Button(action: onRequestEnd) {
             GoFlyIconLabel(title: goFlyString("execution.end"), icon: GoFlySymbols.close)
         }
-        .buttonStyle(GoFlyActionStyle())
+        .buttonStyle(GoFlyButtonStyle(variant: .neutral))
         .frame(width: 120)
         .disabled(!controller.canCancel)
         .accessibilityIdentifier("route.cancel")
@@ -488,7 +480,7 @@ struct GoFlyRoutePanel: View {
 
     private var settingsButton: some View {
         Button(goFlyString("operation.settings"), action: onSettings)
-            .buttonStyle(GoFlyActionStyle(primary: true))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .accessibilityIdentifier("route.settings")
     }
 

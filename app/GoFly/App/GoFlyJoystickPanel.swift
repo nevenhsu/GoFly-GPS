@@ -23,14 +23,13 @@ struct GoFlyJoystickPanel: View {
     @State private var showingSpeedSheet = false
     @State private var showingRangeSheet = false
 
-    /// Row 44, 24 pt, 152 pt pad, 24 pt, 52 pt button, then 36 pt — 340 pt under the 12 pt grabber.
+    /// Row 44, 24 pt, 152 pt pad, 24 pt, 56 pt button, then 36 pt — 344 pt under the 12 pt grabber.
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             wanderControls
             if !isCollapsed {
                 if controller.requiresStop {
-                    Button(goFlyString("operation.settings"), action: onSettings)
-                        .buttonStyle(GoFlyActionStyle(fixedHeight: 52))
+                    GoFlyButton(title: goFlyString("operation.settings"), variant: .neutral, action: onSettings)
                         .padding(.top, 24)
                         .accessibilityIdentifier("joystick.settings")
                 } else {
@@ -123,11 +122,11 @@ struct GoFlyJoystickPanel: View {
     private var wanderActions: some View {
         if controller.wanderEnabled && controller.phase != .preparing {
             HStack(spacing: 12) {
-                Button(action: onStopWander) { Text(goFlyString("joystick.stopWander")) }
-                    .buttonStyle(GoFlyActionStyle(fixedHeight: 56))
+                // Figma E2: Neutral Large 120 pt, Primary Large fills the rest.
+                GoFlyButton(title: goFlyString("joystick.stopWander"), variant: .neutral, action: onStopWander)
+                    .frame(width: 120)
                     .accessibilityIdentifier("joystick.stopWander")
-                Button(action: onRandomDestination) { Text(goFlyString("joystick.changePlace")) }
-                    .buttonStyle(GoFlyActionStyle(primary: true, fixedHeight: 56))
+                GoFlyButton(title: goFlyString("joystick.changePlace"), icon: .shuffle, action: onRandomDestination)
                     .accessibilityIdentifier("joystick.randomDestination")
             }
         } else {
@@ -140,10 +139,10 @@ struct GoFlyJoystickPanel: View {
                         Text(goFlyString("joystick.startingWander"))
                     }
                 } else {
-                    Text(goFlyString("joystick.startWander"))
+                    GoFlyIconLabel(title: goFlyString("joystick.startWander"), icon: GoFlySymbols.play)
                 }
             }
-            .buttonStyle(GoFlyActionStyle(primary: true, fixedHeight: 56))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .goFlySteadyDisabled(!starting && !(canStartWander ?? controller.canSetWanderEnabled))
             .accessibilityHint(starting ? goFlyString("joystick.cancelStartingHint") : "")
             .accessibilityIdentifier("joystick.wander")

@@ -287,26 +287,34 @@ enum GoFlyButtonSize: CaseIterable, Equatable, Identifiable {
     }
 }
 
+/// Figma `Button / Text` and `Button / Icon + Text` (Type × State × Size): the
+/// shared label and style for every text button. Use `GoFlyButtonStyle`
+/// directly only when the label needs more than a title and an icon.
+struct GoFlyButton: View {
+    let title: String
+    var icon: GoFlyIconAsset? = nil
+    var variant: GoFlyButtonVariant = .primary
+    var size: GoFlyButtonSize = .large
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) { GoFlyIconLabel(title: title, icon: icon).lineLimit(1) }
+            .buttonStyle(GoFlyButtonStyle(variant: variant, size: size))
+    }
+}
+
 /// One token-driven implementation for Figma's filled, neutral, danger, and
-/// text-only buttons. The visible XS button stays 32 pt while its hit area is 44.
+/// text-only buttons. Buttons placed side by side share one size, so their
+/// heights match. The visible XS button stays 32 pt while its hit area is 44.
 struct GoFlyButtonStyle: ButtonStyle {
     let variant: GoFlyButtonVariant
-    let size: GoFlyButtonSize
-    var fixedHeight: CGFloat?
-    var expandsToFill: Bool
+    var size: GoFlyButtonSize = .large
+    var expandsToFill = true
 
     @Environment(\.isEnabled) private var isEnabled
 
-    init(variant: GoFlyButtonVariant, size: GoFlyButtonSize = .large,
-         fixedHeight: CGFloat? = nil, expandsToFill: Bool = true) {
-        self.variant = variant
-        self.size = size
-        self.fixedHeight = fixedHeight
-        self.expandsToFill = expandsToFill
-    }
-
     func makeBody(configuration: Configuration) -> some View {
-        let visibleHeight = fixedHeight ?? size.visibleHeight
+        let visibleHeight = size.visibleHeight
         let isGhost = variant == .ghostPrimary || variant == .ghostSecondary
         let foreground = foregroundColor
         return configuration.label
@@ -352,29 +360,6 @@ struct GoFlyButtonStyle: ButtonStyle {
     }
 }
 
-/// Compatibility adapter for existing screens; button rendering lives above.
-struct GoFlyActionStyle: ButtonStyle {
-    var primary = false
-    var compactAtAccessibilitySizes = false
-    var destructive = false
-    var small = false
-    var prominent = false
-    var fixedHeight: CGFloat? = nil
-
-    func makeBody(configuration: Configuration) -> some View {
-        let variant: GoFlyButtonVariant = destructive ? .danger : (primary ? .primary : .neutral)
-        let size: GoFlyButtonSize = small ? .small : ((primary || destructive || prominent) ? .large : .medium)
-        return GoFlyButtonStyle(variant: variant, size: size, fixedHeight: fixedHeight)
-            .makeBody(configuration: configuration)
-    }
-}
-
-struct GoFlyCardPrimaryStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        GoFlyButtonStyle(variant: .primary, size: .inline, expandsToFill: false).makeBody(configuration: configuration)
-    }
-}
-
 /// Shared token-driven row shell for Figma's searchable and file lists.
 /// Content remains customizable while row height and separator rendering stay consistent.
 struct GoFlyListRow<Content: View>: View {
@@ -405,13 +390,6 @@ struct GoFlyListRow<Content: View>: View {
                         .accessibilityHidden(true)
                 }
             }
-    }
-}
-
-struct GoFlyRouteTextButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        GoFlyButtonStyle(variant: .ghostPrimary, size: .inline, expandsToFill: false)
-            .makeBody(configuration: configuration)
     }
 }
 
@@ -717,7 +695,6 @@ struct GoFlyProgressStyle: ProgressViewStyle {
     }
 }
 
-
 /// Figma 04 Theme typography. Text uses `Font.system` at the Figma point size;
 /// `@ScaledMetric` applies the matching Dynamic Type curve to every token except
 /// the two deliberately fixed display styles, `micro` and `metric`.
@@ -787,7 +764,6 @@ extension View {
         modifier(GoFlyFontModifier(token: token))
     }
 }
-
 
 // MARK: - Text colors (docs/IOS-TYPOGRAPHY.md)
 /// Text and text-like icons use semantic Figma tokens; action foreground uses

@@ -62,7 +62,13 @@ public final class JoystickMovementController: ObservableObject {
     /// A wander segment ended and the next destination is being chosen. The wander is still
     /// running: this is neither a pause nor a stop, and must not surface as either.
     public var isAwaitingNextTarget: Bool {
-        wanderEnabled && phase == .suspended && suspensionReason == .targetUnavailable
+        (wanderEnabled && phase == .suspended && suspensionReason == .targetUnavailable) || isAwaitingNextTargetInPlace
+    }
+    /// A background wander finished its segment and keeps its lease running in
+    /// place while the next road is planned: iOS accepts a continued-processing
+    /// submission only in the foreground, so pausing here would end the run.
+    public var isAwaitingNextTargetInPlace: Bool {
+        awaitsTargetInPlace && wanderEnabled && wanderNeedsTarget && phase == .moving && input == nil
     }
     public var requiresOrigin: Bool { commands.currentJoystickOrigin == nil }
     public var requiresStop: Bool { phase == .unknown }
@@ -95,6 +101,7 @@ public final class JoystickMovementController: ObservableObject {
     private var generation: UInt64 = 0
     private var settlementRevision: UInt64 = 0
     private var hasAcknowledgedLease = false
+    private var awaitsTargetInPlace = false
     private var resumedNeutralIntent: JoystickMovementIntent?
     private var physicalOperations: Set<UUID> = []
     private let continuationControlSubject = PassthroughSubject<MovementContinuationControlEvent, Never>()
@@ -266,6 +273,28 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         }
     }
 
+    /// Installs the next segment for a wander awaiting it in place. The running
+    /// lease picks the road up on its next step; nothing is paused or resumed.
+    @discardableResult public func installNextWanderRouteInPlace(target: WanderTarget, route: PlannedRoute) -> Bool {
+        guard isAwaitingNextTargetInPlace, hasAcknowledgedLease, intent != nil,
+              let origin = commands.currentJoystickOrigin,
+              JoystickGeodesy.distanceMeters(from: origin, to: route.start) <= 1 else { return false }
+        commitTarget(target)
+        wanderRouteRevision = UUID()
+        wanderRoute = route
+        wanderProgressMeters = 0
+        wanderNeedsReplan = false
+        awaitsTargetInPlace = false
+        return true
+    }
+
+    /// Planning for an in-place wait gave up: pause like a foreground segment
+    /// end so the person can resume it on return.
+    public func stopAwaitingNextTargetInPlace() {
+        guard isAwaitingNextTargetInPlace else { return }
+        suspendForUnavailableTarget()
+    }
+
     /// Replaces a completed segment while retaining its paused movement lease.
     /// The origin must still be the last acknowledged endpoint.
     @discardableResult public func installNextWanderRouteAndResume(target: WanderTarget, route: PlannedRoute) -> Bool {
@@ -311,6 +340,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         generation &+= 1
         let token = generation
         phase = .moving; suspensionReason = nil; input = nil; activeGestureID = nil; error = nil
+        awaitsTargetInPlace = false
         requestContinuationIfEligible()
         let physicalID = beginPhysicalOperation()
         task = Task { [weak self] in
@@ -319,7 +349,19 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         }
         return true
     }
+    /// A segment ended with no next target. In the background the running
+    /// lease waits in place; otherwise it pauses while the next road is planned.
+    private func awaitNextTarget() {
+        if !sceneActive, phase == .moving, hasAcknowledgedLease, intent != nil {
+            awaitsTargetInPlace = true
+            diagnose("wander.awaitingInPlace", category: .movement, level: .notice)
+            objectWillChange.send()
+            return
+        }
+        suspendForUnavailableTarget()
+    }
     private func suspendForUnavailableTarget() {
+        awaitsTargetInPlace = false
         guard let intent, hasAcknowledgedLease,
               commands.releaseJoystick(executionID: intent.id, lease: intent.lease, disposition: .pause) else {
             markUnknown(.serviceUnavailable); return
@@ -330,7 +372,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         if let selected = selectTarget(origin: coordinate) { commitTarget(selected) }
         else {
             wanderNeedsTarget = true; wanderError = .noCandidate
-            if input == nil, phase == .moving { suspendForUnavailableTarget() }
+            if input == nil, phase == .moving { awaitNextTarget() }
         }
     }
 
@@ -347,7 +389,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     private func clearWanderState() {
         wanderEnabled = false; wanderTarget = nil; wanderNeedsTarget = false; wanderError = nil
         wanderHistory = []; suspensionReason = nil; wanderRoute = nil; wanderProgressMeters = 0
-        wanderNeedsReplan = false
+        wanderNeedsReplan = false; awaitsTargetInPlace = false
         wanderRouteRevision = UUID()
     }
 
@@ -515,7 +557,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
 
     private func settle(_ operation: JoystickMovementIntent, disposition: JoystickReleaseDisposition, alreadyReleased: Bool = false,
                         finalPhase: JoystickMovementPhase? = nil, reason: WanderSuspensionReason? = nil) {
-        input = nil; activeGestureID = nil
+        input = nil; activeGestureID = nil; awaitsTargetInPlace = false
         phase = disposition == .pause ? .pausing : .settling
         settlementRevision &+= 1
         let settlementToken = settlementRevision
@@ -585,6 +627,10 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
                         maximumDistanceMeters: speed.metersPerSecond * seconds) {
                 recipe = .target(step); capturedRouteRevision = nil; routeStepDistance = nil
             }
+            else if isAwaitingNextTargetInPlace {
+                // Hold the last ACK without a write until the next road is installed.
+                continue
+            }
             else {
                 diagnose("joystick.runEnded", category: .movement, level: .notice, [
                     "why": .text("noRecipe"), "wander": .flag(wanderEnabled),
@@ -608,7 +654,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
                     wanderProgressMeters = max(wanderProgressMeters, routeStepDistance)
                     if let route = wanderRoute, wanderProgressMeters >= route.totalDistanceMeters - 0.5 {
                         wanderNeedsTarget = true
-                        if input == nil { suspendForUnavailableTarget() }
+                        if input == nil { awaitNextTarget() }
                     }
                 }
                 if wanderEnabled, !capturedNeedsTarget, let target = wanderTarget, target.id == capturedTargetID {
@@ -660,6 +706,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     private func returnToNeutral() {
         if resumedNeutralIntent?.id == intent?.id { resumedNeutralIntent = nil }
         phase = .neutral; input = nil; activeGestureID = nil; intent = nil; hasAcknowledgedLease = false
+        awaitsTargetInPlace = false
     }
 
     private func requestContinuationIfEligible() {

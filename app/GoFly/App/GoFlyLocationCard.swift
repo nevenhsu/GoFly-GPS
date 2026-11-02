@@ -82,7 +82,7 @@ struct GoFlyLocationCard: View {
                         .padding(.horizontal, 12)
                         .frame(height: 40)
                     }
-                    .buttonStyle(GoFlyCardPrimaryStyle())
+                    .buttonStyle(GoFlyButtonStyle(variant: .primary, size: .inline, expandsToFill: false))
                     .goFlySteadyDisabled(!primaryEnabled)
                     .accessibilityIdentifier("\(identifier).primaryAction")
                 }

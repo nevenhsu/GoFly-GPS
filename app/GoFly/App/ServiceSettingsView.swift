@@ -301,16 +301,16 @@ struct ServiceSettingsView: View {
                 if service.nativeBusy {
                     ProgressView()
                 } else if isReset {
-                    GoFlyIcon(GoFlySymbols.reset).goFlyIconSize(size: 15)
+                    GoFlyIcon(GoFlySymbols.reset).goFlyIconSize(size: 18)
                 } else if isStop {
-                    GoFlyIcon(.stop).goFlyIconSize(size: 15)
+                    GoFlyIcon(.stop).goFlyIconSize(size: 18)
                 } else {
-                    GoFlyIcon(GoFlySymbols.play).goFlyIconSize(size: 15)
+                    GoFlyIcon(GoFlySymbols.play).goFlyIconSize(size: 18)
                 }
                 Text(buttonTitle(isReset: isReset, isStop: isStop))
             }
         }
-        .buttonStyle(GoFlyActionStyle(primary: !isReset))
+        .buttonStyle(GoFlyButtonStyle(variant: isReset ? .neutral : .primary))
         .disabled(actionDisabled(isReset: isReset, isStop: isStop))
         .accessibilityHint(isReset ? goFlyString("service.resetHint") : "")
         .accessibilityIdentifier(isReset ? "service.reset" : "service.primary")

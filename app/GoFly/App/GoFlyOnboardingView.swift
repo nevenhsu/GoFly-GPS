@@ -102,7 +102,7 @@ struct GoFlyOnboardingView: View {
                         Text(goFlyString(locationActionKey))
                     }
                 }
-                .buttonStyle(GoFlyActionStyle(primary: true))
+                .buttonStyle(GoFlyButtonStyle(variant: .primary))
                 .disabled(controller.isRequestingLocation)
                 .accessibilityIdentifier("onboarding.location.allow")
 
@@ -113,7 +113,7 @@ struct GoFlyOnboardingView: View {
                         Text(goFlyString(controller.locationAuthorization == .denied
                             ? "onboarding.location.continue" : "onboarding.location.skip"))
                     }
-                    .buttonStyle(GoFlyActionStyle())
+                    .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                     .accessibilityIdentifier("onboarding.location.skip")
                 }
             }
@@ -205,7 +205,7 @@ struct GoFlyWelcomeView: View {
             } label: {
                 Text(goFlyString("onboarding.next"))
             }
-            .buttonStyle(GoFlyActionStyle(primary: true))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .disabled(isPreparing)
             .accessibilityIdentifier("onboarding.welcome.next")
         }
@@ -355,7 +355,7 @@ private struct GoFlyLocalNetworkOnboardingView: View {
                     Text(goFlyString("onboarding.localNetwork.allow"))
                 }
             }
-            .buttonStyle(GoFlyActionStyle(primary: true))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .disabled(controller.isRequestingLocalNetwork)
             .accessibilityIdentifier("onboarding.localNetwork.allow")
             .padding(.horizontal, 16)
@@ -496,7 +496,7 @@ private struct GoFlyVPNOnboardingView: View {
                     Text(goFlyString(checkButtonKey))
                 }
             }
-            .buttonStyle(GoFlyActionStyle(primary: true))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .disabled(controller.isChecking || controller.isAdvancing)
             .accessibilityIdentifier("onboarding.vpn.check")
             .padding(.horizontal, 16)
@@ -614,36 +614,5 @@ private struct GoFlyVPNOnboardingView: View {
     private func recheckAfterHelp() {
         guard scenePhase == .active else { return }
         controller.setVPNActive(true)
-    }
-}
-
-private struct GoFlyCompactActionStyle: ButtonStyle {
-    var primary = false
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .goFlyFont(GoFlyFont.bodyEmphasis)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .foregroundStyle(foreground)
-            .background(background, in: Capsule())
-            .overlay {
-                if !primary && isEnabled {
-                    Capsule().strokeBorder(GoFlyStyle.subtleBorder, lineWidth: 0.5)
-                }
-            }
-            .opacity(configuration.isPressed ? 0.82 : 1)
-            .contentShape(Capsule())
-    }
-
-    private var background: Color {
-        guard isEnabled else { return GoFlyStyle.disabledSurface }
-        return primary ? GoFlyStyle.primary : GoFlyStyle.secondarySurface
-    }
-
-    private var foreground: Color {
-        guard isEnabled else { return GoFlyTextColor.disabled }
-        return primary ? GoFlyTextColor.inverse : GoFlyTextColor.primary
     }
 }

@@ -35,12 +35,12 @@ struct GoFlyComponentGallery: View {
                         actionTitle: goFlyString("common.undo"),
                         action: {})
                 }
-                .buttonStyle(GoFlyActionStyle(primary: true))
+                .buttonStyle(GoFlyButtonStyle(variant: .primary))
                 .accessibilityIdentifier("gallery.feedback.snackbar.show")
                 Button(goFlyString("gallery.presentationDim.show")) {
                     showingSystemDimPreview = true
                 }
-                .buttonStyle(GoFlyActionStyle())
+                .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                 .accessibilityIdentifier("gallery.systemDim.show")
                 bannerSection
                 pillSection
@@ -311,7 +311,7 @@ struct GoFlyComponentGallery: View {
                     actionTitle: goFlyString("common.undo"),
                     action: {})
             }
-            .buttonStyle(GoFlyActionStyle(primary: true))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .accessibilityIdentifier("gallery.snackbar.show")
             GoFlySnackbar(message: GoFlySnackbarMessage(
                 text: goFlyString("gallery.snackbarText"),

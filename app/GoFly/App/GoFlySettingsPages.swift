@@ -534,7 +534,7 @@ private struct GoFlySettingsAction: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(GoFlyActionStyle())
+        .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
         .disabled(disabled)
         .accessibilityIdentifier(identifier)
     }

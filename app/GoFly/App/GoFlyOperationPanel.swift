@@ -23,7 +23,7 @@ struct GoFlyOperationPanel: View {
                 } else if let failure = unconfirmedFailure, failure.isConnectionFailure {
                     connectionLostContent(message: goFlyString("teleport.positionUnconfirmed"))
                     Button(goFlyString("operation.return"), action: onReturn)
-                        .buttonStyle(GoFlyActionStyle())
+                        .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                         .accessibilityIdentifier("operation.return")
                 } else if let failure = unconfirmedFailure {
                     GoFlyStatusBanner(tone: .danger, title: goFlyString(failure.rawValue),
@@ -32,7 +32,7 @@ struct GoFlyOperationPanel: View {
                         onAction: onSettings, identifier: "operation.unconfirmed",
                         actionIdentifier: "operation.settings", titleIdentifier: reasonIdentifier)
                     Button(goFlyString("operation.return"), action: onReturn)
-                        .buttonStyle(GoFlyActionStyle())
+                        .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                         .accessibilityIdentifier("operation.return")
                 }
             }
@@ -60,17 +60,17 @@ struct GoFlyOperationPanel: View {
                 .accessibilityIdentifier("operation.attempt")
             sourceSummary(operation.source)
             Button(goFlyString("operation.cancel")) { onCancel(operation.id) }
-                .buttonStyle(GoFlyActionStyle())
+                .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                 .accessibilityIdentifier("operation.cancel")
         case .failed(let failure) where failure.isConnectionFailure:
             connectionLostContent(message: goFlyString("operation.failureGuidance"))
             Button(goFlyString("operation.retry")) { onRetry(operation.id) }
-                .buttonStyle(GoFlyActionStyle())
+                .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                 .disabled(nativeBusy)
                 .accessibilityIdentifier("operation.retry")
             sourceSummary(operation.source)
             Button(goFlyString("operation.cancel")) { onCancel(operation.id) }
-                .buttonStyle(GoFlyActionStyle())
+                .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                 .disabled(nativeBusy)
                 .accessibilityIdentifier(cancelIdentifier)
         case .failed(let failure):
@@ -81,7 +81,7 @@ struct GoFlyOperationPanel: View {
                 actionIdentifier: "operation.retry", titleIdentifier: reasonIdentifier)
             sourceSummary(operation.source)
             Button(goFlyString("operation.cancel")) { onCancel(operation.id) }
-                .buttonStyle(GoFlyActionStyle())
+                .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                 .disabled(nativeBusy)
                 .accessibilityIdentifier(cancelIdentifier)
         case .cancelled:
@@ -90,7 +90,7 @@ struct GoFlyOperationPanel: View {
                 .goFlyFont(GoFlyFont.footnote)
                 .foregroundStyle(GoFlyTextColor.secondary)
             Button(goFlyString("operation.cancel")) { }
-                .buttonStyle(GoFlyActionStyle())
+                .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                 .disabled(true)
                 .accessibilityIdentifier("operation.cancel")
         }

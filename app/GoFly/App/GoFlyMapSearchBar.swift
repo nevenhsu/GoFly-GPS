@@ -33,7 +33,14 @@ struct GoFlyMapSearchBar: View {
                 .accessibilityHint(goFlyString("map.searchHint"))
                 .accessibilityIdentifier("map.searchBar")
 
-                if hasContent {
+                // Both controls stay mounted: rebuilding the system paste control on
+                // every clear sometimes leaves it undrawn. It is hidden with
+                // `isHidden`, never opacity, which would invalidate its taps.
+                ZStack {
+                    GoFlyPasteButton(accessibilityLabel: goFlyString("search.paste"),
+                                     accessibilityIdentifier: "map.searchPaste",
+                                     isVisible: !hasContent,
+                                     onPaste: onPaste)
                     Button(action: onClear) {
                         GoFlyIcon(GoFlySymbols.clearSearch)
                             .goFlyIconSize(size: 16, maximum: 18)
@@ -44,13 +51,11 @@ struct GoFlyMapSearchBar: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(goFlyString("search.clear"))
                     .accessibilityIdentifier("map.searchClear")
-                    .padding(.trailing, 6)
-                } else {
-                    GoFlyPasteButton(accessibilityLabel: goFlyString("search.paste"),
-                                     accessibilityIdentifier: "map.searchPaste",
-                                     onPaste: onPaste)
-                        .padding(.trailing, 6)
+                    .opacity(hasContent ? 1 : 0)
+                    .allowsHitTesting(hasContent)
+                    .accessibilityHidden(!hasContent)
                 }
+                .padding(.trailing, 6)
             }
             .frame(height: 50)
             .frame(maxWidth: .infinity)

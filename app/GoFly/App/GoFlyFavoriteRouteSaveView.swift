@@ -87,7 +87,7 @@ struct GoFlySaveFavoriteRouteView: View {
                     // D20 / D7: 40 pt between the route info card and Save, and below Save per the user's D20 spacing update.
                     if savedOmittingCurrent != nil {
                         Button(goFlyString("favoriteRoutes.done"), action: onDismiss)
-                            .buttonStyle(GoFlyActionStyle(primary: true))
+                            .buttonStyle(GoFlyButtonStyle(variant: .primary))
                             .padding(.top, 24)
                             .accessibilityIdentifier("favoriteRoutes.save.done")
                     } else {
@@ -95,7 +95,7 @@ struct GoFlySaveFavoriteRouteView: View {
                             Text(goFlyString("favoriteRoutes.save"))
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(GoFlyActionStyle(primary: true))
+                        .buttonStyle(GoFlyButtonStyle(variant: .primary))
                         .disabled(saving || !controller.canEdit || !favorites.canMutate || eligibilityError != nil)
                         .padding(.top, 24)
                         .accessibilityIdentifier("favoriteRoutes.save.confirm")
@@ -286,7 +286,7 @@ struct GoFlyFavoriteRouteLabelEditor: View {
                         Text(goFlyString("favoriteRoutes.save"))
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(GoFlyActionStyle(primary: true))
+                    .buttonStyle(GoFlyButtonStyle(variant: .primary))
                     .disabled(saving || !favorites.canMutate || !favorites.records.contains(where: { $0.id == record.id }))
                     .padding(.top, 24)
                     .accessibilityIdentifier("favoriteRoutes.editor.save")

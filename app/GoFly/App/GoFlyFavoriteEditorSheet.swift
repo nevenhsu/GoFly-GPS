@@ -73,7 +73,7 @@ struct GoFlyFavoriteEditorSheet: View {
                         Text(goFlyString("favorites.save"))
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(GoFlyActionStyle(primary: true))
+                    .buttonStyle(GoFlyButtonStyle(variant: .primary))
                     .disabled(!favorites.canMutate)
                     .padding(.top, 24)
                     .padding(.bottom, GoFlyStyle.favoriteEditorSaveBottomSpacing)

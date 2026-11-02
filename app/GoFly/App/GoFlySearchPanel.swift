@@ -602,11 +602,13 @@ private final class SearchTextFieldAccessoryView: UIView {
 struct GoFlyPasteButton: View {
     let accessibilityLabel: String
     let accessibilityIdentifier: String
+    var isVisible = true
     let onPaste: (String) -> Void
 
     var body: some View {
         GoFlySystemPasteControl(accessibilityLabel: accessibilityLabel,
                                 accessibilityIdentifier: accessibilityIdentifier,
+                                isVisible: isVisible,
                                 onPaste: onPaste)
             .frame(width: 44, height: 44)
     }

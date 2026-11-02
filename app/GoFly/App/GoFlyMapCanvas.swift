@@ -149,8 +149,11 @@ struct GoFlyMapCanvas: UIViewRepresentable {
     var viewport: CGRect
     var cameraIntent: GoFlyCameraIntent?
     var route: PlannedRoute? = nil
-    /// Numbered intermediate stops; when nil, 1/3 and 2/3 of long routes are marked.
-    var routeWaypoints: [GeoCoordinate]? = nil
+    /// Numbered intermediate stops; an imported GPX or wander route has none.
+    var routeWaypoints: [GeoCoordinate] = []
+    /// Dots every route vertex between the start and destination: an imported
+    /// GPX route's own points. Planned road routes leave this off.
+    var showsRoutePoints = false
     /// Start, stops and destination to mark while `route` is not planned yet.
     var routeNodePlaces: [GeoCoordinate] = []
     /// Which route node (start = 0, stops, destination last) the route list selects.
@@ -255,7 +258,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         private var appliedRangeCircle: GoFlyRangeCircle?
         private var routeRenderer: MKPolylineRenderer?
         private var appliedRouteColor: CGColor?
-        private var routeWaypointsApplied: [GeoCoordinate]?
+        private var routeWaypointsApplied: [GeoCoordinate] = []
+        private var showsRoutePointsApplied = false
         private var routeNodePlacesApplied: [GeoCoordinate] = []
         private var selectedRouteNodeApplied: Int?
         private var routeNodeAnnotations: [RouteNodeAnnotation] = []
@@ -477,9 +481,11 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             let points = parent.route?.points ?? []
             let places = points.count > 1 ? [] : parent.routeNodePlaces
             guard points != routePoints || parent.routeWaypoints != routeWaypointsApplied
+                    || parent.showsRoutePoints != showsRoutePointsApplied
                     || places != routeNodePlacesApplied || parent.selectedRouteNode != selectedRouteNodeApplied else { return }
             routePoints = points
             routeWaypointsApplied = parent.routeWaypoints
+            showsRoutePointsApplied = parent.showsRoutePoints
             routeNodePlacesApplied = places
             selectedRouteNodeApplied = parent.selectedRouteNode
             map.removeAnnotations(routeNodeAnnotations)
@@ -506,12 +512,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             let overlay = MKPolyline(coordinates: coordinates, count: coordinates.count)
             routeOverlay = overlay
             map.addOverlay(overlay, level: .aboveRoads)
-            var waypoints = parent.routeWaypoints ?? []
-            if parent.routeWaypoints == nil, points.count >= 4 {
-                waypoints = [points[points.count / 3], points[points.count * 2 / 3]]
-            }
             var annotations = [RouteNodeAnnotation(points[0], kind: .start)]
-            annotations += waypoints.enumerated().map { RouteNodeAnnotation($1, kind: .waypoint($0 + 1)) }
+            annotations += parent.routeWaypoints.enumerated().map { RouteNodeAnnotation($1, kind: .waypoint($0 + 1)) }
             annotations.append(RouteNodeAnnotation(points[points.count - 1], kind: .destination))
             markSelected(annotations)
             routeNodeAnnotations = annotations
@@ -748,7 +750,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                 return renderer
             }
             guard let line = overlay as? MKPolyline else { return MKOverlayRenderer(overlay: overlay) }
-            let renderer = MKPolylineRenderer(polyline: line)
+            let renderer = GoFlyRoutePolylineRenderer(polyline: line)
+            renderer.showsPoints = routeOverlay === line && parent.showsRoutePoints
             renderer.strokeColor = UIColor(GoFlyThemeColor.mapRoute)
             renderer.lineWidth = 4
             renderer.lineCap = .round
@@ -757,6 +760,36 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                 routeRenderer = renderer
             }
             return renderer
+        }
+    }
+}
+
+/// The route line, optionally with a small white dot ringed in the route
+/// colour on each vertex between its ends (the start and destination keep
+/// their node icons). Dots closer than one dot apart on screen are skipped,
+/// so a dense GPX track zoomed out still reads as a line.
+private final class GoFlyRoutePolylineRenderer: MKPolylineRenderer {
+    var showsPoints = false
+
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        super.draw(mapRect, zoomScale: zoomScale, in: context)
+        guard showsPoints, polyline.pointCount > 2, let color = strokeColor else { return }
+        let radius = 4.5 / zoomScale
+        let ring = 2 / zoomScale
+        let visible = rect(for: mapRect).insetBy(dx: -radius - ring, dy: -radius - ring)
+        let vertices = polyline.points()
+        var last: CGPoint?
+        context.setLineWidth(ring)
+        context.setStrokeColor(color.cgColor)
+        context.setFillColor(UIColor.white.cgColor)
+        for index in 1..<(polyline.pointCount - 1) {
+            let center = point(for: vertices[index])
+            if let last, hypot(center.x - last.x, center.y - last.y) < radius * 3 { continue }
+            last = center
+            guard visible.contains(center) else { continue }
+            let dot = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+            context.fillEllipse(in: dot)
+            context.strokeEllipse(in: dot.insetBy(dx: ring / 2, dy: ring / 2))
         }
     }
 }

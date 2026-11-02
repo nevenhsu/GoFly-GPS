@@ -535,7 +535,7 @@ struct GoFlySetupLockView: View {
                         Text(goFlyString("setup.retry"))
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(GoFlyActionStyle(primary: true))
+                    .buttonStyle(GoFlyButtonStyle(variant: .primary))
                     .accessibilityIdentifier("setup.retry")
                 }
             }
@@ -672,7 +672,7 @@ struct GoFlyPairingImportView: View {
                     Text(goFlyString("setup.pairingImport.action"))
                 }
             }
-            .buttonStyle(GoFlyActionStyle(primary: true))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .disabled(isImporting)
             .accessibilityIdentifier("setup.pairingImport.action")
             .padding(.horizontal, 16)

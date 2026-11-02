@@ -78,7 +78,7 @@ struct GoFlyRangeSheet: View {
             Spacer(minLength: 0)
 
             Button(action: onDismiss) { Text(goFlyString("common.doneSetting")) }
-                .buttonStyle(GoFlyActionStyle(primary: true))
+                .buttonStyle(GoFlyButtonStyle(variant: .primary))
                 .accessibilityIdentifier("wander.range.confirm")
                 .padding(.top, 20)
                 .padding(.horizontal, 20)

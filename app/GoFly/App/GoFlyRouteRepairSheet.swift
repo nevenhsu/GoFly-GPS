@@ -42,12 +42,11 @@ struct GoFlyPlanningCardSheet: View {
             Spacer(minLength: 0)
             HStack(spacing: 20) {
                 Button(action: onCancel) { Text(goFlyString("common.cancel")).frame(maxWidth: .infinity) }
-                    .buttonStyle(GoFlyActionStyle(prominent: true))
+                    .buttonStyle(GoFlyButtonStyle(variant: .neutral))
                     .frame(width: 120)
                     .accessibilityIdentifier("\(idPrefix).cancel")
                 Button(action: onPrimary) { Text(primaryTitle).frame(maxWidth: .infinity) }
-                    .buttonStyle(GoFlyActionStyle(primary: primaryStyle == .primary,
-                                                  destructive: primaryStyle == .destructive))
+                    .buttonStyle(GoFlyButtonStyle(variant: primaryStyle == .destructive ? .danger : .primary))
                     .goFlySteadyDisabled(!primaryEnabled)
                     .accessibilityIdentifier("\(idPrefix).primary")
             }

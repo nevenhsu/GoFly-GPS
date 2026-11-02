@@ -69,7 +69,7 @@ struct GoFlyRouteRunningControls: View {
             GoFlyIconLabel(title: goFlyString("execution.end"), icon: GoFlySymbols.close)
                 .lineLimit(1)
         }
-        .buttonStyle(GoFlyActionStyle(prominent: true))
+        .buttonStyle(GoFlyButtonStyle(variant: .neutral))
         .disabled(!canEnd)
         .accessibilityIdentifier("route.cancel")
     }
@@ -81,7 +81,7 @@ struct GoFlyRouteRunningControls: View {
                 icon: isPaused ? GoFlySymbols.play : GoFlySymbols.pause)
                 .lineLimit(1)
         }
-        .buttonStyle(GoFlyActionStyle(primary: true))
+        .buttonStyle(GoFlyButtonStyle(variant: .primary))
         .goFlySteadyDisabled(!canPlayback)
         .accessibilityIdentifier(isInterrupted ? "route.retry" : (isPaused ? "route.resume" : "route.pause"))
     }

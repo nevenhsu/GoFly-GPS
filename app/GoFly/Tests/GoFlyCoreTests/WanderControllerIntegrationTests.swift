@@ -141,6 +141,75 @@ struct WanderControllerIntegrationTests {
         #expect(await device.clears == 0)
     }
 
+    /// iOS accepts a continued-processing submission only in the foreground, so
+    /// a background segment end keeps the lease running while it waits for the
+    /// next road instead of pausing it.
+    @Test func backgroundSegmentEndWaitsInPlaceAndInstallsTheNextRoadWithoutPausing() async throws {
+        let device = JoystickControlledDevice(), clock = RouteTestClock()
+        let service = ServiceController(service: device)
+        service.observeRealLocation(location())
+        let origin = try #require(service.currentJoystickOrigin)
+        // A bent road keeps each step shorter than its limit, so every ACK arrives.
+        let bend = GeoCoordinate(latitude: 25.000045, longitude: 121)!
+        let end = GeoCoordinate(latitude: 25.000001, longitude: 121)!
+        let controller = JoystickMovementController(commands: service, clock: clock)
+        #expect(controller.installWanderRoute(target: WanderTarget(place: place(end)), route: try PlannedRoute(points: [origin, bend, end])))
+        #expect(controller.setWanderEnabled(true))
+        let operation = try #require(controller.intent)
+        await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
+        await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait { controller.wanderProgressMeters > 0 && clock.sleepingCount == 1 }
+        controller.releaseForInactiveScene(continuingLease: operation.lease)
+        #expect(controller.phase == .moving)
+
+        clock.advance(by: .seconds(1)); await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait { controller.isAwaitingNextTargetInPlace }
+        #expect(controller.phase == .moving && controller.isAwaitingNextTarget)
+        #expect(service.movementAuthority.snapshot.runState == .running)
+        let writes = await device.coordinates.count
+        await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
+        await wait { clock.sleepingCount == 1 }
+        #expect(await device.coordinates.count == writes)
+
+        let next = GeoCoordinate(latitude: 25.0002, longitude: 121)!
+        let endpoint = try #require(service.currentJoystickOrigin)
+        #expect(controller.installNextWanderRouteInPlace(target: WanderTarget(place: place(next)), route: try PlannedRoute(points: [endpoint, next])))
+        #expect(!controller.wanderNeedsTarget && !controller.isAwaitingNextTargetInPlace)
+        clock.advance(by: .seconds(1)); await wait { await device.waiting }
+        #expect(controller.intent == operation)
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        #expect(await device.preparations == 1)
+        #expect(controller.setWanderEnabled(false)); await wait { controller.phase == .neutral }
+    }
+
+    @Test func backgroundPlanningFailurePausesTheWaitingWander() async throws {
+        let device = JoystickControlledDevice(), clock = RouteTestClock()
+        let service = ServiceController(service: device)
+        service.observeRealLocation(location())
+        let origin = try #require(service.currentJoystickOrigin)
+        // A bent road keeps each step shorter than its limit, so every ACK arrives.
+        let bend = GeoCoordinate(latitude: 25.000045, longitude: 121)!
+        let end = GeoCoordinate(latitude: 25.000001, longitude: 121)!
+        let controller = JoystickMovementController(commands: service, clock: clock)
+        #expect(controller.installWanderRoute(target: WanderTarget(place: place(end)), route: try PlannedRoute(points: [origin, bend, end])))
+        #expect(controller.setWanderEnabled(true))
+        await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
+        await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait { controller.wanderProgressMeters > 0 && clock.sleepingCount == 1 }
+        controller.releaseForInactiveScene(continuingLease: try #require(controller.intent).lease)
+        clock.advance(by: .seconds(1)); await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+        await wait { controller.isAwaitingNextTargetInPlace }
+
+        controller.stopAwaitingNextTargetInPlace()
+        await wait { controller.phase == .suspended }
+        #expect(controller.suspensionReason == .targetUnavailable && controller.isAwaitingNextTarget)
+        #expect(service.movementAuthority.snapshot.runState == .paused)
+    }
+
     @Test func failedRouteResumeKeepsThePriorDestinationAndRoute() async throws {
         let device = JoystickControlledDevice(), clock = RouteTestClock(), service = ServiceController(service: device)
         service.observeRealLocation(location())

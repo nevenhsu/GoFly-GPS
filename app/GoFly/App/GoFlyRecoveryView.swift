@@ -134,7 +134,7 @@ struct GoFlyRecoveryView: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(GoFlyActionStyle())
+        .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
         .accessibilityIdentifier(id)
     }
 }

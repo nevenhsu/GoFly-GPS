@@ -171,7 +171,7 @@ struct GoFlyImportedRoutesView: View {
             Text(goFlyString("imports.import"))
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(GoFlyActionStyle(primary: true))
+        .buttonStyle(GoFlyButtonStyle(variant: .primary))
         .disabled(isBusy || !imports.canMutate)
         .accessibilityIdentifier("imports.import")
     }
@@ -358,7 +358,7 @@ private struct GoFlyImportedRouteActionSheet: View {
                 }
 
                 Button(goFlyString("common.cancel"), action: onCancel)
-                    .buttonStyle(GoFlyActionStyle())
+                    .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
                     .accessibilityIdentifier("imports.actions.cancel")
             }
             .padding(.horizontal, 16)

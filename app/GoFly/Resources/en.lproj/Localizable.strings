@@ -355,7 +355,7 @@
 "joystick.startingWander" = "Starting…";
 "joystick.cancelStartingHint" = "Double-tap to cancel starting.";
 "joystick.stopWander" = "Stop";
-"joystick.changePlace" = "Change";
+"joystick.changePlace" = "Shuffle";
 "joystick.randomDestination" = "Random destination";
 "joystick.phase.suspended" = "Waiting to continue";
 "joystick.error.noCandidate" = "No new destination found. Pick one on the map or retry.";

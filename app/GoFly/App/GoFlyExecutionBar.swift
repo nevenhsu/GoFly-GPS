@@ -131,7 +131,7 @@ struct GoFlyExecutionControls<Leading: View>: View {
                     GoFlyIconLabel(title: goFlyString("execution.end"), icon: GoFlySymbols.close)
                         .lineLimit(1)
                 }
-                .buttonStyle(GoFlyActionStyle())
+                .buttonStyle(GoFlyButtonStyle(variant: .neutral))
                 .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: false)
                 .accessibilityIdentifier("execution.end")
                 if isPaused {
@@ -139,7 +139,7 @@ struct GoFlyExecutionControls<Leading: View>: View {
                         GoFlyIconLabel(title: goFlyString("route.resume"), icon: GoFlySymbols.play)
                             .lineLimit(1)
                     }
-                    .buttonStyle(GoFlyActionStyle(primary: true))
+                    .buttonStyle(GoFlyButtonStyle(variant: .primary))
                     .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: false)
                     .disabled(!canResume)
                     .accessibilityIdentifier("execution.resume")
@@ -148,7 +148,7 @@ struct GoFlyExecutionControls<Leading: View>: View {
                         GoFlyIconLabel(title: goFlyString("route.pause"), icon: GoFlySymbols.pause)
                             .lineLimit(1)
                     }
-                    .buttonStyle(GoFlyActionStyle(primary: true))
+                    .buttonStyle(GoFlyButtonStyle(variant: .primary))
                     .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: false)
                     .disabled(!canPause)
                     .accessibilityIdentifier("execution.pause")

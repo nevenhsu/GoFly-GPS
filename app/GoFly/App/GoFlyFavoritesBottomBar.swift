@@ -32,7 +32,7 @@ struct GoFlyFavoritesBottomBar: View {
                         Text(deleteTitle)
                     }
                 }
-                .buttonStyle(GoFlyActionStyle(destructive: true, fixedHeight: 48))
+                .buttonStyle(GoFlyButtonStyle(variant: .danger, size: .medium))
                 .disabled(!deleteEnabled)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
@@ -87,19 +87,24 @@ struct GoFlyFavoritesBottomBar: View {
 struct GoFlySystemPasteControl: UIViewRepresentable {
     let accessibilityLabel: String
     let accessibilityIdentifier: String
+    /// Hides the view with `isHidden` so the system control stays alive; never use opacity.
+    var isVisible = true
     let onPaste: (String) -> Void
 
     func makeCoordinator() -> PasteReceiver { PasteReceiver(onPaste: onPaste) }
 
     func makeUIView(context: Context) -> GoFlyPasteAffordanceView {
-        GoFlyPasteAffordanceView(target: context.coordinator, accessibilityLabel: accessibilityLabel,
-                                 accessibilityIdentifier: accessibilityIdentifier)
+        let view = GoFlyPasteAffordanceView(target: context.coordinator, accessibilityLabel: accessibilityLabel,
+                                            accessibilityIdentifier: accessibilityIdentifier)
+        view.isHidden = !isVisible
+        return view
     }
 
     func updateUIView(_ view: GoFlyPasteAffordanceView, context: Context) {
         context.coordinator.onPaste = onPaste
         view.update(target: context.coordinator, accessibilityLabel: accessibilityLabel,
                     accessibilityIdentifier: accessibilityIdentifier)
+        view.isHidden = !isVisible
     }
 
     @MainActor
@@ -184,7 +189,28 @@ final class GoFlyPasteAffordanceView: UIView {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        if window != nil { refresh() }
+        guard window != nil else { return }
+        refresh()
+        rebuildAfterPresentation()
+    }
+
+    /// A control created while its page is still sliding in (the full-screen
+    /// search cover) sometimes never draws; build a fresh one once it is at rest.
+    private func rebuildAfterPresentation() {
+        guard let transition = nearestViewController?.transitionCoordinator else { return }
+        transition.animate(alongsideTransition: nil) { [weak self] context in
+            guard let self, !context.isCancelled, self.window != nil else { return }
+            self.rebuildControl()
+        }
+    }
+
+    private var nearestViewController: UIViewController? {
+        var responder = next
+        while let current = responder {
+            if let controller = current as? UIViewController { return controller }
+            responder = current.next
+        }
+        return nil
     }
 
     func update(target: (any UIPasteConfigurationSupporting)?, accessibilityLabel: String, accessibilityIdentifier: String) {

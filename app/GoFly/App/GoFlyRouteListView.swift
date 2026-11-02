@@ -107,7 +107,7 @@ struct GoFlyRouteListView: View {
             }
             .fixedSize(horizontal: false, vertical: true)
         }
-        .buttonStyle(GoFlyRouteTextButtonStyle())
+        .buttonStyle(GoFlyButtonStyle(variant: .ghostPrimary, size: .inline, expandsToFill: false))
         .disabled(!controller.canAddNode)
         .accessibilityIdentifier("route.list.addWaypoint")
         .accessibilityHint(controller.draft.nodes.count == RouteDraft.maximumNodeCount

@@ -59,7 +59,7 @@ struct GoFlyBackgroundDurationSheet: View {
             Button(action: onDismiss) {
                 Text(goFlyString("common.doneSetting"))
             }
-            .buttonStyle(GoFlyActionStyle(primary: true))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .frame(height: 56)
             .accessibilityIdentifier("settings.background.duration.confirm")
             .padding(.top, 24)

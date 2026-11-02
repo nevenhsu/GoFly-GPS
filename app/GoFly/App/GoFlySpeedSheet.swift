@@ -127,7 +127,7 @@ struct GoFlySpeedSheet: View {
             Button(action: onDismiss) {
                 Text(goFlyString("common.doneSetting"))
             }
-            .buttonStyle(GoFlyActionStyle(primary: true))
+            .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .accessibilityIdentifier("route.speed.confirm")
             .padding(.top, 20)
             .padding(.horizontal, 20)

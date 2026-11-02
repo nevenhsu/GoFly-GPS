@@ -339,7 +339,8 @@ public final class WanderPlanningCoordinator: ObservableObject {
     // MARK: Continuation
 
     /// Plans from the last ACK endpoint while the existing joystick lease is
-    /// paused. A failed endpoint selection/planning gets one fresh target retry.
+    /// paused, or, in the background, while it waits in place. A failed
+    /// endpoint selection/planning gets fresh target retries.
     public func planNextSegment(preselectedTarget: WanderTarget? = nil) {
         guard joystick.wanderEnabled, joystick.wanderNeedsTarget,
               replanningTask == nil else { return }
@@ -358,16 +359,26 @@ public final class WanderPlanningCoordinator: ObservableObject {
                 try? await Task.sleep(for: .milliseconds(40))
             }
             guard !Task.isCancelled, replanningID == planningID else { return }
-            guard host.isSceneActive(), host.isJoystickMode(), joystick.phase == .suspended,
-                  joystick.suspensionReason == .targetUnavailable else {
+            // A paused segment end plans only in the foreground; a background
+            // run keeps its lease waiting in place and plans there.
+            let inPlace = joystick.isAwaitingNextTargetInPlace
+            let canContinue = { [joystick, host] in
+                host.isJoystickMode() && joystick.wanderEnabled
+                    && (inPlace ? joystick.isAwaitingNextTargetInPlace : host.isSceneActive())
+            }
+            guard canContinue(), inPlace || (joystick.phase == .suspended
+                  && joystick.suspensionReason == .targetUnavailable) else {
                 failReplanning(planningID)
                 return
             }
             guard service.movementConnection != .unavailable else { return }
             guard let origin = service.currentJoystickOrigin else { failReplanning(planningID); return }
-            for attempt in 0..<2 {
-                guard !Task.isCancelled, replanningID == planningID,
-                      host.isSceneActive(), host.isJoystickMode(), joystick.wanderEnabled,
+            // MapKit may refuse a background request for a moment; nobody can
+            // tap Retry there, so the run tries longer before it pauses.
+            let attempts = inPlace ? 5 : 2
+            for attempt in 0..<attempts {
+                if inPlace, attempt > 0 { try? await Task.sleep(for: .seconds(2)) }
+                guard !Task.isCancelled, replanningID == planningID, canContinue(),
                       let currentOrigin = service.currentJoystickOrigin,
                       JoystickGeodesy.distanceMeters(from: currentOrigin, to: origin) <= 1,
                       let target = (attempt == 0 ? preselectedTarget : nil)
@@ -376,18 +387,27 @@ public final class WanderPlanningCoordinator: ObservableObject {
                 do {
                     let planned = try await planSegment(origin, target.coordinate)
                     guard !Task.isCancelled, replanningID == planningID,
-                          service.movementConnection != .unavailable, host.isSceneActive(),
-                          host.isJoystickMode(), joystick.wanderEnabled,
+                          service.movementConnection != .unavailable, canContinue(),
                           let currentOrigin = service.currentJoystickOrigin,
                           JoystickGeodesy.distanceMeters(from: currentOrigin, to: origin) <= 1,
                           JoystickGeodesy.distanceMeters(from: currentOrigin, to: planned.start) <= 1,
-                          joystick.installNextWanderRouteAndResume(target: target, route: planned) else { continue }
+                          inPlace ? joystick.installNextWanderRouteInPlace(target: target, route: planned)
+                                  : joystick.installNextWanderRouteAndResume(target: target, route: planned)
+                    else { continue }
                     joystick.clearWanderError()
                     activeCheckpoint = nil
                     interruptedCheckpoint = nil
                     return
                 } catch is CancellationError { return }
-                catch { continue }
+                catch let throttled as RoutePlanningThrottled where inPlace {
+                    Diagnostics.shared.record("wander.planThrottled", category: .movement, level: .notice)
+                    try? await Task.sleep(for: throttled.retryAfter)
+                }
+                catch {
+                    Diagnostics.shared.record("wander.planFailed", category: .movement, level: .notice, [
+                        "attempt": .count(attempt), "inPlace": .flag(inPlace)
+                    ])
+                }
             }
             guard !Task.isCancelled, replanningID == planningID else { return }
             guard service.movementConnection != .unavailable else { return }
@@ -401,6 +421,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
         replanningID = nil
         activeCheckpoint = nil
         interruptedCheckpoint = nil
+        joystick.stopAwaitingNextTargetInPlace()
         joystick.setWanderPlanningFailed()
     }
 
