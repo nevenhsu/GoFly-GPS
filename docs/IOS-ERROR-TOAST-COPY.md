@@ -9,7 +9,9 @@
 | **重試** | 重試 | Retry | 共用的「重設工作階段並重試」：重建 VPN 通道與裝置連線（既有 `ServiceController.resetTunnel`／`rebuildClientConnection`），成功後自動重跑剛才失敗的操作 |
 | **修正** | 修正 | Fix | 僅用於路線規劃失敗；在固定搜尋上限內重排全部地點（含起點）並重新規劃，成功採用新順序，失敗保留原順序 |
 | 設定 | 設定 | Settings | 只用於需要使用者親自在實機或 Mac App 處理的事（配對、開發者模式、裝置準備、儲存空間） |
-| 選檔 | 選檔 | Choose File | 開檔案選擇器；GPX 錯誤與保存檔損壞（需重新匯入）共用 |
+| 選檔 | 選檔 | Choose | 開檔案選擇器；GPX 錯誤與保存檔損壞（需重新匯入）共用 |
+
+**連線類失敗（`error.tunnelUnavailable`、`error.serviceUnavailable`、`error.operationTimedOut`）不再有自己的 toast**：地圖、操作面板與服務設定頁一律只顯示連線檢查的那一張（Wi‑Fi／區域網路／VPN，依序判斷），同時間不再出現其他錯誤 toast；操作面板只保留「連線無法使用」標題與重試／取消。下表這三筆文案目前沒有畫面使用，保留供內部錯誤碼與日誌。未在真機驗證。
 
 其餘錯誤**不放按鈕**，只留關閉（×）：文案已說明該怎麼做（選起點、選地點、移除一筆再試），使用者直接在原畫面操作即可。
 
@@ -21,15 +23,15 @@
 
 | 代碼 | 繁體中文 | English | 按鈕 zh／en |
 | --- | --- | --- | --- |
-| `error.pairingRequired` | 缺少配對資料。請將這部 iPhone 連接 Mac App，完成裝置準備。 | Pairing data is missing. Connect this iPhone to the Mac app to finish device setup. | 設定／Settings |
-| `error.identityMismatch` | 配對資料屬於其他裝置。請將這部 iPhone 連接 Mac App 修復。 | Pairing data belongs to a different device. Connect this iPhone to the Mac app to repair it. | 設定／Settings |
-| `error.developerModeRequired` | 請在這部 iPhone 開啟開發者模式，再連接 Mac App 完成裝置準備。 | Turn on Developer Mode on this iPhone, then connect to the Mac app to finish setup. | 設定／Settings |
-| `error.devicePreparationRequired` | 這部 iPhone 需要裝置準備。請連接 Mac App 完成準備。 | This iPhone needs device setup. Connect to the Mac app to complete it. | 設定／Settings |
-| `error.serviceUnavailable` | 無法連接裝置服務。請檢查 VPN 通道；若仍無法連接，請在 Mac App 修復這部 iPhone。 | Can't reach the device service. Check the VPN tunnel; if it still fails, repair this iPhone in the Mac app. | 重試／Retry |
-| `error.tunnelUnavailable` | 無法連接 VPN 通道。請確認 iPhone 已連上 Wi‑Fi（只用行動網路無法使用），重新連接 LocalDevVPN，再於 GoFly 重置 VPN 通道。 | Can't reach the VPN tunnel. Make sure the iPhone is on Wi‑Fi (cellular only won't work), reconnect LocalDevVPN, then reset the VPN tunnel in GoFly. | 重試／Retry |
-| `error.operationTimedOut` | 裝置未在時限內確認操作。請檢查連線並停止服務後重試；GPS 恢復確認狀態另列於下方。 | The device didn't confirm in time. Check the connection, stop the service, then try again. GPS restore status is shown below. | 重試／Retry |
-| `error.deviceRequired` | 需要已完成準備的實體 iPhone；模擬器無法啟動裝置服務或確認 GPS 恢復。 | A prepared physical iPhone is required. The Simulator can't start the device service or confirm GPS restore. | — |
-| `error.storageUnavailable` | 無法讀取裝置設定資料。請檢查可用儲存空間，並在 Mac App 修復這部 iPhone。 | Can't read device settings. Check available storage and repair this iPhone in the Mac app. | 設定／Settings |
+| `error.pairingRequired` | 缺少配對資料。請連接 Mac App 完成裝置準備。 | Pairing data is missing. Connect to the Mac app to prepare. | 設定／Settings |
+| `error.identityMismatch` | 配對資料屬於其他裝置。請在 Mac App 修復。 | Pairing is for another device. Repair it in the Mac app. | 設定／Settings |
+| `error.developerModeRequired` | 請開啟開發者模式，再連接 Mac App 完成準備。 | Turn on Developer Mode, then finish setup in the Mac app. | 設定／Settings |
+| `error.devicePreparationRequired` | 這部 iPhone 需要裝置準備。請連接 Mac App 完成。 | This iPhone needs setup. Connect to the Mac app to finish. | 設定／Settings |
+| `error.serviceUnavailable` | 無法連接裝置服務。請檢查 VPN 通道。 | Can't reach the device service. Check the VPN tunnel. | 重試／Retry |
+| `error.tunnelUnavailable` | 無法連接 VPN 通道。請重新連接 LocalDevVPN 後再試。 | Can't reach the VPN tunnel. Reconnect LocalDevVPN, then try again. | 重試／Retry |
+| `error.operationTimedOut` | 裝置未在時限內確認，請重試。 | The device didn't confirm in time. Try again. | 重試／Retry |
+| `error.deviceRequired` | 需要已準備的實體 iPhone，模擬器無法執行。 | Needs a prepared iPhone. The Simulator can't run this. | — |
+| `error.storageUnavailable` | 無法讀取裝置設定。請檢查儲存空間，並在 Mac App 修復。 | Can't read device settings. Check storage, repair in Mac app. | 設定／Settings |
 
 ### 路線規劃與匯入執行（M：路線模式，類別標題：路線無法規劃／Can't plan route）
 
@@ -37,32 +39,32 @@
 | --- | --- | --- | --- |
 | `route.error.missingStart` | 請選擇起點。 | Choose a start point. | — |
 | `route.error.missingDestination` | 請選擇終點。 | Choose a destination. | — |
-| `route.error.currentLocationUnavailable` | 目前位置尚無法確認。請在地圖或搜尋中，為使用目前位置的節點選擇地點。 | Your current location can't be confirmed yet. Pick a place on the map or in search for any stop that uses current location. | — |
-| `route.error.planningFailed` | 找不到可通行的路徑。請重新檢查起點，或點選修正。 | No drivable route found. Check the start point or select Fix. | 修正／Fix |
-| `route.error.invalidPath` | 規劃的路線無效。請重新選擇地點後再試。 | The planned route isn't valid. Choose the places again and retry. | — |
-| `imports.execution.disconnectedSegments` | 各段端點未完全銜接。仍可預覽或匯出，但無法載入執行。 | Segment endpoints don't connect. You can still preview or export, but it can't be loaded to run. | — |
-| `imports.execution.zeroDistance` | 路徑沒有可行進距離。仍可預覽或匯出，但無法載入執行。 | The path has no travel distance. You can still preview or export, but it can't be loaded to run. | — |
+| `route.error.currentLocationUnavailable` | 目前位置無法確認。請為該節點選擇地點。 | Current location unavailable. Pick a place for that stop. | — |
+| `route.error.planningFailed` | 找不到可通行的路徑。請檢查起點，或點選修正。 | No drivable route. Check the start or tap Fix. | 修正／Fix |
+| `route.error.invalidPath` | 規劃的路線無效。請重新選擇地點。 | The planned route is invalid. Pick places again. | — |
+| `imports.execution.disconnectedSegments` | 各段端點未銜接。僅可預覽或匯出。 | Segments don't connect. Preview or export only. | — |
+| `imports.execution.zeroDistance` | 路徑沒有可行進距離。僅可預覽或匯出。 | No travel distance. Preview or export only. | — |
 
 ### 搖桿與漫步（M：搖桿模式，類別標題：搖桿無法使用／Joystick unavailable）
 
 | 代碼 | 繁體中文 | English | 按鈕 zh／en |
 | --- | --- | --- | --- |
-| `joystick.error.originUnavailable` | 目前沒有已確認的可用位置。請設定起點後使用搖桿。 | No confirmed location is available. Set a start point to use the joystick. | — |
-| `joystick.error.noCandidate` | 找不到新的目的地。請在地圖選點或重試。 | Couldn't find a new destination. Pick one on the map or try again. | 重試／Retry |
+| `joystick.error.originUnavailable` | 沒有已確認的位置。請設定起點後使用搖桿。 | No confirmed location. Set a start point to use the joystick. | — |
+| `joystick.error.noCandidate` | 找不到新的目的地。請在地圖選點或重試。 | No new destination found. Pick one on the map or retry. | 重試／Retry |
 
 ### 最愛地點（P，類別標題：最愛地點／Favorite places）
 
 | 代碼 | 繁體中文 | English | 按鈕 zh／en |
 | --- | --- | --- | --- |
-| `favorites.error.corruptArchive` | 最愛地點資料已損壞，無法讀取。原有資料已保留。 | Favorite places data is damaged and can't be read. Your existing data was kept. | — |
-| `favorites.error.unsupportedSchema` | 最愛地點資料版本不相容。原有資料已保留。 | Favorite places data is an incompatible version. Your existing data was kept. | — |
-| `favorites.error.unsafeFile` | 無法安全開啟最愛地點。原有資料已保留。 | Couldn't safely open favorite places. Your existing data was kept. | — |
+| `favorites.error.corruptArchive` | 最愛地點資料已損壞，無法讀取。原有資料已保留。 | Favorites are damaged and can't be read. Data was kept. | — |
+| `favorites.error.unsupportedSchema` | 最愛地點資料版本不相容。原有資料已保留。 | Favorites use an unsupported version. Data was kept. | — |
+| `favorites.error.unsafeFile` | 無法安全開啟最愛地點。原有資料已保留。 | Can't safely open favorites. Data was kept. | — |
 | `favorites.error.unavailable` | 目前無法使用最愛地點，請嘗試重新開啟 GoFly。 | Favorite places are unavailable. Try reopening GoFly. | 重試／Retry |
-| `favorites.error.writeFailed` | 變更未能儲存，原有最愛維持不變，請再試一次。 | Changes weren't saved and your favorites are unchanged. Please try again. | 重試／Retry |
-| `favorites.error.invalidPlace` | 無法收藏此地點，請選取有效地點後再試。 | Can't save this place. Choose a valid place and try again. | — |
+| `favorites.error.writeFailed` | 變更未能儲存，原有最愛維持不變，請再試一次。 | Couldn't save. Your favorites are unchanged. Try again. | 重試／Retry |
+| `favorites.error.invalidPlace` | 無法收藏此地點，請選取有效地點後再試。 | Couldn't save this place. Pick a valid one and retry. | — |
 | `favorites.error.invalidLabel` | 標籤請使用 120 個字以內。 | Use 120 characters or fewer for the label. | — |
-| `favorites.error.limitExceeded` | 最愛地點已達儲存上限，請移除一筆最愛或縮短標籤後再試。 | Favorites are full. Remove one or shorten the label, then try again. | — |
-| `favorites.error.notFavorite` | 此地點已不在最愛中，請重新加入後再儲存標籤。 | This place is no longer a favorite. Add it again before saving the label. | — |
+| `favorites.error.limitExceeded` | 最愛地點已達儲存上限，請移除一筆最愛或縮短標籤後再試。 | Favorites are full. Remove one or shorten the label. | — |
+| `favorites.error.notFavorite` | 此地點已不在最愛中，請重新加入後再儲存標籤。 | No longer a favorite. Add it again before labeling. | — |
 
 ### 匯入路線清單（P，類別標題：匯入路線／Imported routes）
 
@@ -70,14 +72,14 @@
 | --- | --- | --- | --- |
 | `imports.error.corruptArchive` | 匯入路線清單已損壞，暫時無法變更。 | The imported routes list is damaged and can't be changed for now. | — |
 | `imports.error.unsupportedSchema` | 尚未支援此匯入清單版本。 | This imported list version isn't supported yet. | — |
-| `imports.error.unsafeFile` | 無法安全讀取保存的路線檔案，請重新匯入來源檔案。 | Couldn't safely read the saved route file. Re-import the source file. | 選檔／Choose File |
+| `imports.error.unsafeFile` | 無法安全讀取保存的路線檔案，請重新匯入來源檔案。 | Can't safely read the saved route. Re-import the file. | 選檔／Choose |
 | `imports.error.unavailable` | 暫時無法讀取匯入路線，請再試一次。 | Imported routes can't be read right now. Please try again. | 重試／Retry |
-| `imports.error.writeFailed` | 無法儲存變更，原清單已保留。請再試一次。 | Couldn't save changes. The original list was kept. Please try again. | 重試／Retry |
-| `imports.error.limitExceeded` | 匯入清單已達儲存上限，請先移除不需要的路線。 | The imported list is full. Remove routes you don't need first. | — |
-| `imports.error.invalidFilename` | 檔名不受支援，請重新命名來源檔案後再試。 | This file name isn't supported. Rename the source file and try again. | 選檔／Choose File |
-| `imports.error.notFound` | 此匯入路線已不存在，請選擇其他路線。 | This imported route no longer exists. Choose another route. | — |
-| `imports.error.metadataMismatch` | 保存的路線與清單資料不符，請重新匯入來源檔案。 | The saved route doesn't match the list data. Re-import the source file. | 選檔／Choose File |
-| `imports.error.hashMismatch` | 保存的路線未通過驗證，請重新匯入來源檔案。 | The saved route failed verification. Re-import the source file. | 選檔／Choose File |
+| `imports.error.writeFailed` | 無法儲存變更，原清單已保留。請再試一次。 | Couldn't save. The previous list was kept. Try again. | 重試／Retry |
+| `imports.error.limitExceeded` | 匯入清單已達儲存上限，請先移除不需要的路線。 | The import list is full. Remove unused routes first. | — |
+| `imports.error.invalidFilename` | 檔名不受支援，請重新命名來源檔案後再試。 | Unsupported file name. Rename the file and retry. | 選檔／Choose |
+| `imports.error.notFound` | 此匯入路線已不存在，請選擇其他路線。 | This route is no longer available. Pick another. | — |
+| `imports.error.metadataMismatch` | 保存的路線與清單資料不符，請重新匯入來源檔案。 | The saved route doesn't match its list. Re-import the file. | 選檔／Choose |
+| `imports.error.hashMismatch` | 保存的路線未通過驗證，請重新匯入來源檔案。 | The saved route failed verification. Re-import the file. | 選檔／Choose |
 | `imports.error.noSelection` | 請先選擇已匯入路線。 | Select an imported route first. | — |
 | `imports.error.busy` | 請等待目前檔案操作完成。 | Wait for the current file operation to finish. | — |
 | `imports.error.nothingToUndo` | 目前沒有可復原的刪除路線。 | There's no deleted route to undo. | — |
@@ -90,11 +92,11 @@
 | `favoriteRoutes.error.unsupportedSchema` | 尚未支援此最愛路線清單版本。 | This favorite routes list version isn't supported yet. | — |
 | `favoriteRoutes.error.unsafeFile` | 無法安全讀取保存的最愛路線檔案。 | Couldn't safely read the saved favorite route file. | — |
 | `favoriteRoutes.error.unavailable` | 暫時無法讀取最愛路線，請再試一次。 | Favorite routes can't be read right now. Please try again. | 重試／Retry |
-| `favoriteRoutes.error.writeFailed` | 無法儲存變更，原最愛路線已保留。請再試一次。 | Couldn't save changes. Your favorite routes were kept. Please try again. | 重試／Retry |
-| `favoriteRoutes.error.limitExceeded` | 最愛路線已達儲存上限，請先移除不需要的路線。 | Favorite routes are full. Remove routes you don't need first. | — |
+| `favoriteRoutes.error.writeFailed` | 無法儲存變更，原最愛路線已保留。請再試一次。 | Couldn't save. Favorite routes are unchanged. Try again. | 重試／Retry |
+| `favoriteRoutes.error.limitExceeded` | 最愛路線已達儲存上限，請先移除不需要的路線。 | Favorite routes are full. Remove unused routes first. | — |
 | `favoriteRoutes.error.invalidLabel` | 標籤最多 120 字，且不能包含換行。 | Labels can be up to 120 characters and can't contain line breaks. | — |
-| `favoriteRoutes.error.invalidPlace` | 路線地點資料無效，請重新選擇該地點後再儲存。 | A place in this route is invalid. Choose it again before saving. | — |
-| `favoriteRoutes.error.tooFewValidPlaces` | 至少需要兩個有效地點。請先在地圖或搜尋中選擇地點。 | At least two valid places are needed. Pick places on the map or in search first. | — |
+| `favoriteRoutes.error.invalidPlace` | 路線地點資料無效，請重新選擇該地點後再儲存。 | A route place is invalid. Re-pick it before saving. | — |
+| `favoriteRoutes.error.tooFewValidPlaces` | 至少需要兩個有效地點。請先在地圖或搜尋中選擇地點。 | Needs at least two valid places. Pick places first. | — |
 | `favoriteRoutes.error.notFound` | 此最愛路線已不存在。 | This favorite route no longer exists. | — |
 | `favoriteRoutes.error.metadataMismatch` | 保存的最愛路線與清單資料不符。 | The saved favorite route doesn't match the list data. | — |
 | `favoriteRoutes.error.hashMismatch` | 保存的最愛路線未通過驗證，無法載入。 | The saved favorite route failed verification and can't be loaded. | — |
@@ -104,7 +106,7 @@
 
 ### GPX 內容（P，類別標題：無法匯入 GPX／Can't import GPX）
 
-13 項按鈕全部為 **選檔／Choose File**。
+13 項按鈕全部為 **選檔／Choose**。
 
 | 代碼 | 繁體中文 | English |
 | --- | --- | --- |
@@ -112,8 +114,8 @@
 | `gpx.error.unsupportedVersion` | 僅支援 GPX 1.1 格式。 | Only GPX 1.1 is supported. |
 | `gpx.error.unsupportedNamespace` | 檔案未使用標準 GPX 1.1 格式。 | The file doesn't use the standard GPX 1.1 format. |
 | `gpx.error.unsupportedEncoding` | 請將 GPX 檔案儲存為 UTF-8 或 UTF-16 後再試。 | Save the GPX file as UTF-8 or UTF-16 and try again. |
-| `gpx.error.unsafeXML` | 檔案含不支援的 XML 宣告，請選擇標準 GPX 1.1 檔案。 | The file has unsupported XML declarations. Choose a standard GPX 1.1 file. |
-| `gpx.error.invalidPoint` | 檔案含無效座標，整份檔案未匯入。 | The file has invalid coordinates, so nothing was imported. |
+| `gpx.error.unsafeXML` | 檔案含不支援的 XML 宣告，請選擇標準 GPX 1.1 檔案。 | Unsupported XML. Choose a standard GPX 1.1 file. |
+| `gpx.error.invalidPoint` | 檔案含無效座標，整份檔案未匯入。 | Invalid coordinate found. Nothing was imported. |
 | `gpx.error.invalidParent` | GPX 點位未放在支援的群組中。 | GPX points aren't inside a supported group. |
 | `gpx.error.mixedKinds` | 請將軌跡、路線或航點分別存為獨立 GPX 檔案後匯入。 | Save tracks, routes and waypoints as separate GPX files, then import. |
 | `gpx.error.emptyGroup` | GPX 檔案含空白軌跡、區段或路線。 | The GPX file has an empty track, segment or route. |
@@ -126,14 +128,14 @@
 
 | 代碼 | 繁體中文 | English | 按鈕 zh／en |
 | --- | --- | --- | --- |
-| `recovery.error.unavailable` | 無法存取已存工作階段，請檢查可用儲存空間。 | Can't access the saved session. Check available storage. | 重試／Retry |
-| `recovery.error.unsafeFile` | 無法安全讀取工作階段檔案，原始資料已保留。 | Couldn't safely read the session file. Original data was kept. | — |
-| `recovery.error.writeFailed` | 無法儲存變更，請檢查可用空間後重試。 | Couldn't save changes. Check free space and try again. | 重試／Retry |
-| `recovery.error.corruptArchive` | 已存工作階段已損壞，原始資料未被取代。 | The saved session is damaged. Original data wasn't replaced. | — |
-| `recovery.error.unsupportedSchema` | 不支援此工作階段格式，原始資料已保留。 | This session format isn't supported. Original data was kept. | — |
-| `recovery.error.limitExceeded` | 工作階段超過支援的儲存上限，未儲存此次變更。 | The session exceeds the storage limit. This change wasn't saved. | — |
+| `recovery.error.unavailable` | 無法存取已存工作階段，請檢查可用儲存空間。 | Can't access the saved session. Check storage. | 重試／Retry |
+| `recovery.error.unsafeFile` | 無法安全讀取工作階段檔案，原始資料已保留。 | Can't safely read the session file. It was kept. | — |
+| `recovery.error.writeFailed` | 無法儲存變更，請檢查可用空間後重試。 | Couldn't save changes. Check storage and retry. | 重試／Retry |
+| `recovery.error.corruptArchive` | 已存工作階段已損壞，原始資料未被取代。 | The saved session is damaged. Data wasn't replaced. | — |
+| `recovery.error.unsupportedSchema` | 不支援此工作階段格式，原始資料已保留。 | Unsupported session format. Data was kept. | — |
+| `recovery.error.limitExceeded` | 工作階段超過支援的儲存上限，未儲存此次變更。 | The session exceeds storage limits and wasn't saved. | — |
 | `recovery.error.invalidSnapshot` | 工作階段資料無效，未儲存此次變更。 | The session data is invalid. This change wasn't saved. | — |
-| `recovery.error.revisionExhausted` | 無法繼續儲存此工作階段，原始資料已保留。 | This session can't be saved any further. Original data was kept. | — |
+| `recovery.error.revisionExhausted` | 無法繼續儲存此工作階段，原始資料已保留。 | This session can't save changes. Data was kept. | — |
 
 ## 3. 處理邏輯（從簡）
 

@@ -143,3 +143,10 @@ LocalGo prototype CLI（`localgo_setup.py`）及其测试已于 2026-10-20 移�
 python3 -m venv work/mac-setup-env
 work/mac-setup-env/bin/python -m pip install -r app/GoFlyMac/requirements.txt
 ```
+
+
+## SideStore IPA distribution (2026-11-02)
+
+When explicitly testing the SideStore route, use `bash app/GoFly/scripts/package-ipa.sh [new-output-directory]` to create `GoFly-<version>.ipa` plus its checksum. The source app must be an unsigned iPhoneOS build with Boolean `GoFlyRequiresMacSetup=true`; the packager changes only the staged Payload to Boolean `false`. It does not alter the formal Mac producer or device state. Run `python3 -m unittest discover -s app/GoFly/scripts -p 'test_package_ipa.py'` and verify the final checksum and Payload policy before delivery. Never overwrite existing release artifacts implicitly.
+
+The user requested deferring the replacement 1.0.4 IPA until pending UI updates are complete. The current `work/dist/GoFly-1.0.4.ipa` remains the original Mac-gated artifact. No new IPA or device verification is claimed by packaging tests. Both install routes use the existing iOS permission/VPN onboarding; those grants do not provision GoFly pairing or support data. Missing data must continue to block native positioning. Mac installation/renew testing still follows the formal producer and its completion proofs above.

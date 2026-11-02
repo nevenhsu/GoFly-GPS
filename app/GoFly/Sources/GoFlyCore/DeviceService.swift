@@ -16,6 +16,15 @@ public extension DeviceService {
 }
 
 public enum DeviceServiceFailure: String, Error, Sendable, Equatable {
+    /// The iPhone's service could not be reached or did not answer. Every surface reports
+    /// these as the one connection error (`ConnectionIssue`), never with a copy of its own.
+    public var isConnectionFailure: Bool {
+        switch self {
+        case .serviceUnavailable, .tunnelUnavailable, .operationTimedOut: true
+        default: false
+        }
+    }
+
     case pairingRequired = "error.pairingRequired"
     case identityMismatch = "error.identityMismatch"
     case developerModeRequired = "error.developerModeRequired"

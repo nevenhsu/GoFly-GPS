@@ -34,20 +34,17 @@ final class GoFlyLocalNetworkAuthorization: ObservableObject, LocalNetworkAuthor
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
     }
 
-    /// Records a failure the VPN probe attributed to the permission being off.
-    func markDenied() { store(.denied) }
     /// A reachable tunnel proves the device service was found on the local network.
     func markGranted() { store(.granted) }
 
-    /// Keeps the remembered answer in step with every tunnel probe, so each
-    /// connection check names the same cause.
+    /// A reachable tunnel proves the permission. A probe that cannot find the device
+    /// service is not evidence it is off (LocalDevVPN may simply not be connected), so
+    /// denial comes only from the system's own answer in `requestAuthorization`.
     func observe(_ recovery: ConnectionRecoveryController) {
-        recoverySubscription = recovery.$needsLocalNetwork
-            .combineLatest(recovery.$connectionState)
-            .sink { [weak self] needsLocalNetwork, state in
+        recoverySubscription = recovery.$connectionState
+            .sink { [weak self] state in
                 MainActor.assumeIsolated {
-                    if needsLocalNetwork { self?.markDenied() }
-                    else if state == .reachable { self?.markGranted() }
+                    if state == .reachable { self?.markGranted() }
                 }
             }
     }

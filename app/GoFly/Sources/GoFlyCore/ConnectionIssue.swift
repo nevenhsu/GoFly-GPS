@@ -14,8 +14,8 @@ public enum ConnectionIssue: Equatable, Sendable {
 
     /// - Parameters:
     ///   - checkFailed: the last tunnel check failed or timed out.
-    ///   - localNetworkDenied: the permission is known to be off, or the last
-    ///     failure could not find the device service (its usual cause).
+    ///   - localNetworkDenied: the system reported the permission as off. A failed
+    ///     check alone never implies it; the device service may just be unreachable.
     public static func first(isWiFiConnected: Bool, checkFailed: Bool,
                              localNetworkDenied: Bool) -> ConnectionIssue? {
         if !isWiFiConnected { return .wifiNotConnected }

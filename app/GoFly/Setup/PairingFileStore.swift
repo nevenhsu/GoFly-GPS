@@ -121,6 +121,28 @@ enum PairingFileStore {
         expectedDeviceUDID: String,
         fileManager: FileManager = .default
     ) throws {
+        try importPairingData(
+            try readPickedFile(sourceURL, fileManager: fileManager),
+            expectedDeviceUDID: expectedDeviceUDID,
+            fileManager: fileManager
+        )
+    }
+
+    /// R07.s: a sideloaded build has no Mac binding, so the target is the
+    /// file's own `UDID`. Every device operation still compares the device's
+    /// reported identifier with this binding (`VerifiedDeviceSession`), so a
+    /// file for another iPhone fails closed before any location is sent.
+    static func importSideloadedPairing(_ sourceURL: URL, fileManager: FileManager = .default) throws {
+        let data = try readPickedFile(sourceURL, fileManager: fileManager)
+        guard let object = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
+              let dictionary = object as? [String: Any],
+              let udid = dictionary["UDID"] as? String else {
+            throw StoreError.invalidPairingFile
+        }
+        try importPairingData(data, expectedDeviceUDID: udid, fileManager: fileManager)
+    }
+
+    private static func readPickedFile(_ sourceURL: URL, fileManager: FileManager) throws -> Data {
         let accessing = sourceURL.startAccessingSecurityScopedResource()
         defer {
             if accessing {
@@ -138,18 +160,11 @@ enum PairingFileStore {
             throw StoreError.pairingFileTooLarge
         }
 
-        let data: Data
         do {
-            data = try Data(contentsOf: sourceURL, options: [.mappedIfSafe])
+            return try Data(contentsOf: sourceURL, options: [.mappedIfSafe])
         } catch {
             throw StoreError.invalidPairingFile
         }
-
-        try importPairingData(
-            data,
-            expectedDeviceUDID: expectedDeviceUDID,
-            fileManager: fileManager
-        )
     }
 
     /// Existing source-compatible overload. A first import through this API is

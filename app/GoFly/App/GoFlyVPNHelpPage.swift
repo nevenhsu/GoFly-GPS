@@ -138,6 +138,8 @@ struct GoFlyVPNInstructionRow: View {
     let number: Int
     let titleKey: String
     var showsChevron = false
+    var trailingText: String?
+    var trailingIsWarning = false
     let accessibilityID: String
     var action: (() -> Void)?
 
@@ -165,6 +167,13 @@ struct GoFlyVPNInstructionRow: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 .accessibilityIdentifier(accessibilityID)
+            if let trailingText {
+                Text(trailingText)
+                    .goFlyFont(GoFlyFont.subheadline)
+                    .foregroundStyle(trailingIsWarning ? GoFlyTextColor.warning : GoFlyTextColor.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier(accessibilityID + ".status")
+            }
             if showsChevron {
                 GoFlyIcon(GoFlySymbols.disclosure)
                     .goFlyIconSize(size: 14, maximum: 16)

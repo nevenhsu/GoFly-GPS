@@ -6,8 +6,6 @@ import Foundation
 @MainActor
 public final class ConnectionRecoveryController: ObservableObject {
     @Published public private(set) var connectionState: VPNCheckState = .unknown
-    /// The last probe could not find the device service; usually the Local Network permission is off.
-    @Published public private(set) var needsLocalNetwork = false
     @Published public private(set) var isChecking = false
     @Published public private(set) var checkpointRevision: UInt64 = 0
 
@@ -336,8 +334,6 @@ public final class ConnectionRecoveryController: ObservableObject {
             let elapsed = self.clock.now - probeStartedAt
             let elapsedMs = Double(elapsed.components.seconds) * 1000
                 + Double(elapsed.components.attoseconds) / 1e15
-            if case .failure(.serviceNotFound) = result { self.needsLocalNetwork = true }
-            else { self.needsLocalNetwork = false }
             switch result {
             case .success:
                 diagnose("tunnel.probe.end", category: .tunnel, level: .notice, [

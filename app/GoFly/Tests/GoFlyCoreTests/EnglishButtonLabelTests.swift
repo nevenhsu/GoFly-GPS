@@ -3,18 +3,19 @@ import Testing
 
 /// Button labels stay one English word so they never wrap or overflow their capsule.
 /// Exception (2026-10-31, user request): the two "Open LocalDevVPN" buttons name the app they open.
+/// Exception (2026-11-02, user request): R04's full-width "Check connection" is two words on purpose.
 struct EnglishButtonLabelTests {
     private static let buttonKeys = [
         "route.resumeShort", "teleport.resumeShort", "wander.resumeShort", "route.cancelConfirmation.confirm",
         "route.cancelConfirmation.return", "route.start", "route.startShort", "route.cancel", "route.addStop",
         "route.viewList", "route.exchange", "route.clearRoute", "operation.settings", "operation.return",
         "operation.cancel", "onboarding.location.allow", "onboarding.location.openSettings",
-        "onboarding.location.continue", "onboarding.vpn.reconnect", "settings.vpn.check",
+        "onboarding.location.continue", "settings.vpn.check",
         "settings.diagnostics.export", "setup.retry", "service.reset",
         "imports.import", "imports.load", "imports.deleteAction", "imports.action.loadRoute",
         "imports.action.viewAllPoints", "imports.action.exportRoute", "imports.action.deleteRoute", "search.clearHistory",
         "placeDetails.setStart", "placeDetails.setEnd", "joystick.startWander", "joystick.stopWander",
-        "favorites.selectAll", "toast.restore", "operation.retry", "common.retry", "common.undo", "common.continue", "common.confirm", "route.pause", "route.resume", "issue.action.fix", "connection.connect"
+        "favorites.selectAll", "toast.restore", "operation.retry", "common.retry", "common.undo", "common.continue", "common.confirm", "route.pause", "route.resume", "issue.action.fix", "connection.connect", "setup.pairingImport.action"
     ]
 
     @Test func everyButtonLabelIsASingleEnglishWord() throws {

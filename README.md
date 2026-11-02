@@ -56,7 +56,7 @@ Free Personal Team signing normally expires after about seven days; keep the Mac
 
 The app is ad-hoc signed, **not notarized**, so macOS will not open it by double-click; use the installer above. If you copy the app yourself, run `xattr -dr com.apple.quarantine /Applications/GoFly.app`.
 
-## Install the IPA with AltStore
+## Install the IPA with SideStore or AltStore
 
 [AltStore](https://altstore.io) is an app store designed for sideloading: it installs apps on your iPhone and re-signs them with your own Apple ID.
 
@@ -65,7 +65,11 @@ The app is ad-hoc signed, **not notarized**, so macOS will not open it by double
 3. In AltStore, open **My Apps**, tap **+**, and choose the `.ipa`.
 4. Keep AltStore refreshing the app. A free Apple ID signature lasts 7 days.
 
-The IPA is unsigned and only gives you the app. GoFly also needs this iPhone's pairing file, which the Mac app creates over USB. That handoff is verified only for the DMG route above; AltStore changes the app's bundle ID, and I have not verified that the Mac installer can still hand over pairing to an AltStore-signed copy.
+For SideStore, follow its [setup guide](https://docs.sidestore.io/docs/installation/install), then import the same IPA under **My Apps → +** with Wi-Fi and LocalDevVPN connected.
+
+The IPA packaging script disables the Mac-only startup gate; the Mac installer retains it. Both routes use the iOS location, Local Network, and VPN onboarding. These permissions do not create GoFly pairing records or device support: positioning still requires those, and the Mac handoff to a SideStore/AltStore-signed bundle remains unverified. Removing the startup gate alone does not enable positioning. The previously packaged 1.0.4 IPA retains the gate; a replacement will be generated after the pending UI updates.
+
+To build the replacement unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` (requires the prepared native archive under `work/gofly-ios/native`). It preserves the Mac build and refuses to overwrite existing output; archive prior release files or pass a new output directory as the first argument.
 
 ## Let an AI install it for you
 

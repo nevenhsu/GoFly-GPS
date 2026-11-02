@@ -15,4 +15,12 @@ enum GoFlyExternalLinks {
             Task { @MainActor in completion(accepted) }
         }
     }
+
+    /// GoFly's own page in the Settings app, where Local Network is switched.
+    static func openAppSettings(completion: @escaping @MainActor (Bool) -> Void) {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return completion(false) }
+        UIApplication.shared.open(url, options: [:]) { accepted in
+            Task { @MainActor in completion(accepted) }
+        }
+    }
 }

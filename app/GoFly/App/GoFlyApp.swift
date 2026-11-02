@@ -108,6 +108,8 @@ private struct GoFlySceneContent: View {
                 GoFlyStartupView()
             case .awaitingMacInstall, .waitingForMac:
                 GoFlyMacSetupOnboardingView()
+            case .awaitingPairingImport:
+                GoFlyPairingImportView(onImported: bootstrap.pairingImported)
             case .ordinaryStartup, .completed:
                 GoFlyStartupView()
             case .blocked:

@@ -23,15 +23,15 @@ D8 的 `route.error.planningFailed` 依 Figma 04 渲染由路線頁浮動 danger
 
 | 代碼 | 繁體中文文案 |
 | --- | --- |
-| `error.pairingRequired` | 缺少配對資料。請將這部 iPhone 連接 Mac App，完成裝置準備。 |
-| `error.identityMismatch` | 配對資料屬於其他裝置。請將這部 iPhone 連接 Mac App 修復。 |
-| `error.developerModeRequired` | 請在這部 iPhone 開啟開發者模式，再連接 Mac App 完成裝置準備。 |
-| `error.devicePreparationRequired` | 這部 iPhone 需要裝置準備。請連接 Mac App 完成準備。 |
-| `error.serviceUnavailable` | 無法連接裝置服務。請檢查 VPN 通道；若仍無法連接，請在 Mac App 修復這部 iPhone。 |
-| `error.tunnelUnavailable` | 無法連接 VPN 通道。請確認 iPhone 已連上 Wi‑Fi（只用行動網路無法使用），重新連接 LocalDevVPN，再於 GoFly 重置 VPN 通道。 |
-| `error.operationTimedOut` | 裝置未在時限內確認操作。請檢查連線並停止服務後重試；GPS 恢復確認狀態另列於下方。 |
-| `error.deviceRequired` | 需要已完成準備的實體 iPhone；模擬器無法啟動裝置服務或確認 GPS 恢復。 |
-| `error.storageUnavailable` | 無法讀取裝置設定資料。請檢查可用儲存空間，並在 Mac App 修復這部 iPhone。 |
+| `error.pairingRequired` | 缺少配對資料。請連接 Mac App 完成裝置準備。 |
+| `error.identityMismatch` | 配對資料屬於其他裝置。請在 Mac App 修復。 |
+| `error.developerModeRequired` | 請開啟開發者模式，再連接 Mac App 完成準備。 |
+| `error.devicePreparationRequired` | 這部 iPhone 需要裝置準備。請連接 Mac App 完成。 |
+| `error.serviceUnavailable` | 無法連接裝置服務。請檢查 VPN 通道。 |
+| `error.tunnelUnavailable` | 無法連接 VPN 通道。請重新連接 LocalDevVPN 後再試。 |
+| `error.operationTimedOut` | 裝置未在時限內確認，請重試。 |
+| `error.deviceRequired` | 需要已準備的實體 iPhone，模擬器無法執行。 |
+| `error.storageUnavailable` | 無法讀取裝置設定。請檢查儲存空間，並在 Mac App 修復。 |
 
 ## 路線規劃與匯入執行
 
@@ -39,17 +39,17 @@ D8 的 `route.error.planningFailed` 依 Figma 04 渲染由路線頁浮動 danger
 | --- | --- |
 | `route.error.missingStart` | 請選擇起點。 |
 | `route.error.missingDestination` | 請選擇終點。 |
-| `route.error.currentLocationUnavailable` | 目前位置尚無法確認。請在地圖或搜尋中，為使用目前位置的節點選擇地點。 |
-| `route.error.planningFailed` | 找不到可通行的路徑。請重新檢查起點，或點選修正。 |
-| `route.error.invalidPath` | 規劃的路線無效。請重新選擇地點後再試。 |
-| `imports.execution.disconnectedSegments` | 各段端點未完全銜接。仍可預覽或匯出，但無法載入執行。 |
-| `imports.execution.zeroDistance` | 路徑沒有可行進距離。仍可預覽或匯出，但無法載入執行。 |
+| `route.error.currentLocationUnavailable` | 目前位置無法確認。請為該節點選擇地點。 |
+| `route.error.planningFailed` | 找不到可通行的路徑。請檢查起點，或點選修正。 |
+| `route.error.invalidPath` | 規劃的路線無效。請重新選擇地點。 |
+| `imports.execution.disconnectedSegments` | 各段端點未銜接。僅可預覽或匯出。 |
+| `imports.execution.zeroDistance` | 路徑沒有可行進距離。僅可預覽或匯出。 |
 
 ## 搖桿與漫步
 
 | 代碼 | 繁體中文文案 |
 | --- | --- |
-| `joystick.error.originUnavailable` | 目前沒有已確認的可用位置。請設定起點後使用搖桿。 |
+| `joystick.error.originUnavailable` | 沒有已確認的位置。請設定起點後使用搖桿。 |
 | `joystick.error.noCandidate` | 找不到新的目的地。請在地圖選點或重試。 |
 
 搖桿／漫步起點（2026-10-26 修正）：依序採用已驗證的模擬位置、裝置仍保持的模擬位置（箭頭變灰、未經 Stop／Restore 清除），最後才是 15 秒內的真實 GPS。只有三者皆無時才顯示 `joystick.error.originUnavailable`；背景往返、保持位置暫停或單次未送出都不會使起點失效，第一個 ACK 會重新驗證箭頭。

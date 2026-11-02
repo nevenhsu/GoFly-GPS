@@ -56,7 +56,12 @@ struct ServiceSettingsView: View {
 
     @ViewBuilder
     private var topStatusToasts: some View {
-        if let failure = bannerFailure, !serviceNoticeDismissed {
+        if let failure = bannerFailure, !serviceNoticeDismissed, failure.isConnectionFailure,
+           let issue = ConnectionIssue.first(isWiFiConnected: network.isWiFiConnected, checkFailed: true,
+                                             localNetworkDenied: localNetwork.authorization == .denied) {
+            GoFlyConnectionIssueBanner(issue: issue, identifier: "service.error",
+                                       onDismiss: { serviceNoticeDismissed = true })
+        } else if bannerFailure != nil, !serviceNoticeDismissed {
             GoFlyStatusBanner(
                 tone: .danger,
                 title: goFlyString("service.stopFailed.title"),

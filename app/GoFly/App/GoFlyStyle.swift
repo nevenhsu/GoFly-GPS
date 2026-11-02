@@ -427,8 +427,8 @@ struct GoFlyStatusActionStyle: ButtonStyle {
         configuration.label
             .goFlyFont(GoFlyFont.subheadlineEmphasis)
             .lineLimit(1)
-            .padding(.horizontal, 12)
-            .frame(minWidth: 56, minHeight: 32)
+            .padding(.horizontal, 10)
+            .frame(minWidth: 48, minHeight: 32)
             .foregroundStyle(isEnabled ? GoFlyTextColor.primary : GoFlyTextColor.disabled)
             .background(backgroundSurface, in: Capsule())
             .overlay {

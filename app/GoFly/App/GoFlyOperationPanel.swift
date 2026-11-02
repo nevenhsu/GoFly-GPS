@@ -20,6 +20,11 @@ struct GoFlyOperationPanel: View {
             VStack(alignment: .leading, spacing: 12) {
                 if let operation {
                     preparedContent(operation)
+                } else if let failure = unconfirmedFailure, failure.isConnectionFailure {
+                    connectionLostContent(message: goFlyString("teleport.positionUnconfirmed"))
+                    Button(goFlyString("operation.return"), action: onReturn)
+                        .buttonStyle(GoFlyActionStyle())
+                        .accessibilityIdentifier("operation.return")
                 } else if let failure = unconfirmedFailure {
                     GoFlyStatusBanner(tone: .danger, title: goFlyString(failure.rawValue),
                         message: goFlyString("teleport.positionUnconfirmed") + " " + goFlyString("operation.failureGuidance"),
@@ -57,6 +62,17 @@ struct GoFlyOperationPanel: View {
             Button(goFlyString("operation.cancel")) { onCancel(operation.id) }
                 .buttonStyle(GoFlyActionStyle())
                 .accessibilityIdentifier("operation.cancel")
+        case .failed(let failure) where failure.isConnectionFailure:
+            connectionLostContent(message: goFlyString("operation.failureGuidance"))
+            Button(goFlyString("operation.retry")) { onRetry(operation.id) }
+                .buttonStyle(GoFlyActionStyle())
+                .disabled(nativeBusy)
+                .accessibilityIdentifier("operation.retry")
+            sourceSummary(operation.source)
+            Button(goFlyString("operation.cancel")) { onCancel(operation.id) }
+                .buttonStyle(GoFlyActionStyle())
+                .disabled(nativeBusy)
+                .accessibilityIdentifier(cancelIdentifier)
         case .failed(let failure):
             GoFlyStatusBanner(tone: .danger, title: goFlyString(failure.rawValue),
                 message: goFlyString("operation.failureGuidance"),
@@ -78,6 +94,17 @@ struct GoFlyOperationPanel: View {
                 .disabled(true)
                 .accessibilityIdentifier("operation.cancel")
         }
+    }
+
+    /// A lost connection is explained by the one connection toast; the panel only says what
+    /// happened to this operation, without a second error banner.
+    @ViewBuilder private func connectionLostContent(message: String) -> some View {
+        Text(goFlyString("recovery.connectionLost"))
+            .goFlyFont(GoFlyFont.headline)
+            .accessibilityIdentifier(reasonIdentifier)
+        Text(message)
+            .goFlyFont(GoFlyFont.footnote)
+            .foregroundStyle(GoFlyTextColor.secondary)
     }
 
     private func preparationTitle(_ source: PreparedOperationSource) -> String {

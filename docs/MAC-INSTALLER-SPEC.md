@@ -13,13 +13,17 @@
 
 第一版不做：備份、還原、重置、Intel Mac、付費 Developer ID 公證，以及代替使用者輸入任何密碼或接受條款。
 
+### 1.1 與 SideStore IPA 的界線（2026-11-02）
+
+Mac producer 繼續使用來源 `GoFlyRequiresMacSetup=true`，安裝／renew 的 pairing、support 與精確 activation receipt 驗證均保留。SideStore IPA 僅由獨立打包腳本把 Payload 副本旗標改為 `false`，不修改來源或 Mac 內建 iOS project。兩者共用 iOS onboarding；權限授權與 VPN 可達不等於配對或定位就緒。此次不新增 Mac 對側載 Bundle ID 的準備能力，亦不放寬 Team／Bundle ID 規則。驗收需區分 IPA 能啟動、正式 Mac setup 完成與定位成功。
+
 ## 2. 從 iOS App 架構反推的依賴
 
 | iOS App 需要的東西 | 由誰提供 | 使用者要做什麼 |
 | --- | --- | --- |
 | 用使用者 Team 簽名的 GoFly.app（`com.neven.gofly.<teamid>`） | Mac App 內附 iOS 專案原始碼與預編譯的 `libidevice_ffi.a`，在本機用 `xcodebuild` 建置並自動簽名 | 安裝 Xcode、下載 iOS 平台、登入 Apple 帳號 |
 | 開發憑證與描述檔（免費 Team 7 天） | Xcode 自動管理（`-allowProvisioningUpdates`），需要連網 | 第一次簽名時，在鑰匙圈視窗輸入 Mac 登入密碼並點「永遠允許」 |
-| 配對資料（GoFly 連 `10.7.0.1:49152` remotepairingd 用） | 首次安裝時由 Mac 透過 USB 建立並交付 | 在 iPhone 點「信任」並輸入 iPhone 密碼 |
+| 配對資料（GoFly 連 `10.7.0.1` 上的 remotepairingd 用；連接埠每次以 Bonjour `_remotepairing._tcp` 自動探索，不寫死） | 首次安裝時由 Mac 透過 USB 建立並交付 | 在 iPhone 點「信任」並輸入 iPhone 密碼 |
 | 裝置支援檔（26.0–26.3 用 personalized DDI，26.4 起用 cryptex） | Mac 依實際 iOS 版本準備並交付；手機不自行下載 | 無 |
 | 開發者模式 | iOS 設定 | 開啟開發者模式 → 重新開機 → 點「開啟」 |
 | 信任開發者（免費 Team） | iOS 設定 | 設定 › 一般 › VPN 與裝置管理 › 信任 |

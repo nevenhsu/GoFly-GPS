@@ -47,7 +47,7 @@ struct GoFlyMapToastStack: View {
             recoveryNoticeKey: recovery.noticeKey, requiresColdConfirmation: recovery.requiresColdConfirmation,
             repairOwnsNotice: recovery.isSilentRepairInProgress || recovery.canRetryAutomaticRepair,
             isWiFiConnected: network.isWiFiConnected,
-            localNetworkDenied: recovery.needsLocalNetwork || localNetwork.authorization == .denied,
+            localNetworkDenied: localNetwork.authorization == .denied,
             continuationNoticeKey: continuation.noticeKey)
     }
 

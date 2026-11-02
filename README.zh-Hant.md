@@ -56,7 +56,7 @@ GoFly for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置 iPh
 
 這個 App 使用 ad-hoc 簽署、**未經公證**，所以不能直接雙擊開啟，請用上面的安裝腳本。若你自己拖曳 App，請執行 `xattr -dr com.apple.quarantine /Applications/GoFly.app`。
 
-## 用 AltStore 安裝 IPA
+## 用 SideStore 或 AltStore 安裝 IPA
 
 [AltStore](https://altstore.io) 是專為 sideloading 設計的 app store：用你自己的 Apple ID 重新簽名，把 App 裝到 iPhone。
 
@@ -65,7 +65,11 @@ GoFly for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置 iPh
 3. 在 AltStore 開啟 **My Apps**，點 **+**，選這個 `.ipa`。
 4. 讓 AltStore 持續重新整理。免費 Apple ID 的簽名只有 7 天。
 
-這個 IPA 沒有簽名，只提供 App 本身。GoFly 還需要這支 iPhone 的配對檔，由 Mac App 透過 USB 建立。這個交接目前只驗證過上面的 DMG 流程；AltStore 會改掉 App 的 Bundle ID，我還沒驗證 Mac 安裝器能否把配對交給 AltStore 簽名的版本。
+使用 SideStore 時，先依[官方流程](https://docs.sidestore.io/docs/installation/install)完成設定，再保持 Wi-Fi 與 LocalDevVPN 連線，於 **My Apps → ＋** 匯入同一份 IPA。
+
+IPA 打包腳本會移除等待 Mac 的啟動限制；Mac 安裝版保留配對檢查。兩者共用 iOS 的定位、區域網路與 VPN onboarding。授權不會產生 GoFly 配對或裝置支援資料，實際定位仍需要這些資料；SideStore／AltStore 重簽版與 Mac 的交接尚未驗證，不能把移除啟動限制視為定位可用。先前產出的 1.0.4 IPA 仍有限制，修正版待 UI 更新完成後統一輸出。
+
+開發者執行 `bash app/GoFly/scripts/package-ipa.sh` 產生未簽名 IPA 與 SHA-256（須先有 `work/gofly-ios/native` 的已建置原生程式庫）。腳本不更動 Mac 建置，且不覆蓋既有輸出；可先封存舊檔，或以第一個參數指定新輸出目錄。
 
 ## 讓 AI 幫你安裝
 

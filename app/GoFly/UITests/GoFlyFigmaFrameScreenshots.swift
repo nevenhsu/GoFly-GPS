@@ -247,7 +247,7 @@ final class GoFlyFigmaFrameScreenshots: XCTestCase {
                     let status = app.descendants(matching: .any)["onboarding.vpn.status"]
                     XCTAssertTrue(connect.waitForExistence(timeout: 10))
                     XCTAssertTrue(status.waitForExistence(timeout: 5))
-                    XCTAssertEqual(primary.label, "重新連線")
+                    XCTAssertEqual(primary.label, "檢查連線")
                     XCTAssertEqual(connect.label, "連線")
                     XCTAssertEqual(status.label, "連線錯誤")
                 }

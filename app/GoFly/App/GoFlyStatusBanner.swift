@@ -64,31 +64,29 @@ struct GoFlyStatusBanner: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
 
+    private static let horizontalInset: CGFloat = 14
+    /// Moves the dismiss icon this far from the toast's trailing edge without shrinking its hit area.
+    private static let dismissIconTrailingNudge: CGFloat = 2
+
     var body: some View {
         if !isDismissedLocally {
             Group {
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .top, spacing: 8) {
-                            statusIcon
-                            textContent
-                            if showsDismissButton { dismissButton }
-                        }
-                        if showsActionButton {
-                            actionButton
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                        }
-                    }
+                if !showsActionButton {
+                    inlineLayout(singleLineTitle: false)
+                } else if dynamicTypeSize.isAccessibilitySize {
+                    stackedLayout
                 } else {
-                    HStack(alignment: .center, spacing: 8) {
-                        statusIcon
-                        textContent
-                        if showsActionButton { actionButton }
-                        if showsDismissButton { dismissButton }
+                    // Inline when the title fits on one line beside the action, otherwise
+                    // the action drops below the text (the accessibility-size layout).
+                    ViewThatFits(in: .horizontal) {
+                        inlineLayout(singleLineTitle: true)
+                        stackedLayout
                     }
                 }
             }
-            .padding(.horizontal, 14)
+            // The dismiss button's 28 pt hit area runs to the trailing edge, so it replaces the inset.
+            .padding(.leading, Self.horizontalInset)
+            .padding(.trailing, showsDismissButton ? 0 : Self.horizontalInset)
             .padding(.vertical, 12)
             // The Figma 12 pt inset includes a 1 pt outline allowance in the
             // rendered 85 pt frame; keep that allowance outside the content.
@@ -104,19 +102,49 @@ struct GoFlyStatusBanner: View {
         }
     }
 
+    private var stackedLayout: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                statusIcon
+                textContent(singleLineTitle: false)
+                if showsDismissButton { dismissButton }
+            }
+            if showsActionButton {
+                actionButton
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, showsDismissButton ? Self.horizontalInset : 0)
+            }
+        }
+    }
+
+    private func inlineLayout(singleLineTitle: Bool) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            statusIcon
+            textContent(singleLineTitle: singleLineTitle)
+            // 4 pt between the action and the dismiss icon; the 8 pt gaps stay around them.
+            HStack(alignment: .center, spacing: 4) {
+                if showsActionButton { actionButton }
+                if showsDismissButton { dismissButton }
+            }
+        }
+    }
+
     private var statusIcon: some View {
         GoFlyIcon(tone.toastSymbol, size: 22, maximumSize: 28)
             .frame(minWidth: 22, minHeight: 22)
             .accessibilityHidden(true)
     }
 
-    private var textContent: some View {
+    /// `singleLineTitle` is only used to measure the inline layout for `ViewThatFits`: the
+    /// title must fit on one line, while the message may wrap (its ideal width is zero).
+    private func textContent(singleLineTitle: Bool) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .goFlyFont(GoFlyFont.subheadlineEmphasis)
                 .foregroundStyle(GoFlyTextColor.primary)
                 .frame(minHeight: 21, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(singleLineTitle ? 1 : nil)
+                .fixedSize(horizontal: singleLineTitle, vertical: true)
                 .accessibilityLabel("\(goFlyString(tone.accessibilityKey)), \(title)")
                 .accessibilityIdentifier(titleIdentifier
                     ?? identifier.map { "\($0).title" } ?? "statusBanner.title")
@@ -126,6 +154,7 @@ struct GoFlyStatusBanner: View {
                     .foregroundStyle(colorScheme == .dark ? GoFlyTextColor.primary : GoFlyTextColor.secondary)
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(minWidth: 0, idealWidth: singleLineTitle ? 0 : nil, maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier(messageIdentifier
                         ?? identifier.map { "\($0).message" } ?? "statusBanner.message")
             }
@@ -167,14 +196,15 @@ struct GoFlyStatusBanner: View {
                 isDismissedLocally = true
             }
         }) {
-            // The 20 pt icon sits 8 pt from the action button (HStack spacing);
-            // the 44 pt hit area extends past the icon only toward the trailing edge.
+            // The 28 pt hit area ends exactly at the toast's trailing edge (the toast has no
+            // trailing inset while this button shows), so every tappable point is inside the
+            // toast; the 20 pt icon box is centred in it.
             GoFlyIcon(GoFlySymbols.close)
                 .goFlyIconSize(size: 13, maximum: 16)
                 .foregroundStyle(colorScheme == .dark ? GoFlyTextColor.primary : tone.toastDismiss)
                 .frame(width: 20, height: 20)
-                .frame(width: 28, height: 44, alignment: .leading)
-                .padding(.trailing, -8)
+                .offset(x: -Self.dismissIconTrailingNudge)
+                .frame(width: 28, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

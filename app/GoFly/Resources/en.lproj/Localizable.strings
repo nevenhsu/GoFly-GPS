@@ -40,14 +40,14 @@
 "location.disabled" = "Location Services are off. You can still use the device service without GPS access.";
 "location.permissionDenied" = "GPS access is not allowed. You can enable it in iOS Settings or continue using GoFly without it.";
 "location.noFix" = "A current GPS location could not be verified. Try again when a GPS signal is available.";
-"error.pairingRequired" = "Pairing information is missing. Connect this iPhone to the Mac app and prepare the device.";
-"error.identityMismatch" = "The pairing information belongs to another device. Connect this iPhone to the Mac app to repair it.";
-"error.devicePreparationRequired" = "This iPhone needs device preparation. Connect it to the Mac app and complete preparation.";
-"error.serviceUnavailable" = "The device service could not be reached. Check the VPN tunnel; if it still fails, repair this iPhone in the Mac app.";
-"error.tunnelUnavailable" = "The VPN tunnel could not be reached. Make sure iPhone is connected to Wi‑Fi (cellular data alone does not work), reconnect LocalDevVPN, then tap Start in GoFly again.";
-"error.operationTimedOut" = "The device did not confirm the operation in time. Check the connection and stop the service before trying again. GPS recovery has a separate confirmation below.";
-"error.deviceRequired" = "A prepared physical iPhone is required. The simulator cannot start the device service or confirm GPS recovery.";
-"error.storageUnavailable" = "Device setup information could not be read. Check available storage and repair this iPhone in the Mac app.";
+"error.pairingRequired" = "Pairing data is missing. Connect to the Mac app to prepare.";
+"error.identityMismatch" = "Pairing is for another device. Repair it in the Mac app.";
+"error.devicePreparationRequired" = "This iPhone needs setup. Connect to the Mac app to finish.";
+"error.serviceUnavailable" = "Can't reach the device service. Check the VPN tunnel.";
+"error.tunnelUnavailable" = "Can't reach the VPN tunnel. Reconnect LocalDevVPN, then try again.";
+"error.operationTimedOut" = "The device didn't confirm in time. Try again.";
+"error.deviceRequired" = "Needs a prepared iPhone. The Simulator can't run this.";
+"error.storageUnavailable" = "Can't read device settings. Check storage, repair in Mac app.";
 "onboarding.welcome.title" = "Welcome to GoFly";
 "onboarding.next" = "Next";
 "onboarding.location.title" = "Allow GoFly to use location";
@@ -66,15 +66,15 @@
 "onboarding.vpn.help" = "Connection Guide";
 "onboarding.vpn.help.step1.title" = "Download LocalDevVPN";
 "onboarding.vpn.help.step2.title" = "Open LocalDevVPN";
-"onboarding.vpn.help.step3.title" = "Tap Connect";
+"onboarding.vpn.help.step3.title" = "LocalDevVPN: Tap Connect";
+"onboarding.vpn.stepLocalNetwork" = "Allow Local Network";
 "onboarding.vpn.help.troubleshooting" = "Still unable to connect?";
-"onboarding.vpn.help.reconnect" = "Make sure you are on Wi‑Fi. Disconnect and reconnect in LocalDevVPN, then come back and check again.";
+"onboarding.vpn.help.reconnect" = "Make sure you are on Wi‑Fi and Local Network is allowed. Disconnect and reconnect in LocalDevVPN, then come back and check again.";
 "onboarding.vpn.help.notChecked" = "Not connected";
 "onboarding.vpn.help.notReachable" = "Connection error";
 "onboarding.vpn.disconnected" = "Not connected";
 "onboarding.vpn.checking" = "Checking…";
 "onboarding.vpn.check" = "Check connection";
-"onboarding.vpn.reconnect" = "Reconnect";
 "onboarding.vpn.failureDetail" = "iOS reported";
 "onboarding.vpn.externalOpenFailed" = "The App Store could not be opened. Open the App Store manually and search for LocalDevVPN.";
 "map.simulatedLocation" = "Confirmed simulated location";
@@ -97,7 +97,7 @@
 "teleport.unconfirmed" = "Location unconfirmed";
 "teleport.positionUnconfirmed" = "The location change is unconfirmed. Stop the service before using Go again.";
 "teleport.failure.toast.title" = "Teleport failed";
-"teleport.failure.toast.message" = "Could not update the simulated location. Check the connection in Settings › VPN Channel.";
+"teleport.failure.toast.message" = "Couldn't update the simulated location. Check Settings › VPN Channel.";
 "figma.fixture.b2.position" = "No. 45, Sec. 2, Zhongshan N. Rd.";
 "figma.fixture.b1.position" = "No. 45, Sec. 2, Zhongshan N. Rd.";
 "figma.fixture.b4.coordinate" = "Go to coordinate";
@@ -137,15 +137,15 @@
 "favorites.removed" = "Removed from favorites";
 "favorites.save" = "Save";
 "favorites.cancel" = "Cancel";
-"favorites.error.corruptArchive" = "Saved favorite places are damaged and cannot be read. Your saved data has been kept.";
-"favorites.error.unsupportedSchema" = "Saved favorite places use an unsupported version. Your saved data has been kept.";
-"favorites.error.unsafeFile" = "Favorite places cannot be opened safely. Your saved data has been kept.";
+"favorites.error.corruptArchive" = "Favorites are damaged and can't be read. Data was kept.";
+"favorites.error.unsupportedSchema" = "Favorites use an unsupported version. Data was kept.";
+"favorites.error.unsafeFile" = "Can't safely open favorites. Data was kept.";
 "favorites.error.unavailable" = "Favorite places are unavailable. Try reopening GoFly.";
-"favorites.error.writeFailed" = "The change could not be saved. Your previous favorites are unchanged. Try again.";
-"favorites.error.invalidPlace" = "This place could not be saved. Choose a valid place and try again.";
+"favorites.error.writeFailed" = "Couldn't save. Your favorites are unchanged. Try again.";
+"favorites.error.invalidPlace" = "Couldn't save this place. Pick a valid one and retry.";
 "favorites.error.invalidLabel" = "Use a label of 120 characters or fewer.";
-"favorites.error.limitExceeded" = "Favorite places reached a storage limit. Remove a saved place or use a shorter label, then try again.";
-"favorites.error.notFavorite" = "This place is no longer a favorite. Add it again before saving a label.";
+"favorites.error.limitExceeded" = "Favorites are full. Remove one or shorten the label.";
+"favorites.error.notFavorite" = "No longer a favorite. Add it again before labeling.";
 "placeDetails.address" = "Address";
 "placeDetails.addressUnavailable" = "Address unavailable";
 "placeDetails.coordinates" = "Coordinates";
@@ -182,9 +182,9 @@
 "route.resumeHint" = "Continue the same route from the current progress.";
 "route.error.missingStart" = "Choose an origin.";
 "route.error.missingDestination" = "Choose a destination.";
-"route.error.currentLocationUnavailable" = "Current location is unavailable. Choose a place on the map or in search for the node using current location.";
-"route.error.planningFailed" = "No drivable route found. Check the start point or select Fix.";
-"route.error.invalidPath" = "The planned route is invalid. Choose different places and try again.";
+"route.error.currentLocationUnavailable" = "Current location unavailable. Pick a place for that stop.";
+"route.error.planningFailed" = "No drivable route. Check the start or tap Fix.";
+"route.error.invalidPath" = "The planned route is invalid. Pick places again.";
 "route.phase.editing" = "Edit route";
 "route.phase.planning" = "Planning route…";
 "route.phase.preparing" = "Preparing route…";
@@ -250,22 +250,22 @@
 "imports.kind.tracks" = "Tracks";
 "imports.kind.routes" = "Routes";
 "imports.kind.waypoints" = "Ordered waypoints";
-"imports.execution.disconnectedSegments" = "The segments do not share exact endpoints. This route can be previewed or exported, but cannot be loaded for movement.";
-"imports.execution.zeroDistance" = "This route has no travel distance. It can be previewed or exported, but cannot be loaded for movement.";
+"imports.execution.disconnectedSegments" = "Segments don't connect. Preview or export only.";
+"imports.execution.zeroDistance" = "No travel distance. Preview or export only.";
 "imports.file.unavailable" = "The file could not be opened or saved. Try again.";
 "imports.error.title" = "Cannot import GPX";
 "imports.file.tooLarge" = "The GPX file exceeds 2 MiB. Choose a smaller file.";
 "imports.file.unsupported" = "Choose a GPX or XML file.";
 "imports.error.corruptArchive" = "The imported-routes list is damaged and cannot be changed.";
 "imports.error.unsupportedSchema" = "This imported-routes list version is not supported.";
-"imports.error.unsafeFile" = "The stored route file cannot be read safely. Import the source file again.";
+"imports.error.unsafeFile" = "Can't safely read the saved route. Re-import the file.";
 "imports.error.unavailable" = "Imported routes are unavailable. Try again.";
-"imports.error.writeFailed" = "The change could not be saved. Your previous list has been kept. Try again.";
-"imports.error.limitExceeded" = "The import list is full. Remove unused routes before importing another file.";
-"imports.error.invalidFilename" = "The filename is not supported. Rename the source file and try again.";
-"imports.error.notFound" = "This imported route is no longer available. Select another route.";
-"imports.error.metadataMismatch" = "The stored route does not match its list information. Import the source file again.";
-"imports.error.hashMismatch" = "The stored route failed validation. Import the source file again.";
+"imports.error.writeFailed" = "Couldn't save. The previous list was kept. Try again.";
+"imports.error.limitExceeded" = "The import list is full. Remove unused routes first.";
+"imports.error.invalidFilename" = "Unsupported file name. Rename the file and retry.";
+"imports.error.notFound" = "This route is no longer available. Pick another.";
+"imports.error.metadataMismatch" = "The saved route doesn't match its list. Re-import the file.";
+"imports.error.hashMismatch" = "The saved route failed verification. Re-import the file.";
 "imports.error.noSelection" = "Select an imported route first.";
 "imports.error.busy" = "Wait for the current file operation to finish.";
 "imports.error.nothingToUndo" = "There is no deleted route to restore.";
@@ -273,8 +273,8 @@
 "gpx.error.unsupportedVersion" = "Only GPX version 1.1 is supported.";
 "gpx.error.unsupportedNamespace" = "The file does not use the standard GPX 1.1 format.";
 "gpx.error.unsupportedEncoding" = "Save the GPX file as UTF-8 or UTF-16 and try again.";
-"gpx.error.unsafeXML" = "The file contains unsupported XML declarations. Choose a standard GPX 1.1 file.";
-"gpx.error.invalidPoint" = "The file contains an invalid coordinate. The file was not imported.";
+"gpx.error.unsafeXML" = "Unsupported XML. Choose a standard GPX 1.1 file.";
+"gpx.error.invalidPoint" = "Invalid coordinate found. Nothing was imported.";
 "gpx.error.invalidParent" = "The GPX points are not in supported groups.";
 "gpx.error.mixedKinds" = "Import tracks, routes or waypoints in separate GPX files.";
 "gpx.error.emptyGroup" = "The GPX file contains an empty track, segment or route.";
@@ -315,11 +315,11 @@
 "favoriteRoutes.error.unsupportedSchema" = "This favorite-routes list version is not supported.";
 "favoriteRoutes.error.unsafeFile" = "The saved route file cannot be read safely.";
 "favoriteRoutes.error.unavailable" = "Favorite routes are unavailable. Try again.";
-"favoriteRoutes.error.writeFailed" = "The change could not be saved. Your previous favorites have been kept. Try again.";
-"favoriteRoutes.error.limitExceeded" = "The favorite-routes storage limit has been reached. Remove unused routes and try again.";
+"favoriteRoutes.error.writeFailed" = "Couldn't save. Favorite routes are unchanged. Try again.";
+"favoriteRoutes.error.limitExceeded" = "Favorite routes are full. Remove unused routes first.";
 "favoriteRoutes.error.invalidLabel" = "Use a label of up to 120 characters without line breaks.";
-"favoriteRoutes.error.invalidPlace" = "A route place is invalid. Choose that place again before saving.";
-"favoriteRoutes.error.tooFewValidPlaces" = "At least two available places are required. Choose places on the map or in search before saving.";
+"favoriteRoutes.error.invalidPlace" = "A route place is invalid. Re-pick it before saving.";
+"favoriteRoutes.error.tooFewValidPlaces" = "Needs at least two valid places. Pick places first.";
 "favoriteRoutes.error.notFound" = "This favorite route is no longer available.";
 "favoriteRoutes.error.metadataMismatch" = "The saved route does not match its list information.";
 "favoriteRoutes.error.hashMismatch" = "The saved route failed validation and cannot be loaded.";
@@ -337,7 +337,7 @@
 "joystick.padHint" = "Touch and hold, then drag to move. Release or return to the center to stop this input.";
 "joystick.centered" = "Centered";
 "joystick.inputValue" = "Direction %@ degrees · Strength %@";
-"joystick.error.originUnavailable" = "A confirmed starting location is unavailable. Set a starting point to use the joystick.";
+"joystick.error.originUnavailable" = "No confirmed location. Set a start point to use the joystick.";
 "joystick.phase.neutral" = "Joystick ready";
 "joystick.phase.preparing" = "Preparing joystick";
 "joystick.phase.moving" = "Joystick active";
@@ -358,7 +358,7 @@
 "joystick.changePlace" = "Change";
 "joystick.randomDestination" = "Random destination";
 "joystick.phase.suspended" = "Waiting to continue";
-"joystick.error.noCandidate" = "No new destination is available. Choose a place on the map or try again.";
+"joystick.error.noCandidate" = "No new destination found. Pick one on the map or retry.";
 "joystick.currentTarget" = "Current destination: %@";
 "joystick.wanderPadHint" = "Drag to take over temporarily. Release to continue toward the destination if wander is running normally and has not been paused.";
 "joystick.wanderResumeHint" = "Continue wandering toward the current destination.";
@@ -374,15 +374,15 @@
 "recovery.connectionRecovered" = "Connection reachable. Continue explicitly.";
 "recovery.saving" = "Saving…";
 "recovery.unsaved" = "Changes are not saved.";
-"recovery.error.unavailable" = "The saved session cannot be accessed. Check available storage.";
-"recovery.error.unsafeFile" = "The saved session file cannot be read safely. It has been preserved.";
-"recovery.error.writeFailed" = "Changes could not be saved. Check available storage and retry.";
-"recovery.error.corruptArchive" = "The saved session is damaged. Its data has not been replaced.";
-"recovery.error.unsupportedSchema" = "This saved session uses an unsupported format. Its data has been preserved.";
-"recovery.error.limitExceeded" = "The session exceeds the supported storage limits and was not saved.";
+"recovery.error.unavailable" = "Can't access the saved session. Check storage.";
+"recovery.error.unsafeFile" = "Can't safely read the session file. It was kept.";
+"recovery.error.writeFailed" = "Couldn't save changes. Check storage and retry.";
+"recovery.error.corruptArchive" = "The saved session is damaged. Data wasn't replaced.";
+"recovery.error.unsupportedSchema" = "Unsupported session format. Data was kept.";
+"recovery.error.limitExceeded" = "The session exceeds storage limits and wasn't saved.";
 "recovery.error.invalidSnapshot" = "The session data is invalid and was not saved.";
-"recovery.error.revisionExhausted" = "This session can no longer save changes. Existing data has been preserved.";
-"error.developerModeRequired" = "Enable Developer Mode on this iPhone, then connect it to the Mac app to complete device preparation.";
+"recovery.error.revisionExhausted" = "This session can't save changes. Data was kept.";
+"error.developerModeRequired" = "Turn on Developer Mode, then finish setup in the Mac app.";
 
 "background.title" = "Background continuation";
 "background.description" = "GoFly can ask the system to continue a movement while the app is inactive.";
@@ -487,6 +487,11 @@
 "setup.mac.title" = "Connect to Mac to finish pairing";
 "setup.mac.message" = "Connect this iPhone to your Mac with a USB cable, then complete device pairing and signing authorization in GoFly on your Mac.";
 "setup.mac.unpaired" = "Not paired";
+"setup.pairingImport.title" = "Import pairing file";
+"setup.pairingImport.message" = "On your computer, export this iPhone’s pairing file, then tap the button below to import it.";
+"setup.pairingImport.notImported" = "Not imported";
+"setup.pairingImport.action" = "Import";
+"setup.pairingImport.failed" = "Couldn’t import this pairing file. Export this iPhone’s pairing file on your computer and try again.";
 "setup.completed.title" = "Setup complete";
 "setup.completed.message" = "GoFly is ready.";
 "setup.blocked.title" = "Setup is required";
@@ -519,7 +524,7 @@
 "sheet.detent.expanded" = "Expanded";
 "execution.end" = "End";
 "common.undo" = "Undo";
-"common.continue" = "Continue";
+"common.continue" = "Resume";
 "gallery.warningTitle" = "Background task stopped";
 "gallery.warningMessage" = "Return to GoFly to continue walking.";
 "gallery.successTitle" = "VPN channel available";
@@ -632,7 +637,7 @@
 "onboarding.vpn.helpLink" = "Connection Guide";
 "onboarding.vpn.step1" = "Connect to Wi‑Fi";
 "onboarding.vpn.step2" = "Open LocalDevVPN";
-"onboarding.vpn.step3" = "Tap Connect";
+"onboarding.vpn.step3" = "LocalDevVPN: Tap Connect";
 
 "route.planTitle" = "Plan route";
 "route.roundTripShort" = "Round trip";
@@ -754,7 +759,7 @@
 "issue.action.retry" = "Retry";
 "issue.action.fix" = "Fix";
 "issue.action.settings" = "Settings";
-"issue.action.chooseFile" = "Choose File";
+"issue.action.chooseFile" = "Choose";
 
 "settings.background.duration" = "Background run time";
 "settings.background.duration.hours" = "Hours";
@@ -767,7 +772,7 @@
 "common.cancel" = "Cancel";
 
 // Figma 04 VPN onboarding copy.
-"onboarding.vpn.step4" = "Tap Recheck";
+"onboarding.vpn.step4" = "Tap Check connection";
 
 // Figma D2 route list fixture.
 "figma.fixture.route.taipei101" = "Taipei 101";
@@ -816,4 +821,4 @@
 "connection.localNetwork.message" = "Allow Local Network in GoFly’s Settings.";
 "connection.vpn.title" = "LocalDevVPN not connected";
 "connection.vpn.message" = "Open LocalDevVPN and connect.";
-"connection.connect" = "Connect";
+"connection.connect" = "Open";

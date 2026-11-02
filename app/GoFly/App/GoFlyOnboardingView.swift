@@ -436,14 +436,20 @@ private struct GoFlyVPNOnboardingView: View {
                     GoFlyVPNInstructionRow(number: 1, titleKey: "onboarding.vpn.step1",
                                            accessibilityID: "onboarding.vpn.step1")
                     instructionSeparator
-                    GoFlyVPNInstructionRow(number: 2, titleKey: "onboarding.vpn.step2",
+                    GoFlyVPNInstructionRow(number: 2, titleKey: "onboarding.vpn.stepLocalNetwork",
+                                           trailingText: localNetworkStatusText,
+                                           trailingIsWarning: localNetwork.authorization == .denied,
+                                           accessibilityID: "onboarding.vpn.stepLocalNetwork",
+                                           action: openAppSettings)
+                    instructionSeparator
+                    GoFlyVPNInstructionRow(number: 3, titleKey: "onboarding.vpn.step2",
                                            showsChevron: true, accessibilityID: "onboarding.vpn.step2",
                                            action: openLocalDevVPN)
                     instructionSeparator
-                    GoFlyVPNInstructionRow(number: 3, titleKey: "onboarding.vpn.step3",
+                    GoFlyVPNInstructionRow(number: 4, titleKey: "onboarding.vpn.step3",
                                            accessibilityID: "onboarding.vpn.step3")
                     instructionSeparator
-                    GoFlyVPNInstructionRow(number: 4, titleKey: "onboarding.vpn.step4",
+                    GoFlyVPNInstructionRow(number: 5, titleKey: "onboarding.vpn.step4",
                                            accessibilityID: "onboarding.vpn.step4",
                                            action: controller.checkConnection)
                 }
@@ -526,9 +532,6 @@ private struct GoFlyVPNOnboardingView: View {
             controller.setVPNActive(isVisible && phase == .active)
 #endif
         }
-        .onChange(of: controller.vpnNeedsLocalNetwork) { _, needed in
-            if needed { localNetwork.markDenied() }
-        }
         .onChange(of: controller.vpnState) { _, state in
             guard state == .reachable else { return }
             controller.advanceVPN(onAdvance: onComplete)
@@ -568,7 +571,7 @@ private struct GoFlyVPNOnboardingView: View {
            let issue = ConnectionIssue.first(
             isWiFiConnected: network.isWiFiConnected,
             checkFailed: controller.vpnState == .unavailable || controller.vpnState == .timedOut,
-            localNetworkDenied: controller.vpnNeedsLocalNetwork || localNetwork.authorization == .denied) {
+            localNetworkDenied: localNetwork.authorization == .denied) {
             GoFlyConnectionIssueBanner(issue: issue, identifier: "onboarding.vpn.failure",
                                        detail: issue == .vpnNotConnected ? controller.vpnFailureDetail : nil,
                                        onOpenFailed: { key in
@@ -586,8 +589,7 @@ private struct GoFlyVPNOnboardingView: View {
     private var checkButtonKey: String {
         switch controller.vpnState {
         case .reachable, .checking: "onboarding.vpn.checking"
-        case .unavailable, .timedOut: "onboarding.vpn.reconnect"
-        case .unknown: "onboarding.vpn.check"
+        case .unavailable, .timedOut, .unknown: "onboarding.vpn.check"
         }
     }
 
@@ -595,6 +597,20 @@ private struct GoFlyVPNOnboardingView: View {
         externalOpenFailed = false
         externalOpenFailureKey = "onboarding.vpn.externalOpenFailed"
         GoFlyExternalLinks.openLocalDevVPN { externalOpenFailed = !$0 }
+    }
+
+    private var localNetworkStatusText: String {
+        switch localNetwork.authorization {
+        case .unknown: goFlyString("onboarding.localNetwork.status.unknown")
+        case .granted: goFlyString("onboarding.localNetwork.status.granted")
+        case .denied: goFlyString("onboarding.localNetwork.status.denied")
+        }
+    }
+
+    private func openAppSettings() {
+        externalOpenFailed = false
+        externalOpenFailureKey = "settings.externalOpenFailed"
+        GoFlyExternalLinks.openAppSettings { externalOpenFailed = !$0 }
     }
 
     private func recheckAfterHelp() {

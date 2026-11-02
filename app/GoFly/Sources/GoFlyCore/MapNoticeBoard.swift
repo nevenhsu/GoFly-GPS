@@ -69,7 +69,7 @@ public struct MapNoticeInputs: Sendable {
     /// A silent repair runs or failed and can be retried: its connection notice owns the map.
     public var repairOwnsNotice: Bool
     public var isWiFiConnected: Bool
-    /// Local Network is known to be off, or the last probe could not find the device service.
+    /// The system reported Local Network as off.
     public var localNetworkDenied: Bool
     public var continuationNoticeKey: String?
 
@@ -102,21 +102,32 @@ public enum MapNoticeBoard {
         let notices = input.notices
         let showsUnconfirmed = input.unconfirmedFailure.map { reports($0.rawValue) } == true
             && notices.showsUnconfirmed(input.unconfirmedID)
+        // A device operation that failed because the device could not be reached is a
+        // connection error: it is reported by the one connection toast, never by its own.
+        func isConnectionFailure(_ failure: DeviceServiceFailure?) -> Bool {
+            guard let failure, reports(failure.rawValue) else { return false }
+            return failure.isConnectionFailure
+        }
+        let operationLostConnection = isConnectionFailure(input.serviceError)
+            || (showsUnconfirmed && isConnectionFailure(input.unconfirmedFailure))
+            || isConnectionFailure(input.preparedFailure)
         // The teleport tab's failed point owns the notice: no service, prepared,
         // connection or resume notice repeats it.
         let teleportFailureOwns = input.mode == .teleport && showsUnconfirmed
+            && !isConnectionFailure(input.unconfirmedFailure)
         var result: [MapNotice] = []
 
         if let key = notices.favoriteRouteKey { result.append(.favoriteRouteFailure(key: key)) }
         if input.wanderError == .planningFailed, input.mode == .joystick { result.append(.wanderPlanningFailed) }
         if let error = input.serviceError, !input.repairOwnsNotice, !teleportFailureOwns,
-           reports(error.rawValue), !notices.isDismissed(.serviceError) {
+           reports(error.rawValue), !isConnectionFailure(error), !notices.isDismissed(.serviceError) {
             result.append(.serviceError(key: error.rawValue))
         }
-        if showsUnconfirmed, let failure = input.unconfirmedFailure {
+        if showsUnconfirmed, let failure = input.unconfirmedFailure, !isConnectionFailure(failure) {
             result.append(.unconfirmedPosition(key: failure.rawValue, inTeleport: input.mode == .teleport))
         }
-        if let failure = input.preparedFailure, reports(failure.rawValue), !teleportFailureOwns {
+        if let failure = input.preparedFailure, reports(failure.rawValue), !isConnectionFailure(failure),
+           !teleportFailureOwns {
             result.append(.preparedOperationFailed(key: failure.rawValue))
         }
         if let key = input.joystickErrorKey, reports(key), input.mode == .joystick,
@@ -136,9 +147,18 @@ public enum MapNoticeBoard {
             if let key, key != "recovery.connectionLost" {
                 result.append(.connection(key: key, coldConfirmation: input.requiresColdConfirmation))
             } else if let issue = ConnectionIssue.first(isWiFiConnected: input.isWiFiConnected,
-                                                         checkFailed: key != nil,
+                                                         checkFailed: key != nil || operationLostConnection,
                                                          localNetworkDenied: input.localNetworkDenied) {
                 result.append(.connectionIssue(issue))
+            }
+        }
+        // Only one error toast at a time: a connection error explains every other failure.
+        if result.contains(where: { if case .connectionIssue = $0 { true } else { false } }) {
+            result.removeAll { notice in
+                switch notice {
+                case .connection, .connectionIssue, .resume: false
+                default: true
+                }
             }
         }
         if let resume = resumeNotice(input, teleportFailureOwns: teleportFailureOwns) {

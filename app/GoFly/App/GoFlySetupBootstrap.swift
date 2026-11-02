@@ -8,6 +8,7 @@ enum GoFlySetupBootstrapPhase: Equatable {
     case preparing
     case ordinaryStartup
     case awaitingMacInstall
+    case awaitingPairingImport
     case waitingForMac(SetupReadbackRequest)
     case completed(SetupReceipt)
     case blocked(SetupFailure)
@@ -64,6 +65,12 @@ final class GoFlySetupBootstrap: ObservableObject {
         }
     }
 
+    /// R07.s: re-runs the setup check once a sideload pairing import commits.
+    func pairingImported() {
+        guard case .awaitingPairingImport = phase else { return }
+        start()
+    }
+
     private func start() {
         startupTask?.cancel()
         if case .blocked = phase {
@@ -74,8 +81,12 @@ final class GoFlySetupBootstrap: ObservableObject {
 
         #if targetEnvironment(simulator)
         let requiresMacSetup = false
+        let requiresPairingImport = false
         #else
         let requiresMacSetup = (Bundle.main.object(forInfoDictionaryKey: "GoFlyRequiresMacSetup") as? Bool) == true
+        // The sideload IPA (flag false) has no Mac handoff; it asks for the
+        // iloader pairing file instead (R07.s).
+        let requiresPairingImport = !requiresMacSetup
         #endif
 
         startupTask = Task { [weak self] in
@@ -93,6 +104,9 @@ final class GoFlySetupBootstrap: ObservableObject {
                     )
                     if requiresMacSetup, case .ordinaryStartup = setup {
                         return GoFlyBootstrapOutcome.awaitingMacInstall
+                    }
+                    if requiresPairingImport, case .ordinaryStartup = setup, !PairingFileStore.isReady {
+                        return GoFlyBootstrapOutcome.awaitingPairingImport
                     }
                     switch setup {
                     case .ordinaryStartup: return .ordinary
@@ -125,6 +139,8 @@ final class GoFlySetupBootstrap: ObservableObject {
             phase = .waitingForMac(request)
         case .awaitingMacInstall:
             phase = .awaitingMacInstall
+        case .awaitingPairingImport:
+            phase = .awaitingPairingImport
         case .blocked(let failure):
             phase = .blocked(failure)
         }
@@ -136,6 +152,7 @@ private enum GoFlyBootstrapOutcome: Sendable {
     case completed(SetupReceipt)
     case waitingForMac(SetupReadbackRequest)
     case awaitingMacInstall
+    case awaitingPairingImport
     case blocked(SetupFailure)
 }
 
@@ -531,7 +548,7 @@ struct GoFlySetupLockView: View {
     private var titleKey: String {
         switch phase {
         case .preparing: return "setup.preparing.title"
-        case .ordinaryStartup: return "setup.preparing.title"
+        case .ordinaryStartup, .awaitingPairingImport: return "setup.preparing.title"
         case .awaitingMacInstall, .waitingForMac: return "setup.waiting.title"
         case .completed: return "setup.completed.title"
         case .blocked: return "setup.blocked.title"
@@ -541,7 +558,7 @@ struct GoFlySetupLockView: View {
     private var messageKey: String {
         switch phase {
         case .preparing: return "setup.preparing.message"
-        case .ordinaryStartup: return "setup.preparing.message"
+        case .ordinaryStartup, .awaitingPairingImport: return "setup.preparing.message"
         case .awaitingMacInstall, .waitingForMac: return "setup.waiting.message"
         case .completed: return "setup.completed.message"
         case .blocked(let failure): return failure.messageKey
@@ -558,7 +575,7 @@ struct GoFlySetupLockView: View {
 
     private var accessibilityIdentifier: String {
         switch phase {
-        case .preparing: return "setup.preparing"
+        case .preparing, .awaitingPairingImport: return "setup.preparing"
         case .ordinaryStartup, .completed: return "setup.ready"
         case .awaitingMacInstall, .waitingForMac: return "setup.waiting"
         case .blocked: return "setup.blocked"
@@ -569,12 +586,26 @@ struct GoFlySetupLockView: View {
 /// R07 is the formal first-install handoff screen. The Mac completes pairing
 /// and setup while GoFly is inactive; returning to the app refreshes bootstrap.
 struct GoFlyMacSetupOnboardingView: View {
+    var body: some View {
+        GoFlySetupHeroPage(icon: .mac, titleKey: "setup.mac.title", messageKey: "setup.mac.message",
+                           statusKey: "setup.mac.unpaired", statusIdentifier: "setup.mac.status")
+            .accessibilityIdentifier("setup.mac")
+    }
+}
+
+/// Shared R07 / R07.s layout: hero icon, title, message and neutral status pill.
+private struct GoFlySetupHeroPage: View {
+    let icon: GoFlyIconAsset
+    let titleKey: String
+    let messageKey: String
+    let statusKey: String
+    let statusIdentifier: String
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                GoFlyIcon(.mac)
+                GoFlyIcon(icon)
                     .goFlyIconSize(size: 48, maximum: 60)
                     .foregroundStyle(GoFlyTextColor.primary)
                     .frame(width: 120, height: 120)
@@ -584,7 +615,7 @@ struct GoFlyMacSetupOnboardingView: View {
                     )
                     .accessibilityHidden(true)
 
-                Text(goFlyString("setup.mac.title"))
+                Text(goFlyString(titleKey))
                     .goFlyFont(GoFlyFont.display)
                     .foregroundStyle(GoFlyTextColor.primary)
                     .multilineTextAlignment(.center)
@@ -592,7 +623,7 @@ struct GoFlyMacSetupOnboardingView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, 30)
 
-                Text(goFlyString("setup.mac.message"))
+                Text(goFlyString(messageKey))
                     .goFlyFont(GoFlyFont.subheadline)
                     .foregroundStyle(GoFlyTextColor.secondary)
                     .multilineTextAlignment(.center)
@@ -600,12 +631,8 @@ struct GoFlyMacSetupOnboardingView: View {
                     .frame(maxWidth: 287)
                     .padding(.top, 13)
 
-                GoFlyStatusPill(
-                    text: goFlyString("setup.mac.unpaired"),
-                    tone: .neutral,
-                    identifier: "setup.mac.status"
-                )
-                .padding(.top, 24)
+                GoFlyStatusPill(text: goFlyString(statusKey), tone: .neutral, identifier: statusIdentifier)
+                    .padding(.top, 24)
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 16)
@@ -613,7 +640,70 @@ struct GoFlyMacSetupOnboardingView: View {
             .padding(.bottom, 24)
         }
         .background(GoFlyStyle.canvas.ignoresSafeArea())
-        .accessibilityIdentifier("setup.mac")
+    }
+}
+
+/// R07.s: the sideload IPA's first step. Imports a pairing file exported on a computer;
+/// the Mac build keeps R07.
+struct GoFlyPairingImportView: View {
+    let onImported: () -> Void
+    @State private var showingImporter = false
+    @State private var isImporting = false
+    @State private var importFailed = false
+
+    var body: some View {
+        GoFlySetupHeroPage(icon: .phone, titleKey: "setup.pairingImport.title",
+                           messageKey: "setup.pairingImport.message",
+                           statusKey: "setup.pairingImport.notImported",
+                           statusIdentifier: "setup.pairingImport.status")
+        .goFlyToastOverlay(topInset: 64) {
+            if importFailed {
+                GoFlyStatusBanner(tone: .danger, title: goFlyString("setup.pairingImport.failed"),
+                                  identifier: "setup.pairingImport.failed")
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Button {
+                importFailed = false
+                showingImporter = true
+            } label: {
+                HStack(spacing: 8) {
+                    if isImporting { ProgressView() }
+                    Text(goFlyString("setup.pairingImport.action"))
+                }
+            }
+            .buttonStyle(GoFlyActionStyle(primary: true))
+            .disabled(isImporting)
+            .accessibilityIdentifier("setup.pairingImport.action")
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+            .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
+            .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
+        }
+        .fileImporter(isPresented: $showingImporter,
+                      allowedContentTypes: PairingFileStore.supportedContentTypes) { result in
+            // Cancelling the picker keeps this page unchanged.
+            guard case .success(let url) = result else { return }
+            importPairing(from: url)
+        }
+        .accessibilityIdentifier("setup.pairingImport")
+    }
+
+    private func importPairing(from url: URL) {
+        isImporting = true
+        Task {
+            // Native validation reads the file through the FFI, off the main actor.
+            let imported = await Task.detached(priority: .userInitiated) {
+                (try? PairingFileStore.importSideloadedPairing(url)) != nil
+            }.value
+            isImporting = false
+            if imported {
+                onImported()
+            } else {
+                importFailed = true
+            }
+        }
     }
 }
 

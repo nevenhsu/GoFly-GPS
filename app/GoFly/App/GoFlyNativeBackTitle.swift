@@ -73,8 +73,23 @@ struct GoFlyEdgeSwipeBack: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: Controller, context: Context) {}
 
     final class Controller: UIViewController, UIGestureRecognizerDelegate {
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            enableSwipeBack()
+        }
+
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            enableSwipeBack()
+        }
+
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
+            enableSwipeBack()
+        }
+
+        /// The hosting controller may not be in the navigation stack yet on the first callback.
+        private func enableSwipeBack() {
             guard let pop = navigationController?.interactivePopGestureRecognizer else { return }
             pop.delegate = self
             pop.isEnabled = true

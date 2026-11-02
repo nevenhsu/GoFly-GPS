@@ -17,15 +17,33 @@ struct MapNoticeBoardTests {
     @Test func theTeleportTabsFailedPointOwnsTheMap() {
         let id = UUID()
         let input = MapNoticeInputs(mode: .teleport, isResumeState: true, serviceError: .tunnelUnavailable,
-                                    unconfirmedID: id, unconfirmedFailure: .operationTimedOut,
+                                    unconfirmedID: id, unconfirmedFailure: .pairingRequired,
                                     preparedFailure: .serviceUnavailable,
                                     recoveryNoticeKey: "recovery.connectionLost")
-        #expect(MapNoticeBoard.notices(for: input) == [.unconfirmedPosition(key: "error.operationTimedOut", inTeleport: true)])
+        #expect(MapNoticeBoard.notices(for: input) == [.unconfirmedPosition(key: "error.pairingRequired", inTeleport: true)])
 
         var left = input
         left.notices.leaveUnconfirmed(id)
-        #expect(ids(left) == ["serviceError", "preparedOperationFailed", "connection", "resume"],
-                "Leaving the failed point lets the others show again")
+        #expect(ids(left) == ["connection", "resume"],
+                "Leaving the failed point shows the connection error, which explains the other failures")
+    }
+
+    @Test func anOperationThatLostTheConnectionShowsOnlyTheConnectionError() {
+        let id = UUID()
+        let input = MapNoticeInputs(mode: .teleport, serviceError: .tunnelUnavailable,
+                                    unconfirmedID: id, unconfirmedFailure: .operationTimedOut,
+                                    preparedFailure: .serviceUnavailable,
+                                    routeErrorKey: "route.error.invalidPath")
+        #expect(MapNoticeBoard.notices(for: input) == [.connectionIssue(.vpnNotConnected)],
+                "No teleport, service or prepared toast beside it, even without a failed probe")
+
+        var route = input
+        route.mode = .route
+        #expect(MapNoticeBoard.notices(for: route) == [.connectionIssue(.vpnNotConnected)],
+                "Another error toast never shows beside the connection error")
+
+        route.isWiFiConnected = false
+        #expect(MapNoticeBoard.notices(for: route) == [.connectionIssue(.wifiNotConnected)])
     }
 
     @Test func wiFiLossShowsTheWiFiIssueUntilDismissed() {

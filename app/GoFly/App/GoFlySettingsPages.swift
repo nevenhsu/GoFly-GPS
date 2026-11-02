@@ -380,12 +380,6 @@ struct GoFlyVPNSettingsPage: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("settings.vpn.help")
-
-            if recovery.isChecking {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .accessibilityIdentifier("settings.vpn.progress")
-            }
         }
         .navigationDestination(isPresented: $showingHelp) { GoFlyVPNHelpPage() }
         .goFlyToastOverlay(topInset: 54) {
@@ -397,7 +391,7 @@ struct GoFlyVPNSettingsPage: View {
                let issue = ConnectionIssue.first(
                 isWiFiConnected: network.isWiFiConnected,
                 checkFailed: recovery.connectionState == .unavailable || recovery.connectionState == .timedOut,
-                localNetworkDenied: recovery.needsLocalNetwork || localNetwork.authorization == .denied) {
+                localNetworkDenied: localNetwork.authorization == .denied) {
                 GoFlyConnectionIssueBanner(issue: issue, identifier: "settings.vpn.failure",
                                            onOpenFailed: { issueOpenFailureKey = $0 })
             }

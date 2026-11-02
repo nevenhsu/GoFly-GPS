@@ -63,7 +63,6 @@ public final class OnboardingController: ObservableObject {
     /// Bumps on every failed check so a dismissed failure notice can appear again.
     @Published public private(set) var vpnFailureRevision: UInt64 = 0
     /// The last failed check found no pairing service, so the fix is the Local Network permission.
-    @Published public private(set) var vpnNeedsLocalNetwork = false
     @Published public private(set) var isChecking = false
     @Published public private(set) var isAdvancing = false
     @Published public private(set) var isRequestingLocation = false
@@ -184,7 +183,6 @@ public final class OnboardingController: ObservableObject {
             isAdvancing = false
             vpnState = .unknown
             vpnFailureDetail = nil
-            vpnNeedsLocalNetwork = false
         }
     }
     public func checkConnection() {
@@ -208,7 +206,6 @@ public final class OnboardingController: ObservableObject {
                 self.drainPendingCheck()
                 return
             }
-            self.vpnNeedsLocalNetwork = false
             switch result {
             case .success, .failure(is CancellationError): self.vpnFailureDetail = nil
             case .failure: self.vpnFailureDetail = probe.lastFailureDetail
@@ -226,7 +223,6 @@ public final class OnboardingController: ObservableObject {
             case .failure(is CancellationError): self.vpnState = .unknown
             case .failure(TunnelProbeFailure.serviceNotFound):
                 self.vpnState = .unavailable
-                self.vpnNeedsLocalNetwork = true
                 self.vpnFailureRevision &+= 1
             case .failure(TunnelProbeFailure.timedOut):
                 self.vpnState = .timedOut

@@ -40,14 +40,14 @@
 "location.disabled" = "定位服务已关闭，仍可使用不需要 GPS 授权的设备服务。";
 "location.permissionDenied" = "尚未允许 GPS 定位。可前往 iOS 设置开启，或继续使用不需要定位授权的 GoFly 功能。";
 "location.noFix" = "无法确认当前 GPS 位置，请在可接收 GPS 信号时重试。";
-"error.pairingRequired" = "缺少配对数据。请将这部 iPhone 连接 Mac App，完成设备准备。";
-"error.identityMismatch" = "配对数据属于其他设备。请将这部 iPhone 连接 Mac App 修复。";
-"error.devicePreparationRequired" = "这部 iPhone 需要设备准备。请连接 Mac App 完成准备。";
-"error.serviceUnavailable" = "无法连接设备服务。请检查 VPN 通道；若仍无法连接，请在 Mac App 修复这部 iPhone。";
-"error.tunnelUnavailable" = "无法连接 VPN 通道。请确认 iPhone 已连上 Wi‑Fi（只用蜂窝网络无法使用），重新连接 LocalDevVPN，再在 GoFly 重新按“启动”。";
-"error.operationTimedOut" = "设备未在时限内确认操作。请检查连接并停止服务后重试；GPS 恢复确认状态另列于下方。";
-"error.deviceRequired" = "需要已完成准备的实体 iPhone；模拟器无法启动设备服务或确认 GPS 恢复。";
-"error.storageUnavailable" = "无法读取设备设置数据。请检查可用存储空间，并在 Mac App 修复这部 iPhone。";
+"error.pairingRequired" = "缺少配对数据。请连接 Mac App 完成设备准备。";
+"error.identityMismatch" = "配对数据属于其他设备。请在 Mac App 修复。";
+"error.devicePreparationRequired" = "这部 iPhone 需要设备准备。请连接 Mac App 完成。";
+"error.serviceUnavailable" = "无法连接设备服务。请检查 VPN 通道。";
+"error.tunnelUnavailable" = "无法连接 VPN 通道。请重新连接 LocalDevVPN 后重试。";
+"error.operationTimedOut" = "设备未在时限内确认，请重试。";
+"error.deviceRequired" = "需要已准备的实体 iPhone，模拟器无法执行。";
+"error.storageUnavailable" = "无法读取设备设置。请检查存储空间，并在 Mac App 修复。";
 "onboarding.welcome.title" = "欢迎使用 GoFly";
 "onboarding.next" = "下一步";
 "onboarding.location.title" = "允许 GoFly 使用定位";
@@ -66,15 +66,15 @@
 "onboarding.vpn.help" = "连接说明";
 "onboarding.vpn.help.step1.title" = "下载 LocalDevVPN";
 "onboarding.vpn.help.step2.title" = "打开 LocalDevVPN";
-"onboarding.vpn.help.step3.title" = "点 Connect";
+"onboarding.vpn.help.step3.title" = "LocalDevVPN 点 Connect";
+"onboarding.vpn.stepLocalNetwork" = "允许本地网络";
 "onboarding.vpn.help.troubleshooting" = "仍然无法连接？";
-"onboarding.vpn.help.reconnect" = "确认已连接 Wi‑Fi，在 LocalDevVPN 中断后重新连接，再回来检查。";
+"onboarding.vpn.help.reconnect" = "确认已连接 Wi‑Fi、允许本地网络，在 LocalDevVPN 中断后重新连接，再回来检查。";
 "onboarding.vpn.help.notChecked" = "尚未连接";
 "onboarding.vpn.help.notReachable" = "连接错误";
 "onboarding.vpn.disconnected" = "未连接";
 "onboarding.vpn.checking" = "检查中…";
 "onboarding.vpn.check" = "检查连接";
-"onboarding.vpn.reconnect" = "重新连接";
 "onboarding.vpn.failureDetail" = "iOS 报告";
 "onboarding.vpn.externalOpenFailed" = "无法打开 App Store。请手动打开 App Store，搜索 LocalDevVPN。";
 "map.simulatedLocation" = "当前模拟位置";
@@ -97,7 +97,7 @@
 "teleport.unconfirmed" = "位置待确认";
 "teleport.positionUnconfirmed" = "位置更改尚未确认，请先停止服务，再使用 Go。";
 "teleport.failure.toast.title" = "瞬移失败";
-"teleport.failure.toast.message" = "无法更新模拟位置。请前往“设置 › VPN 通道”检查连接。";
+"teleport.failure.toast.message" = "无法更新模拟位置。请检查“设置 › VPN 通道”。";
 "figma.fixture.b2.position" = "中山北路二段 45 号";
 "figma.fixture.b1.position" = "中山北路二段 45 号";
 "figma.fixture.b4.coordinate" = "前往坐标";
@@ -182,9 +182,9 @@
 "route.resumeHint" = "从当前进度继续同一路线。";
 "route.error.missingStart" = "请选择起点。";
 "route.error.missingDestination" = "请选择终点。";
-"route.error.currentLocationUnavailable" = "当前位置尚无法确认。请在地图或搜索中，为使用当前位置的节点选择地点。";
-"route.error.planningFailed" = "找不到可通行的路径。请重新检查起点，或点按修正。";
-"route.error.invalidPath" = "规划的路线无效。请重新选择地点后重试。";
+"route.error.currentLocationUnavailable" = "当前位置无法确认。请为该节点选择地点。";
+"route.error.planningFailed" = "找不到可通行的路径。请检查起点，或点按修正。";
+"route.error.invalidPath" = "规划的路线无效。请重新选择地点。";
 "route.phase.editing" = "编辑路线";
 "route.phase.planning" = "正在规划路线…";
 "route.phase.preparing" = "正在准备路线…";
@@ -250,8 +250,8 @@
 "imports.kind.tracks" = "轨迹";
 "imports.kind.routes" = "路线";
 "imports.kind.waypoints" = "有序航点";
-"imports.execution.disconnectedSegments" = "各段端点未完全衔接。仍可预览或导出，但无法载入执行。";
-"imports.execution.zeroDistance" = "路径没有可行进距离。仍可预览或导出，但无法载入执行。";
+"imports.execution.disconnectedSegments" = "各段端点未衔接。仅可预览或导出。";
+"imports.execution.zeroDistance" = "路径没有可行进距离。仅可预览或导出。";
 "imports.file.unavailable" = "无法打开或保存文件，请重试。";
 "imports.error.title" = "无法导入 GPX";
 "imports.file.tooLarge" = "GPX 文件超过 2 MiB 上限，请选择较小的文件。";
@@ -337,7 +337,7 @@
 "joystick.padHint" = "按住并拖动以移动。松开或回到中心，即停止这次输入。";
 "joystick.centered" = "已回中心";
 "joystick.inputValue" = "方向 %@ 度・力度 %@";
-"joystick.error.originUnavailable" = "目前没有已确认的可用位置。请设置起点后使用摇杆。";
+"joystick.error.originUnavailable" = "没有已确认的位置。请设置起点后使用摇杆。";
 "joystick.phase.neutral" = "摇杆已就绪";
 "joystick.phase.preparing" = "摇杆准备中";
 "joystick.phase.moving" = "摇杆控制中";
@@ -382,7 +382,7 @@
 "recovery.error.limitExceeded" = "会话超过支持的存储上限，未保存此次更改。";
 "recovery.error.invalidSnapshot" = "会话数据无效，未保存此次更改。";
 "recovery.error.revisionExhausted" = "无法继续保存此会话，原始数据已保留。";
-"error.developerModeRequired" = "请在这部 iPhone 开启开发者模式，再连接 Mac App 完成设备准备。";
+"error.developerModeRequired" = "请开启开发者模式，再连接 Mac App 完成准备。";
 
 "background.title" = "后台继续运行";
 "background.description" = "GoFly 可以请求系统在 App 暂时离开画面时继续移动。";
@@ -487,6 +487,11 @@
 "setup.mac.title" = "连接 Mac 完成配对";
 "setup.mac.message" = "请使用 USB 传输线连接 Mac，并在 Mac 端 GoFly 完成设备配对与签名授权。";
 "setup.mac.unpaired" = "尚未配对";
+"setup.pairingImport.title" = "导入配对文件";
+"setup.pairingImport.message" = "在电脑导出这台 iPhone 的配对文件，再点下方按钮导入。";
+"setup.pairingImport.notImported" = "尚未导入";
+"setup.pairingImport.action" = "导入配对文件";
+"setup.pairingImport.failed" = "无法导入这个配对文件。请在电脑导出这台 iPhone 的配对文件后再试一次。";
 "setup.completed.title" = "设置完成";
 "setup.completed.message" = "GoFly 已准备就绪。";
 "setup.blocked.title" = "需要完成设置";
@@ -632,7 +637,7 @@
 "onboarding.vpn.helpLink" = "连接说明";
 "onboarding.vpn.step1" = "连接 Wi‑Fi";
 "onboarding.vpn.step2" = "打开 LocalDevVPN";
-"onboarding.vpn.step3" = "点 Connect";
+"onboarding.vpn.step3" = "LocalDevVPN 点 Connect";
 
 "route.planTitle" = "规划路线";
 "route.roundTripShort" = "往返";
@@ -767,7 +772,7 @@
 "common.cancel" = "取消";
 
 // Figma 04 VPN onboarding copy.
-"onboarding.vpn.step4" = "点“重新检查”";
+"onboarding.vpn.step4" = "点“检查连接”";
 
 // Figma D2 route list fixture.
 "figma.fixture.route.taipei101" = "台北 101";
@@ -816,4 +821,4 @@
 "connection.localNetwork.message" = "请在 GoFly 设置中允许“本地网络”。";
 "connection.vpn.title" = "LocalDevVPN 未连接";
 "connection.vpn.message" = "请打开 LocalDevVPN 并连接。";
-"connection.connect" = "连接";
+"connection.connect" = "重试";
