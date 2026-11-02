@@ -1,8 +1,8 @@
-# Mac 安裝器框架與規格
+# GoFly GPS Mac 安裝器規格
 
-正式品牌標題使用 GoFly GPS，App 內一般句子保留 GoFly，README 統一使用 GoFly GPS；詳見 [命名規範](BRANDING.md)（2026-11-02）。識別碼與技術路徑維持相容。
+正式品牌標題使用 GoFly GPS，App 內一般句子保留 GoFly，README 統一使用 GoFly GPS；詳見 [命名規範](BRANDING.md)。識別碼與技術路徑維持相容。
 
-狀態：**V1 流程設計已確認（2026-10-26）；01–11 已實作並完成軟體驗證，12 文件與色彩靜態驗證已完成；Figma Archive sections 刪除待使用者確認；DMG 已發布於 GitHub Release（2026-10-31，ad-hoc 簽署、未公證），乾淨 Mac 與 iPhone 驗收待使用者執行**。這份文件是 GoFly Mac 版流程的準據，取代舊版 M1／M2／M3 流程與 G01–G17 動作。視覺以 Figma「05 · Mac Redesign（新版）」（`123-61504`）的「V1」section 為準。DMG 打包架構沿用 [`F-dmg-architecture.md`](../.scratch/gofly-ios/decisions/F-dmg-architecture.md)。逐票證據與尚未驗證事項見 [Mac V1 TRACKER](../.scratch/gofly-mac-v1/TRACKER.md)。
+這份文件定義 GoFly Mac 安裝器的現行規格。視覺以 Figma「05 · Mac Redesign（新版）」（`123-61504`）的「V1」section 渲染畫面為準。DMG 打包流程見 [Mac 開發說明](../app/GoFlyMac/DEVELOPMENT.md)。
 
 ## 1. 目標
 
@@ -13,13 +13,13 @@
 3. 用 USB 連接 iPhone，按一次「安裝 GoFly」。GoFly 用使用者自己的 Team 建置、簽名，並完成配對交接。
 4. 之後不需要再插線：Mac App 開著時，簽名剩不到 4 天會自動延長（USB 或同一個 Wi‑Fi）；也可以手動按「延長簽名」。
 
-第一版不做：備份、還原、重置、Intel Mac、付費 Developer ID 公證，以及代替使用者輸入任何密碼或接受條款。
+不提供備份、還原或重置功能；不支援 Intel Mac、付費 Developer ID 公證，也不代替使用者輸入密碼或接受條款。
 
-### 1.1 與 SideStore IPA 的界線（2026-11-02）
+### 1.1 與 SideStore IPA 的界線
 
-Mac producer 繼續使用來源 `GoFlyRequiresMacSetup=true`，安裝／renew 的 pairing、support 與精確 activation receipt 驗證均保留。SideStore IPA 僅由獨立打包腳本把 Payload 副本旗標改為 `false`，不修改來源或 Mac 內建 iOS project。兩者共用 iOS onboarding；權限授權與 VPN 可達不等於配對或定位就緒。此次不新增 Mac 對側載 Bundle ID 的準備能力，亦不放寬 Team／Bundle ID 規則。驗收需區分 IPA 能啟動、正式 Mac setup 完成與定位成功。
+Mac producer 使用來源 `GoFlyRequiresMacSetup=true`，安裝／renew 的 pairing、support 與精確 activation receipt 驗證均保留。SideStore IPA 僅由獨立打包腳本把 Payload 副本旗標改為 `false`，不修改來源或 Mac 內建 iOS project。兩者共用 iOS onboarding；權限授權與 VPN 可達不等於配對或定位就緒。Mac 不提供側載 Bundle ID 的準備能力；Team／Bundle ID 規則不變。驗收需區分 IPA 能啟動、正式 Mac setup 完成與定位成功。
 
-## 2. 從 iOS App 架構反推的依賴
+## 2. iOS App 依賴
 
 | iOS App 需要的東西 | 由誰提供 | 使用者要做什麼 |
 | --- | --- | --- |
@@ -32,13 +32,13 @@ Mac producer 繼續使用來源 `GoFlyRequiresMacSetup=true`，安裝／renew �
 | LocalDevVPN | App Store | 在 iPhone 安裝並允許 VPN |
 | 啟用回報（activation receipt） | iOS App 開啟時提交，Mac 讀回 | 無；Mac 讀到之前不顯示「完成」 |
 
-舊 Bundle ID `com.neven.gofly` 會成為另一個 App；舊 App 的資料不會自動搬到依 Team ID 產生的新 Bundle ID。
+不同 Bundle ID 視為不同 App，資料不會自動移轉；換 Team 產生不同 Bundle ID 時亦同。免費 Team 每支手機最多 3 個自簽 App，7 天內新增 App ID 的數量受限。
 
 Python、pymobiledevice3 和 Bridge 都打包在 App 內，**使用者不會看到 Python 步驟**。不另外安裝命令列工具：GoFly 直接用 Xcode.app 內的 `DEVELOPER_DIR`，不依賴 `xcode-select` 的設定。
 
 ## 3. 取得與開啟 GoFly Mac（App 外）
 
-DMG 內含 `GoFly.app`、`install.sh` 與 `THIRD-PARTY-NOTICES.md`。建置器在忽略的 `work/dist/` 輸出版本化 arm64 DMG 及相符 `.sha256` sidecar；正式發行時需把同版 DMG 與 checksum 一起發布並在 README 提供核對方式。使用者核對 checksum 後，在「終端機」執行 `bash /Volumes/GoFly/install.sh`。腳本只替換 `/Applications/GoFly.app`，覆蓋前詢問、移除已安裝 App 的隔離屬性再開啟，不使用 sudo、不修改 Gatekeeper，也不移除 GoFly state 或手機資料。App 使用 ad-hoc 深度簽署，沒有 Developer ID 或 notarization；乾淨 Mac／另一帳號下載驗收仍待使用者操作。此步驟不設 Figma 畫面。
+DMG 內含 `GoFly.app`、`install.sh` 與 `THIRD-PARTY-NOTICES.md`。建置器在忽略的 `work/dist/` 輸出版本化 arm64 DMG 及相符 `.sha256` sidecar；正式發行時需把同版 DMG 與 checksum 一起發布並在 README 提供核對方式。使用者核對 checksum 後，在「終端機」執行 `bash /Volumes/GoFly/install.sh`。腳本只替換 `/Applications/GoFly.app`，覆蓋前詢問、移除已安裝 App 的隔離屬性再開啟，不使用 sudo、不修改 Gatekeeper，也不移除 GoFly state 或手機資料。App 使用 ad-hoc 深度簽署，沒有 Developer ID 或 notarization。此步驟不設 Figma 畫面。
 
 ## 4. Mac 環境（預設是全新的 Mac）
 
@@ -62,7 +62,7 @@ DMG 內含 `GoFly.app`、`install.sh` 與 `THIRD-PARTY-NOTICES.md`。建置器�
 | E03 取得 Xcode | 未安裝 Xcode | 開啟 App Store → 尚未登入 App Store 時先登入 → 點「取得」→「安裝」 | Apple 帳號密碼 |
 | E04 等待 Xcode 安裝 | 偵測 `/Applications/Xcode.app` 出現 | 等待（約 3 GB 下載、30–60 分鐘）；期間可以先在 iPhone 安裝 LocalDevVPN | — |
 | E05 第一次開啟 Xcode | 未同意授權條款或元件未安裝 | 點「開啟 Xcode」→ 授權條款點「同意」→ 輸入 Mac 登入密碼 → 等元件安裝完 | Mac 登入密碼 |
-| E06 下載 iOS 平台（**待驗證是否必要**） | 沒有 iOS 平台 | Xcode 平台視窗勾選 iOS → 點「下載並安裝」（約 8 GB）；或 Xcode › Settings › Components。若實測不需要就刪除這一步，見 §7 | — |
+| E06 下載 iOS 平台 | 沒有 iOS 平台 | Xcode 平台視窗勾選 iOS → 點「下載並安裝」（約 8 GB）；或 Xcode › Settings › Components。 | — |
 | E07 在 Xcode 登入 Apple 帳號 | Xcode 沒有 Apple 帳號 | Xcode › Settings › Apple Accounts › + › Apple Account → 登入、雙重認證；沒有帳號時提供「免費建立 Apple 帳號」連結 | Apple 帳號密碼、雙重認證碼 |
 | E08 選擇開發團隊 | 有多個 Team 時才出現；只有 1 個時自動選取 | 選一個，各項標示「個人（免費・7 天）」或「團隊」 | — |
 | E09 Mac 環境（檢查結果） | 從側欄底部打開，不在啟動流程中 | 查看結果、重新檢查、更換 Team | — |
@@ -82,7 +82,7 @@ GoFly 只打開 App Store、Xcode、系統設定和網頁，不代替使用者�
 
 ## 5. 裝置（日常唯一的畫面）
 
-**簽署有效期**：剩餘天數取自描述檔到期日（以安裝時間點簽出）。免費 Personal Team 為 7 天，到期後須重新安裝；付費開發者帳號依其描述檔（約 1 年）顯示，不壓成 7 天。Mac 與 iOS 顯示同一個值。免費或付費以 Xcode 帳號記錄的 `isFreeProvisioningTeam` 判斷，不看描述檔日期（2026-11 實測：免費 Personal Team 的描述檔仍標一年到期）：免費 Team 的到期日 = 簽名時間（`codesign` 的 Signed Time，讀不到時用描述檔建立時間）+ 7 天，且不晚於描述檔到期日；付費或無法判斷時用描述檔到期日。setup producer 檢查 App 時就套用這條規則，所以交給 iPhone 的啟用收據、Mac 顯示與自動延長簽名都用同一個日期。
+**簽署有效期**：剩餘天數取自描述檔到期日（以安裝時間點簽出）。免費 Personal Team 為 7 天，到期後須重新安裝；付費開發者帳號依其描述檔（約 1 年）顯示，不壓成 7 天。Mac 與 iOS 顯示同一個值。免費或付費以 Xcode 帳號記錄的 `isFreeProvisioningTeam` 判斷，不以描述檔有效期間長短判斷：免費 Team 的到期日 = 簽名時間（`codesign` 的 Signed Time，讀不到時用描述檔建立時間）+ 7 天，且不晚於描述檔到期日；付費或無法判斷時用描述檔到期日。setup producer 檢查 App 時就套用這條規則，所以交給 iPhone 的啟用收據、Mac 顯示與自動延長簽名都用同一個日期。
 
 App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標章、剩餘天數）和「↻ 重新搜尋」。裝置名稱用手機「設定 › 一般 › 關於本機 › 名稱」：掃描時透過既有 USB 配對讀取（不配對、不跳信任），檢查手機後依手機記住；讀不到（未信任）才顯示「iPhone · …末六碼」。底部顯示 Mac 環境狀態（例：「Mac 環境已就緒 · Neven（個人）」，點了可以看檢查結果或換 Team）。右側顯示選取那支手機的狀態，**同一時間只有一個主要按鈕**：
 
@@ -123,7 +123,7 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 - 安裝或延長簽名中斷、失敗（USB 拔掉、Wi‑Fi 斷線、Mac 睡眠、App 被關閉）時顯示 D14。唯一的動作是「**重新開始**」，會從頭重新安裝或重新簽名，**不做接續**。
 - 重新開始前，先重新觀察手機狀態。手機上已經有 GoFly 就用覆蓋安裝（保留資料）；USB 時重新產生配對，並先作廢舊的、還沒用掉的配對，不套用舊交易的配對。
 - Setup producer 以一筆全域現行 journal 序列化交易。`apply` 遇到任何裝置留下的未完成 journal 時，會先在原交易資料夾中耐久封存為 `journal.abandoned.json`，再移除現行指標並建立新交易；不刪除 App、配對檔或原交易資料夾。只有已證明完成的交易可封存為 `journal.completed.json`；同一 setupID 重送仍衝突。iOS 消費者在讀取前原子 rename `incoming.plist` 為 `incoming.plist.consuming`；Mac 作廢舊交接時原子 rename 到以舊交易 ID 標記的隔離路徑，再驗證並只刪除該隔離檔。若 iOS 已認領、出現替換檔或狀態不明，producer fail closed，不封存舊交易或刪除使用者資料。
-- 手機上遺留的握手控制檔（`readback-request.json`、`readback-response.json`、`incoming.json`）：「重新開始」時自動處理，不需使用者操作。完整且屬於現行啟用收據的一組依原規則封存到 `retired/<setupID>-<nonce>`；不完整（中斷）、不屬於現行收據、或封存名稱已被先前嘗試佔用的，**移入 `retired/abandoned-<uuid>` 後以全新握手檔繼續**，只搬移、不刪除，啟用收據、配對檔、支援映像與使用者資料不動；沒有控制檔時直接繼續。待消費的配對信封（`incoming.plist`）或任何 `.staging` 檔仍照原規則 fail closed。2026-10-31 依使用者要求由原先的 fail closed 改為自動修正，Python 測試通過，尚未用實機驗證。
+- 手機上遺留的握手控制檔（`readback-request.json`、`readback-response.json`、`incoming.json`）：「重新開始」時自動處理，不需使用者操作。完整且屬於現行啟用收據的一組封存到 `retired/<setupID>-<nonce>`；不完整（中斷）、不屬於現行收據、或封存名稱已被先前嘗試佔用的，**移入 `retired/abandoned-<uuid>` 後以全新握手檔繼續**，只搬移、不刪除，啟用收據、配對檔、支援映像與使用者資料不動；沒有控制檔時直接繼續。待消費的配對信封（`incoming.plist`）或任何 `.staging` 檔仍須 fail closed。
 - 重新開 Mac App 時，如果上次有未完成的操作，同樣顯示 D14，不提供「繼續」。
 - 安裝、延長簽名或「重新開始」進行中，以及 D14 時，操作中的那支手機一律留在側欄，即使這次還沒掃描到它。
 - D14 側欄狀態依操作類型：首次安裝顯示「安裝未完成」，延長簽名顯示「延長簽名未完成」。
@@ -131,48 +131,36 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 
 ## 6. 畫面清單（Figma V1）
 
-淺色 24 張，另加一張啟動流程圖，深色各一張對應：
+以下畫面各有淺色與深色版本，另附啟動流程圖：
 
-| 編號 | 畫面 | 取代舊畫面 |
-| --- | --- | --- |
-| E00 | 啟動畫面（loading，每次開啟） | E01 |
-| E01 | 準備這部 Mac（總覽，只在全新 Mac 第一次開啟時） | 新增 |
-| E02 | 更新 macOS | 新增 |
-| E03 | 取得 Xcode（App Store） | E02 |
-| E04 | 等待 Xcode 安裝 | 新增 |
-| E05 | 第一次開啟 Xcode（同意條款） | E04 前半 |
-| E06 | 下載 iOS 平台 | E04 後半 |
-| E07 | 在 Xcode 登入 Apple 帳號 | E05 |
-| E08 | 選擇開發團隊 | E06 |
-| E09 | Mac 環境（檢查結果，從側欄打開） | E07 |
-| D01 | 尚未連接 iPhone | I01 |
-| D02 | 準備 iPhone：信任這部 Mac | I02 |
-| D03 | 準備 iPhone：開啟開發者模式 | I03 |
-| D04 | 可以安裝 | I04 |
-| D05 | 正在安裝（鑰匙圈提示） | I05、I06 |
-| D06 | 在 iPhone 完成設定 | I07 前半 |
-| D07 | 安裝完成 | I07 |
-| D08 | 已安裝：延長簽名 | G01、G07、I08 |
-| D09 | 有新版：更新並延長簽名 | G01、G02、G17 |
-| D10 | 正在自動延長簽名 | G03 |
-| D11 | 延長簽名完成 | G04、G08 |
-| D12 | 需要 USB 連接 | G14、G15 |
-| D13 | 找不到這支 iPhone（Wi‑Fi） | 新增 |
-| D14 | 未完成：重新開始 | I09 |
+| 編號 | 畫面 |
+| --- | --- |
+| E00 | 啟動畫面（loading，每次開啟） |
+| E01 | 準備這部 Mac（總覽，只在全新 Mac 第一次開啟時） |
+| E02 | 更新 macOS |
+| E03 | 取得 Xcode（App Store） |
+| E04 | 等待 Xcode 安裝 |
+| E05 | 第一次開啟 Xcode（同意條款） |
+| E06 | 下載 iOS 平台 |
+| E07 | 在 Xcode 登入 Apple 帳號 |
+| E08 | 選擇開發團隊 |
+| E09 | Mac 環境（檢查結果，從側欄打開） |
+| D01 | 尚未連接 iPhone |
+| D02 | 準備 iPhone：信任這部 Mac |
+| D03 | 準備 iPhone：開啟開發者模式 |
+| D04 | 可以安裝 |
+| D05 | 正在安裝（鑰匙圈提示） |
+| D06 | 在 iPhone 完成設定 |
+| D07 | 安裝完成 |
+| D08 | 已安裝：延長簽名 |
+| D09 | 有新版：更新並延長簽名 |
+| D10 | 正在自動延長簽名 |
+| D11 | 延長簽名完成 |
+| D12 | 需要 USB 連接 |
+| D13 | 找不到這支 iPhone（Wi‑Fi） |
+| D14 | 未完成：重新開始 |
 
-刪除：舊 E03（命令列工具）、E08（App 資源或 Python），以及 G05／G06（重置）、G09–G13／G16（備份與還原）。舊 section 移到頁面右側的「Archive」，只作歷史參考。
-
-## 7. 尚待實測（不宣告可行）
-
-- Wi‑Fi renew 的覆蓋安裝、既有配對核對、裝置支援及啟用回報已完成離線軟體驗證；同網路／解鎖手機的實機流程尚未驗收。
-- 免費 Personal Team 是否支援 GoFly 用到的所有 capability（背景處理等）。
-- 免費 Team 的限制：每支手機最多 3 個自簽 App、7 天內新 App ID 數量有上限；換 Team 會變成另一個 App。
-- 簽名過期後再延長，資料是否完整保留（預期會）。
-- **E06 是否必要**：在乾淨的 Mac 安裝 Xcode、完成首次啟動但**不下載 iOS 平台**，用 `xcodebuild` 建置實機版 GoFly（含 LaunchScreen.storyboard 與 Assets.xcassets）並自動簽名。建置成功就刪除 E06；失敗時記錄錯誤訊息並保留。另一個方向是在 DMG 附預先建置的 GoFly.app，只在使用者 Mac 上改 Bundle ID 並重新簽名，但免費 Team 的描述檔仍需要經過 Xcode 產生，需要另外研究。
-- 規劃 Xcode 27.1 的最低 macOS 版本以本機 Xcode `Info.plist` 的 26.6 為目前判斷值；仍要在乾淨 Mac 核對 App Store 實際版本，以及 Xcode／iOS 平台下載大小與空間。
-- `install.sh` 在乾淨 Mac 或另一個 macOS 使用者帳號上清除下載 quarantine、開啟 ad-hoc App，並執行內建 Python／原生擴充。
-
-## 8. 驗收（實作時）
+## 7. 驗收條件
 
 - 每次開啟都先顯示 E00 啟動畫面（或 500 ms 內完成而略過），畫面上不出現檢查清單或打勾。全部通過時直接進入裝置頁；有未完成時直接跳到第一個未完成的步驟，只有全新 Mac 第一次開啟時才先顯示 E01。
 - 全新 Mac：照畫面能完成所有步驟；每一步都能自動偵測完成，不需要手動重新啟動 GoFly。

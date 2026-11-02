@@ -90,7 +90,7 @@ def record():
         'deploymentTarget': '26.0',
         'cargoLocked': True,
         'swiftShimABI': '30 declarations checked against generated C ABI and archive symbols',
-        'nativeTests': 'cargo test -p idevice-ffi --locked --no-default-features --features ' + ','.join(PIN['features']) + ' gofly_ -- --nocapture',
+        'nativeTests': 'not run (packaging-only build)',
         'xcodeVersion': subprocess.check_output(['xcodebuild', '-version'], text=True).strip(),
         'sdkVersion': subprocess.check_output(['xcrun', '--sdk', 'iphoneos', '--show-sdk-version'], text=True).strip(),
         'sha256': {

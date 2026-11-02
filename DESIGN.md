@@ -46,6 +46,6 @@
 
 2026-10-18 使用者要求直接精修 iOS App，不修改 Figma。線框繼續作為操作流程來源；正式視覺細節以 [iOS UI 設計與驗收規格](docs/IOS-UI-DESIGN.md) 及 App 實作為準。已細化共用按鈕、地圖浮層、搜尋焦點、選取、路線、搖桿、首次引導、設定與詳情／空白狀態；這是 App 介面實作更新，不能推定 Figma 已同步或手機驗收已通過。
 
-2026-10-23 使用者再次確認：GoFly UI 開發須參考平台對應 Figma；iOS 以「04 · iOS Redesign（Google Maps 參考）」為視覺主來源，Mac 改版以「05 · Mac Redesign（新版）」為視覺主來源。Figma 畫面與規格文件衝突時，以渲染畫面為視覺準據並更新文件；缺漏或不同步的 variant 明確記錄。最新頁面盤點與逐區差異見 [Figma／規格對照](docs/FIGMA-UI-RECONCILIATION.md)。
+2026-10-23 使用者再次確認：GoFly UI 開發須參考平台對應 Figma；iOS 以「04 · iOS Redesign（Google Maps 參考）」為視覺主來源，Mac 改版以「05 · Mac Redesign（新版）」為視覺主來源。Figma 畫面與規格文件衝突時，以渲染畫面為視覺準據並更新文件；缺漏或不同步的 variant 明確記錄。現行文件入口見 [文件索引](docs/README.md)，平台行為與待驗事項分別見 iOS／Mac 規格。
 
 2026-10-20 Google Maps 參考改版：步驟 1–8 已實作。新增 danger／warning／success 語意狀態、StatusBanner、2 秒 snackbar、全螢幕搜尋、最愛延遲刪除與批次復原、執行模式，以及共用 VPN 說明／設定子頁。啟動使用深淺色 Logo，背景檢查超過約 0.5 秒才顯示進度。定位只請求使用 App 期間。詳細規則與實作狀態取代舊版面描述，以 [iOS 規格](docs/IOS-UI-DESIGN.md) 為準；最終檢查及 3 個代表性視覺樣本見 `work/gofly-ios/redesign/RESULT.md`，不代表所有狀態或真機能力已驗證。本輪未修改 Figma，箭頭方向 #15 與移動停止問題仍留在獨立修正軌。

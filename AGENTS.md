@@ -60,6 +60,12 @@ and implementation specification have not been selected yet.
 
 - GitHub Release 說明遵循 [Release 撰寫規格](docs/RELEASE-NOTES.md)：英文在前、繁中在後，不加語言標籤；開頭的版本／build 摘要只出現一次，中英文同步更新並在發布後讀回核對。
 
+## GoFly 打包與開發產物（2026-11-03）
+
+- 目前只保留 IPA／DMG 打包所需的建置流程。不要自動執行獨立 host／UI／模擬器測試、批量截圖或建立 `.xcresult`；需要這類驗證時由使用者另行要求。歷史任務文件中的預設測試流程不再適用。
+- IPA／DMG 成品與 checksum 放在 `work/dist`。必要建置中間檔、工具鏈與下載依賴重用固定的 `work/gofly-ios`、`work/gofly-mac`，不要為每次任務、重跑或審查新增另一套 build／cache 目錄。
+- 保留打包必要的來源／ABI／簽章／產物完整性校驗。打包成功不代表測試或實機驗收通過；不要自動清除安裝交易、配對或使用者資料。
+
 ## iOS 實機測試安裝
 
 - 實機測試安裝／更新一律使用 `bash scripts/install-ios-test.sh`，或相同的正式 Mac setup producer；不可只執行 Xcode／`devicectl install` 後宣告完成。先核對 USB 裝置與 Xcode 登入帳號，再執行唯讀 `--action preflight`；取得使用者安裝授權後才執行 `--action apply`。

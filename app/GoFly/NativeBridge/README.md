@@ -41,9 +41,10 @@ regressions remain part of the same test invocation.
 Swift retains the owned location channel after an acknowledged or unconfirmed
 set. Revalidation and later points use that same session. Explicit clear releases
 it only after native clear returns, even on error; reset refuses an active
-session. The host Swift 6 harness compiles the exact production service with
-session doubles to test these lifetimes and the actual Core dispatch gate. It
-links a timeout setter stub and never links or calls the device library.
+session. These lifetimes and the Core dispatch gate were previously checked
+by a host Swift 6 harness with session doubles and a timeout setter stub.
+That dedicated harness and its runner were removed on 2026-11-03 when the
+workflow was reduced to packaging only; those checks are not run by packaging.
 
 ## Build
 
@@ -71,20 +72,24 @@ feature is selected. Transitive tunnel/DDI support is included as required.
 Rust 1.94.0 standalone components are downloaded from official Rust distribution
 URLs and SHA-256 verified against the official release manifest values recorded
 in `upstream.json` before their installer scripts run. Toolchain, Cargo home,
-Rustup home, dependencies, source export, tests and artifacts stay under ignored
+Rustup home, dependencies, source export and artifacts stay under ignored
 `work/gofly-ios`. No shell profile, system installation or home toolchain changes.
 The first build requires public network access for these pinned components and
 Cargo's locked dependencies.
 
 ## Verification and outputs
 
-A host Swift harness compiles the production error mapper with the actual
-service-failure enum. It checks that pair-verify rejection (103/5) requires Mac
-pairing repair, timeouts stay timeouts, and other failures preserve their
-operation-specific fallback. The real iOS branch imports the shim unconditionally;
-a missing module fails the device build.
+The former host Swift harness checked the production error mapper with the
+actual service-failure enum, including pair-verify rejection (103/5), timeouts
+and operation-specific fallback. That harness is no longer included. The real
+iOS branch still imports the shim unconditionally; a missing module fails the
+device build.
 
-Host Rust regression tests exercise the actual remote-pairing client and
+As of 2026-11-03, `build.sh` only builds and validates the iOS archive for
+IPA/DMG packaging. It does not run host regression tests or create host test
+products. The generated manifest records native tests as not run.
+
+The retained upstream host Rust regression test sources exercise the actual remote-pairing client and
 cryptography against a scripted in-memory peer for successful verification and
 rejection. They compare serialized credentials before/after both paths. A
 loopback TCP test calls the C export and proves rejection emits only verification

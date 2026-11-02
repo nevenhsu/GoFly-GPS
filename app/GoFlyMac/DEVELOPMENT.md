@@ -1,7 +1,7 @@
 # GoFly for Mac V1 development
 
-Verified offline behavior and current acceptance evidence are tracked in
-`.scratch/gofly-mac-v1/TRACKER.md`. Product behavior is specified by
+Old development trackers and acceptance records were removed on 2026-11-03.
+Product behavior is specified by
 [`docs/MAC-INSTALLER-SPEC.md`](../../docs/MAC-INSTALLER-SPEC.md); Mac screen
 layout and copy follow Figma `05 · Mac Redesign（新版）`.
 
@@ -49,13 +49,14 @@ layout and copy follow Figma `05 · Mac Redesign（新版）`.
 - `test-install-quarantine.sh [DMG_PATH]` runs an isolated quarantine simulation in a temporary directory. It does not write to `/Applications` or GoFly user state.
 - Mac color tokens are owned by `Sources/GoFlyMac/MacColorSystem.swift`. Views use these semantic Mac-only tokens; they do not import iOS colors.
 
-## Verification
+## Packaging verification
 
-```sh
-swift test --package-path app/GoFlyMac
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
-  -s app/GoFlyMac/Bridge -p 'test_*.py'
-```
+As of 2026-11-03, only IPA/DMG packaging is part of the default workflow.
+Offline suites, simulator runs and UI captures require a separate user request.
+Packaging retains archive, architecture, dependency and signature checks;
+successful packaging is not evidence that tests or device acceptance passed.
+Reuse the fixed `work/gofly-ios` and `work/gofly-mac` build paths rather than
+creating per-task build or cache directories.
 
 Build a local DMG with the Team ID selected for the bundle identifier:
 
@@ -64,6 +65,6 @@ bash app/GoFlyMac/make-dmg.sh <TEAM_ID>
 ```
 
 Offline checks do not replace user-run acceptance on a clean Mac or physical
-iPhone. Record those results separately in `.scratch/gofly-mac-v1/TRACKER.md`
-and `.scratch/gofly-ios/MAC-DEVICE-ACCEPTANCE.md`. Do not use offline fixtures
+iPhone. Record observed results and pending items in the relevant current
+specification. Do not use offline fixtures
 as evidence that an iPhone was installed or that its data was retained.

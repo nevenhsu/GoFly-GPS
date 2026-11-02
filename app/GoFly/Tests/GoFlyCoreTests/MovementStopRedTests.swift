@@ -3,8 +3,8 @@ import Testing
 @testable import GoFlyCore
 
 enum RedTests {
-    /// Intentional reproduction of movement-stop defect H1 in
-    /// `.scratch/prompts/02-debug-movement-stops.md`. It fails on purpose until
+    /// Intentional reproduction of the historical movement-stop defect H1.
+    /// It fails on purpose until
     /// stage C fixes it, so it is skipped by default and enabled with
     /// `GOFLY_RED_TESTS=1`.
     static var enabled: Bool { ProcessInfo.processInfo.environment["GOFLY_RED_TESTS"] == "1" }

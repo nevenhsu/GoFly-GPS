@@ -28,11 +28,11 @@ Figma 有 14 個核心文字樣式與 2 個按鈕樣式。所有樣式均使用 
 ## 實作規則
 
 1. 文字使用 `.goFlyFont(GoFlyFont.<token>)`。共享 `GoFlyFontModifier` 以 `Font.system(size:weight:design:)` 使用表內精確基準大小，並用 `@ScaledMetric` 依相應系統文字樣式縮放；`micro`、`metric` 不縮放。
-2. `Font.system(size:)` 直接用於圖示時只控制圖示 glyph 尺寸，不當作文字樣式。圖示資產依票 03 的 Figma Icon 元件規範處理。
-3. View 不直接指定文字字級、字重或文字顏色。只使用 Regular／Semibold；顏色透過 `GoFlyTextColor` 角色及 01 建立的 Theme token。
+2. `Font.system(size:)` 直接用於圖示時只控制圖示 glyph 尺寸，不當作文字樣式。圖示資產依 Figma 04 的共用 Icon 元件規範處理。
+3. View 不直接指定文字字級、字重或文字顏色。只使用 Regular／Semibold；顏色透過 `GoFlyTextColor` 角色及 共用 Theme token。
 4. `GoFlyTextColor` 有 9 個語意色彩值；`inverse` 與 `onDark` 以不同用途名稱共用 `common/white`。其他色值與 Light／Dark 對應以 `docs/IOS-COLOR-SCHEME.json` 為準，不在本文件複製色票。
 5. 新增 Figma `Theme/*` 樣式時，須同步更新本表、`GoFlyFont` 與 `TypographyStandardTests`。禁止使用 `Font.custom`、`UIFont(name:)`、字型檔或字型名稱字串。
 
 ## 驗證
 
-`TypographyStandardTests` 檢查 16 個 Figma Theme token、基準大小與字重、系統字型實作、Dynamic Type 例外及自訂字型 API；也掃描 App 原始碼中的原生文字樣式、字重與固定字級使用。畫面截圖驗證須依票 02 對每個可達 frame 的 Light／Dark 組合並排比對；本文件不代表已完成截圖驗收或實機驗證。
+`TypographyStandardTests` 檢查 16 個 Figma Theme token、基準大小與字重、系統字型實作、Dynamic Type 例外及自訂字型 API；也掃描 App 原始碼中的原生文字樣式、字重與固定字級使用。現行預設流程只執行 IPA／DMG 打包必要校驗，不自動執行此測試或逐 frame 截圖。使用者另行要求視覺驗證時，按當次範圍核對 Light／Dark 與 Dynamic Type；本文件不代表已完成視覺或實機驗證。

@@ -4,7 +4,7 @@
 
 更新日期：2026-10-27。Mac App 的唯一視覺準據是 Figma 檔 `RtPV8PXCQJ2WXK3jk3kPrq` 的 `05 · Mac Redesign（新版）`（頁面 `123:61504`），只採用 V1 的 E Mac 環境、D 裝置及對應 Dark sections。灰字說明是操作行為規則；舊 `02 · Mac App`、早期 Mac 改版畫面及 `Archive ·` sections 不作準據。
 
-流程與驗收規格見 [`MAC-INSTALLER-SPEC.md`](MAC-INSTALLER-SPEC.md)，逐票實作、軟體證據與未驗項目見 [Mac V1 TRACKER](../.scratch/gofly-mac-v1/TRACKER.md)。
+流程與驗收規格見 [`MAC-INSTALLER-SPEC.md`](MAC-INSTALLER-SPEC.md)；舊逐票 tracker 已於 2026-11-03 刪除，歷史軟體驗證不代表實機驗收。
 
 ## V1 實作範圍
 
@@ -19,8 +19,8 @@
 
 ## 證據與限制
 
-- E00–E09 與 D01–D14 的截圖保存在 `work/gofly-mac/v1/screens/`；逐畫面 Figma 比對紀錄在 Tracker。截圖代表本機 capture fixture，不是手機操作證據。
-- `swift test` 與 Bridge unittest 的離線結果只驗證軟體路徑。Wi-Fi 真機 renew、自動 renew 與通知、實際睡眠抑制、免費 Team capability、資料保留、乾淨 Mac／另一個帳號下載安裝，均需按 [`MAC-DEVICE-ACCEPTANCE.md`](../.scratch/gofly-ios/MAC-DEVICE-ACCEPTANCE.md) 實測。
+- E00–E09 與 D01–D14 的舊本機截圖與 Tracker 已清除。歷史 capture fixture 不代表手機操作證據，需重新核對時由使用者指定範圍。
+- `swift test` 與 Bridge unittest 的離線結果只驗證軟體路徑。Wi-Fi 真機 renew、自動 renew 與通知、實際睡眠抑制、免費 Team capability、資料保留、乾淨 Mac／另一個帳號下載安裝，均仍需實機驗收；安裝與完成條件依 [Mac 安裝器規格](MAC-INSTALLER-SPEC.md) 與 [實機安裝說明](AI-INSTALL.md)。
 - DMG 的本機建置與隔離模擬結果記在 Tracker。尚無公開 DMG、Developer ID 簽署或 notarization；不能將本機產物描述為正式公開發行。
 
 Figma Archive sections 保留為歷史稿；只有 V1 實作完成且使用者確認後才刪除。

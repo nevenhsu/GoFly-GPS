@@ -1,6 +1,6 @@
 # GoFly GPS for Mac V1
 
-GoFly GPS for Mac prepares a user's Xcode Team-scoped GoFly GPS iOS build and manages that selected iPhone's install or signing renewal. Mac interface requirements follow Figma `05 · Mac Redesign（新版）`, V1 light and dark sections. The operational contract is [`docs/MAC-INSTALLER-SPEC.md`](../../docs/MAC-INSTALLER-SPEC.md); ticket evidence is in [TRACKER](../../.scratch/gofly-mac-v1/TRACKER.md).
+GoFly GPS for Mac prepares a user's Xcode Team-scoped GoFly GPS iOS build and manages that selected iPhone's install or signing renewal. Mac interface requirements follow Figma `05 · Mac Redesign（新版）`, V1 light and dark sections. The operational contract is [`docs/MAC-INSTALLER-SPEC.md`](../../docs/MAC-INSTALLER-SPEC.md). Old development trackers were removed on 2026-11-03.
 
 ## Obtain and install
 
@@ -31,14 +31,18 @@ bash app/GoFlyMac/build-app.sh <YOUR_XCODE_TEAM_ID>
 open work/gofly-mac/GoFly.app
 ```
 
-Run the offline suites from the repository root:
+To package the DMG after preparing the native library with
+`bash app/GoFly/NativeBridge/build.sh`:
 
 ```sh
-swift test --package-path app/GoFlyMac
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
-  -s app/GoFlyMac/Bridge/Setup/Tests -p 'test_*.py'
+bash app/GoFlyMac/make-dmg.sh <YOUR_XCODE_TEAM_ID>
 ```
+
+As of 2026-11-03, the default workflow is IPA/DMG packaging only. Build inputs
+and caches reuse `work/gofly-ios` and `work/gofly-mac`; final installers and
+checksums go to `work/dist`. Offline suites and UI captures require a separate
+user request and are not run as part of packaging.
 
 Mac colors live only in [`MacColorSystem.swift`](Sources/GoFlyMac/MacColorSystem.swift). Keep Mac semantic tokens independent from iOS colors. Local UI capture screenshots are under `work/gofly-mac/v1/screens/`; offline tests and capture fixtures do not prove physical-device or clean-Mac behavior.
 
-See [development notes](DEVELOPMENT.md), [Bridge protocol](Bridge/PROTOCOL.md), [release component inventory](../../docs/LICENSING.md), and the [Mac device acceptance list](../../.scratch/gofly-ios/MAC-DEVICE-ACCEPTANCE.md).
+See [development notes](DEVELOPMENT.md), [Bridge protocol](Bridge/PROTOCOL.md), [release component inventory](../../docs/LICENSING.md), and the [Mac installer specification](../../docs/MAC-INSTALLER-SPEC.md).

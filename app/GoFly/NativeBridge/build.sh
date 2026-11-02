@@ -17,10 +17,7 @@ fi
 
 python3 "$bridge_dir/prepare-build.py"
 mkdir -p "$build_dir/native"
-# Host tests exercise RP verification and actual location C exports against scripted peers.
-cargo test --manifest-path "$build_dir/native-source/Cargo.toml" -p idevice-ffi \
-  --locked --no-default-features --features "$features" gofly_ -- --nocapture
-# These environment variables are scoped to the iOS build, not host tests.
+# Packaging builds only the iOS library; it does not create host test products.
 SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)" \
 IPHONEOS_DEPLOYMENT_TARGET=26.0 \
 CC_aarch64_apple_ios="$(xcrun --sdk iphoneos --find clang)" \
