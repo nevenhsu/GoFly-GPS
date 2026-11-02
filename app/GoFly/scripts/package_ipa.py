@@ -1,6 +1,7 @@
 """Package an unsigned device build for SideStore without changing the Mac build."""
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import os
 from pathlib import Path
@@ -33,8 +34,6 @@ def package(app: Path, output_directory: Path) -> Path:
     output_directory.mkdir(parents=True, exist_ok=True)
     output = output_directory / f"GoFly-{version}.ipa"
     checksum = output.with_suffix(".ipa.sha256")
-    if output.exists() or checksum.exists():
-        raise FileExistsError("Use a new output directory; existing release artifacts are preserved.")
     with tempfile.TemporaryDirectory(prefix=".sidestore-", dir=output_directory) as temporary:
         root = Path(temporary)
         staged = root / "Payload" / "GoFly.app"
@@ -55,10 +54,23 @@ def package(app: Path, output_directory: Path) -> Path:
                 raise ValueError("IPA startup policy verification failed.")
         with archive.open("rb") as handle:
             digest = hashlib.file_digest(handle, "sha256").hexdigest()
-        # Publish only a complete, verified archive, without replacing old files.
+        # Publish only a complete, verified archive. An earlier build of the
+        # same version moves to archive/<UTC time>/ instead of being replaced.
+        archive_existing(output, checksum, output_directory)
         os.link(archive, output)
         checksum.write_text(f"{digest}  {output.name}\n", encoding="utf-8")
     return output
+
+
+def archive_existing(output: Path, checksum: Path, output_directory: Path) -> None:
+    existing = [path for path in (output, checksum) if path.exists() or path.is_symlink()]
+    if not existing:
+        return
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    destination = output_directory / "archive" / stamp
+    destination.mkdir(parents=True)
+    for path in existing:
+        os.rename(path, destination / path.name)
 
 
 if __name__ == "__main__":

@@ -81,6 +81,18 @@ struct MapNoticeBoardTests {
                                           actionTitleKey: "common.continue", action: .resumeRoute, actionEnabled: false))])
     }
 
+    @Test func dismissingTheResumeNoticeHidesItWhileTheMovementStaysResumable() {
+        let wander = ActiveMovement(kind: .wander, runState: .paused, pauseCause: .background,
+                                    resumeAction: .resumeWander, canResume: true)
+        var input = MapNoticeInputs(mode: .joystick, activeMovement: wander, isResumeState: true,
+                                    continuationNoticeKey: "background.expired")
+        #expect(ids(input) == ["resume"])
+        input.notices.dismiss(.continuation)
+        #expect(ids(input).isEmpty)
+        input.notices.reopen(.continuation)
+        #expect(ids(input) == ["resume"])
+    }
+
     @Test func resumeNoticesWaitForTheSceneToSettle() {
         let hold = ActiveMovement(kind: .positionHold, runState: .paused, pauseCause: .background,
                                   resumeAction: .retryPositionHold, canResume: true)

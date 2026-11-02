@@ -67,9 +67,9 @@ GoFly for Mac 不是定位工具。它用**你的** Xcode 签名 Team 构建 iPh
 
 使用 SideStore 时，先按[官方流程](https://docs.sidestore.io/docs/installation/install)完成设置，再保持 Wi-Fi 与 LocalDevVPN 连接，在 **My Apps → ＋** 导入同一份 IPA。
 
-IPA 打包脚本会移除等待 Mac 的启动限制；Mac 安装版保留配对检查。两者共用 iOS 的定位、本地网络与 VPN onboarding。授权不会生成 GoFly 配对或设备支持数据，实际定位仍需要这些数据；SideStore／AltStore 重签版与 Mac 的交接尚未验证，不能把移除启动限制视为定位可用。之前生成的 1.0.4 IPA 仍有限制，修正版等 UI 更新完成后统一输出。
+IPA 版第一次打开会显示「导入配对文件」：在电脑导出这台 iPhone 的配对文件（例如用 iloader），再在 GoFly 点「导入配对文件」选取。之后进入定位、本地网络与 VPN 引导。Mac 安装版保持原来的 Mac 配对流程。2026-11-02 已用 SideStore 实机验证导入、瞬移与路线后台移动；自动漫步在后台偶尔会被 iOS 暂停。
 
-开发者运行 `bash app/GoFly/scripts/package-ipa.sh` 生成未签名 IPA 与 SHA-256（须先有 `work/gofly-ios/native` 中已构建的原生库）。脚本不修改 Mac 构建，也不覆盖已有输出；可先归档旧文件，或用第一个参数指定新输出目录。
+开发者运行 `bash app/GoFly/scripts/package-ipa.sh` 生成未签名 IPA 与 SHA-256（须先有 `work/gofly-ios/native` 中已构建的原生库）。输出一律放在 `work/dist/ipa/`；同版本的旧 IPA 与校验文件会先移到 `work/dist/ipa/archive/<UTC 时间>/`，不会被覆盖或删除。脚本不修改 Mac 构建。
 
 ## 让 AI 帮你安装
 

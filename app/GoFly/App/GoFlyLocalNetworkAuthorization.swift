@@ -6,7 +6,7 @@ import UIKit
 
 /// Learns the Local Network permission by browsing the declared Bonjour
 /// service. iOS has no query API: the first browse raises the system prompt,
-/// a granted browse reaches `.ready`, and a denied one waits with a
+/// a granted browse finds GoFly's own advertised probe service, and a denied one waits with a
 /// policy-denied DNS error. The last answer is remembered so the settings
 /// pages can show it without prompting.
 @MainActor
@@ -14,6 +14,7 @@ final class GoFlyLocalNetworkAuthorization: ObservableObject, LocalNetworkAuthor
     static let shared = GoFlyLocalNetworkAuthorization()
 
     private static let defaultsKey = "gofly.localNetwork.authorization"
+    private nonisolated static let probeService = "_gofly-probe._tcp"
     private nonisolated static let policyDenied: Int32 = -65570  // kDNSServiceErr_PolicyDenied
 
     @Published private(set) var authorization: LocalNetworkAuthorization
@@ -76,23 +77,37 @@ final class GoFlyLocalNetworkAuthorization: ObservableObject, LocalNetworkAuthor
 #if DEBUG && targetEnvironment(simulator)
         return ProcessInfo.processInfo.arguments.contains("-gofly-ui-local-network-denied") ? .denied : .granted
 #else
-        let browser = NWBrowser(for: .bonjour(type: "_remotepairing._tcp", domain: nil), using: NWParameters())
+        // `.ready` fires before the user answers the system prompt, so it proves
+        // nothing. GoFly advertises a private service of its own and browses for
+        // it: the browse only reports that result once Local Network is allowed.
+        let browser = NWBrowser(for: .bonjour(type: probeService, domain: nil), using: NWParameters())
+        let listener = try? NWListener(using: .tcp)
+        listener?.service = NWListener.Service(name: UUID().uuidString, type: probeService)
+        listener?.newConnectionHandler = { $0.cancel() }
         let queue = DispatchQueue(label: "com.neven.gofly.localnetwork", qos: .userInitiated)
         return await withCheckedContinuation { (continuation: CheckedContinuation<LocalNetworkAuthorization, Never>) in
-            let resolver = BrowseResolver(browser: browser, continuation: continuation)
+            let resolver = BrowseResolver(browser: browser, listener: listener, continuation: continuation)
             let finish = resolver.finish
+            let deniedIfPolicy: @Sendable (NWError) -> Void = { error in
+                if case .dns(let code) = error, code == policyDenied { finish(.denied) }
+            }
             browser.stateUpdateHandler = { state in
                 switch state {
-                case .ready:
-                    finish(.granted)
-                case .waiting(let error):
-                    if case .dns(let code) = error, code == policyDenied { finish(.denied) }
-                case .failed:
-                    finish(.denied)
-                default:
-                    break
+                case .waiting(let error): deniedIfPolicy(error)
+                case .failed: finish(.denied)
+                default: break
                 }
             }
+            listener?.stateUpdateHandler = { state in
+                switch state {
+                case .waiting(let error), .failed(let error): deniedIfPolicy(error)
+                default: break
+                }
+            }
+            browser.browseResultsChangedHandler = { results, _ in
+                if !results.isEmpty { finish(.granted) }
+            }
+            listener?.start(queue: queue)
             browser.start(queue: queue)
             // The prompt may stay up for a long time; give up only well after that.
             queue.asyncAfter(deadline: .now() + 120) { finish(.unknown) }
@@ -105,11 +120,14 @@ final class GoFlyLocalNetworkAuthorization: ObservableObject, LocalNetworkAuthor
 /// browser's one serial queue, so `finished` needs no lock.
 private final class BrowseResolver: @unchecked Sendable {
     private let browser: NWBrowser
+    private let listener: NWListener?
     private let continuation: CheckedContinuation<LocalNetworkAuthorization, Never>
     private var finished = false
 
-    init(browser: NWBrowser, continuation: CheckedContinuation<LocalNetworkAuthorization, Never>) {
+    init(browser: NWBrowser, listener: NWListener?,
+         continuation: CheckedContinuation<LocalNetworkAuthorization, Never>) {
         self.browser = browser
+        self.listener = listener
         self.continuation = continuation
     }
 
@@ -117,6 +135,7 @@ private final class BrowseResolver: @unchecked Sendable {
         guard !finished else { return }
         finished = true
         browser.cancel()
+        listener?.cancel()
         continuation.resume(returning: result)
     }
 }

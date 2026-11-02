@@ -12,7 +12,6 @@ enum GoFlySymbols {
     static let favorite: GoFlyIconAsset = .star
     static let favoriteSelected: GoFlyIconAsset = .starFilled
     static let search: GoFlyIconAsset = .search
-    static let paste: GoFlyIconAsset = .paste
     static let clearSearch: GoFlyIconAsset = .close
     static let settings: GoFlyIconAsset = .gear
     static let close: GoFlyIconAsset = .close

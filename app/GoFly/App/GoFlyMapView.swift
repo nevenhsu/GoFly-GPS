@@ -989,6 +989,10 @@ struct GoFlyMapView: View {
         .onChange(of: route.error) { _, newError in notices.reopen(.routeError, ifPresent: newError) }
         .onChange(of: recovery.noticeKey) { _, newKey in notices.reopen(.recovery, ifPresent: newKey) }
         .onChange(of: continuation.noticeKey) { _, newKey in notices.reopen(.continuation, ifPresent: newKey) }
+        // A new pause shows its toast again even when the notice key repeats.
+        .onChange(of: activeMovement?.isResumable == true) { _, resumable in
+            if resumable { notices.reopen(.continuation) }
+        }
     }
 
     private func toastStack(topInset: CGFloat) -> some View {

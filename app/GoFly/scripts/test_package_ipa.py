@@ -41,8 +41,12 @@ class SideStorePackageTests(unittest.TestCase):
             self.assertTrue(bundle.getinfo("Payload/GoFly.app/GoFly").external_attr >> 16 & 0o111)
         digest = hashlib.sha256(output.read_bytes()).hexdigest()
         self.assertEqual(output.with_suffix(".ipa.sha256").read_text(), f"{digest}  {output.name}\n")
-        with self.assertRaises(FileExistsError):
-            package(self.app, output.parent)
+        first = output.read_bytes()
+        again = package(self.app, output.parent)
+        self.assertEqual(again, output)
+        archived = list((output.parent / "archive").glob("*/GoFly-1.0.4.ipa*"))
+        self.assertEqual(sorted(p.name for p in archived), ["GoFly-1.0.4.ipa", "GoFly-1.0.4.ipa.sha256"])
+        self.assertEqual(next(p for p in archived if p.suffix == ".ipa").read_bytes(), first)
 
     def test_missing_or_untyped_mac_policy_is_rejected(self):
         for value in (None, "YES", 1, False):

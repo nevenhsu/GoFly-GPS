@@ -172,8 +172,10 @@ public enum MapNoticeBoard {
         // The person pressed Pause: the resume panel already says so.
         let pausedByUser = active?.isPausedByUser == true
             && ((input.mode == .route && active?.kind == .route) || (input.mode == .joystick && active?.kind == .wander))
-        let continuationShown = input.continuationNoticeKey != nil && !input.notices.isDismissed(.continuation)
-        guard input.sceneSettled, !input.repairOwnsNotice, !teleportFailureOwns, !pausedByUser,
+        // ✕ puts the toast away; the resume panel still offers the action.
+        let dismissed = input.notices.isDismissed(.continuation)
+        let continuationShown = input.continuationNoticeKey != nil && !dismissed
+        guard input.sceneSettled, !input.repairOwnsNotice, !teleportFailureOwns, !pausedByUser, !dismissed,
               continuationShown || input.isResumeState else { return nil }
 
         let resumable = active?.resumeAction

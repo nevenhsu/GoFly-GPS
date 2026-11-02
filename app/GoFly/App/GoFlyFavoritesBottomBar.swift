@@ -125,13 +125,10 @@ struct GoFlySystemPasteControl: UIViewRepresentable {
 
 /// The paste affordance inside a search field. The system paste control (no
 /// "Allow Paste" prompt) is always shown, dimmed by iOS while the clipboard
-/// has no text. A plain GoFly icon button sits underneath as a safety net:
-/// the system control sometimes fails to draw after SwiftUI rebuilds the
-/// field, and a tap on the bare icon reads the clipboard directly, which iOS
-/// may confirm once. `hasStrings` itself never prompts.
+/// has no text. No custom icon sits underneath: it would show through the
+/// dimmed system control as a doubled glyph.
 final class GoFlyPasteAffordanceView: UIView {
     private var control: UIPasteControl
-    private let fallback = UIButton(type: .system)
     private weak var target: (any UIPasteConfigurationSupporting)?
     private var accessibilityIdentifierValue: String
 
@@ -140,10 +137,6 @@ final class GoFlyPasteAffordanceView: UIView {
         accessibilityIdentifierValue = accessibilityIdentifier
         super.init(frame: .zero)
         clipsToBounds = true
-        fallback.setImage(GoFlyIcon.uiImage(GoFlySymbols.paste), for: .normal)
-        fallback.tintColor = GoFlyStyle.pasteSymbolUIColor
-        fallback.addAction(UIAction { [weak self] _ in self?.pasteFromFallback() }, for: .touchUpInside)
-        pin(fallback)
         self.accessibilityLabel = accessibilityLabel
         self.target = target
         rebuildControl()
@@ -199,23 +192,13 @@ final class GoFlyPasteAffordanceView: UIView {
         self.accessibilityLabel = accessibilityLabel
         accessibilityIdentifierValue = accessibilityIdentifier
         control.target = target
-        for view in [control, fallback] as [UIView] {
-            view.accessibilityLabel = accessibilityLabel
-        }
-        // UI tests find the visible one by the shared identifier.
+        control.accessibilityLabel = accessibilityLabel
         control.accessibilityIdentifier = accessibilityIdentifier
-        fallback.accessibilityIdentifier = accessibilityIdentifier
         refresh()
     }
 
     @objc private func refresh() {
         // The system control is always shown; iOS dims it while the clipboard has no text.
         control.isHidden = false
-        fallback.isAccessibilityElement = false
-    }
-
-    private func pasteFromFallback() {
-        guard UIPasteboard.general.hasStrings, let target else { return }
-        target.paste?(itemProviders: UIPasteboard.general.itemProviders)
     }
 }

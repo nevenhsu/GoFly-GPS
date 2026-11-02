@@ -230,8 +230,6 @@ private struct GoFlyOnboardingPage<Content: View, Actions: View>: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                GoFlyOnboardingStepIndicator(step: title == "onboarding.welcome.title" ? 1 : 2)
-                    .padding(.top, 10)
                 GoFlyOnboardingEmblem(symbol: symbol)
                     .padding(.top, emblemTopSpacing)
                 Text(goFlyString(title))
@@ -393,8 +391,8 @@ private struct GoFlyLocalNetworkOnboardingView: View {
             openSettings()
             return
         }
-        // A fresh answer of "denied" means the prompt was refused (or never appeared).
-        if await controller.allowLocalNetwork() == .denied { openSettings() }
+        // Any answer other than granted (refused, or no answer) sends the user to Settings.
+        if await controller.allowLocalNetwork() != .granted { openSettings() }
     }
 
     private func openSettings() {
@@ -616,25 +614,6 @@ private struct GoFlyVPNOnboardingView: View {
     private func recheckAfterHelp() {
         guard scenePhase == .active else { return }
         controller.setVPNActive(true)
-    }
-}
-
-private struct GoFlyOnboardingStepIndicator: View {
-    let step: Int
-    var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 4) {
-            ForEach(1...3, id: \.self) { index in
-                Capsule().fill(index <= step ? GoFlyStyle.primary : GoFlyStyle.border)
-                        .frame(width: 37, height: 4)
-                }
-            }
-            Text(goFlyLocalizedFormat(goFlyString("onboarding.step"), step))
-                .goFlyFont(GoFlyFont.footnoteEmphasis).monospacedDigit()
-                .foregroundStyle(GoFlyTextColor.secondary)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(format: goFlyString("onboarding.step"), step))
     }
 }
 

@@ -36,7 +36,7 @@ App 顏色使用 Figma 04 Theme Variables 的完整語意 token，由 `GoFlyThem
 
 | 畫面／區域 | 實作細節與保留規則 |
 | --- | --- |
-| 首次歡迎／定位權限 | Logo 啟動銜接歡迎頁；背景檢查超過約 0.5 秒才顯示細進度條。引導顯示 1／2／3 步驟；定位頁 Light／Dark 都不顯示導航返回列，R02／R03 使用 120 pt Hero、28 pt `Theme/display` 標題與 15 pt `Theme/subheadline` 說明（R02 標題框 x=16、y=348、361×39 pt；說明框 x=53、y=400、287×42 pt）。定位區分尚未設定、已允許與已拒絕，主要動作分別為允許定位、下一步、前往設定；已允許不顯示略過，其餘可略過。App 使用 `Font.system` token；Figma 畫面中的填色 `icon/location` 尚未出現在共用 Icon 板，App 暫用既有 `icon/nav` 資產並記錄差異。R07 說明不含「安裝 App 後」；R06 目前沒有 Figma frame |
+| 首次歡迎／定位權限 | Logo 啟動銜接歡迎頁；背景檢查超過約 0.5 秒才顯示細進度條。引導頁不顯示「步驟 n／3」進度列（Figma 04 渲染無此元件）；定位頁 Light／Dark 都不顯示導航返回列，R02／R03 使用 120 pt Hero、28 pt `Theme/display` 標題與 15 pt `Theme/subheadline` 說明（R02 標題框 x=16、y=348、361×39 pt；說明框 x=53、y=400、287×42 pt）。定位區分尚未設定、已允許與已拒絕，主要動作分別為允許定位、下一步、前往設定；已允許不顯示略過，其餘可略過。App 使用 `Font.system` token；Figma 畫面中的填色 `icon/location` 尚未出現在共用 Icon 板，App 暫用既有 `icon/nav` 資產並記錄差異。R07 說明不含「安裝 App 後」；R06 目前沒有 Figma frame |
 | VPN 引導／說明 | R04 使用 canvas 背景、card 步驟清單（Wi‑Fi／開啟 LocalDevVPN／點 Connect／點重新檢查）、連線說明連結、中間 StatusPill 與單一底部 Primary CTA。VPN 檢查失敗時錯誤 Banner 由共用 Toast overlay 懸浮，不推動內容；檢查成功後自動再次確認並進入 B1 收合 sheet，不顯示 success Toast。R05 使用自訂返回列、三列步驟卡（下載／開啟 LocalDevVPN／點 Connect）及一張 troubleshooting 卡；沒有大標題、副標、底部 CTA 或本機網路權限列。R05 返回會重新檢查 VPN；前兩步仍保留 App Store 與 LocalDevVPN deep link fallback |
 | 地圖頂部 | 浮動搜尋列由兩張獨立浮動卡片組成（x: 16 pt，總寬 361 pt）：左側為縮短的搜尋輸入卡（301 × 50 pt，包含搜尋放大鏡、query 與貼上／清除圖示），右側為獨立的設定按鈕卡（50 × 50 pt，包含齒輪圖示）；下方狀態 pill；執行模式與全螢幕頁隱藏一般 chrome，頂部不放啟停 |
 | 模式列 | 底部瞬移／路線／搖桿三個等寬 tab（TabBar / 瞬移・路線・搖桿（等寬））；最愛由內容入口開啟。執行模式與全螢幕頁隱藏 bottom bar。選中模式無 filled color，僅純線框 line 變深（strokeWeight 2.29 pt、#000000 / #E5E5EA，文字 Medium 10 pt 加深），未選中維持 1.88 pt 細線與次要灰（#999999 / #8E8E93），完全對齊 B1 地圖首頁樣式 |
@@ -738,14 +738,15 @@ Figma 內部不一致（記錄、不視為已設計）：`Toast / 系統訊息 /
 ### 兩種安裝入口（2026-11-02）
 
 - Mac 安裝版：來源 `GoFly-Info.plist` 的 `GoFlyRequiresMacSetup` 維持 Boolean `true`；無 setup handoff 時保留 R07，正式交易與配對完成後才進入既有 onboarding。
-- SideStore／AltStore IPA：`scripts/package-ipa.sh` 建置未簽名實機版，再由 `scripts/package_ipa.py` 僅在 Payload 副本將該旗標設為 Boolean `false`；無正式 setup 狀態時（目前實作）直接進入既有 R01／定位／區域網路／VPN onboarding；依下方 R07.s 設計更新，實作後改為先匯入配對檔。正式 setup 若存在但錯誤或未完成，仍由原本 coordinator 阻擋，不因 IPA 通道跳過。
+- SideStore／AltStore IPA：`scripts/package-ipa.sh` 建置未簽名實機版，再由 `scripts/package_ipa.py` 僅在 Payload 副本將該旗標設為 Boolean `false`；無正式 setup 狀態且尚無有效配對時先顯示 R07.s 匯入配對檔，完成後進入 R01／定位／區域網路／VPN onboarding。正式 setup 若存在但錯誤或未完成，仍由原本 coordinator 阻擋，不因 IPA 通道跳過。
 - 兩者授權流程相同。onboarding 的 VPN 探測只證明通道可達，不建立 GoFly 配對或裝置支援資料；缺少資料時原生定位服務仍拒絕執行，不回報定位成功。
 - Figma 04 已檢視 R07（`222:11858`）與 F9（`123:59200`）渲染；保留既有畫面。此次只調整進入條件，沒有新增 UI。Figma 尚無獨立側載配對／支援資料匯入變體，本次不宣稱已設計或實作該功能。
-- **設計更新：R07.s 匯入配對檔（IPA 版，2026-11-02；Figma 與 App 已實作，未實機驗證）**：Figma 04 新增 Light `351:22573`（A 區第一列 x=2269）及說明節點 `351:22603`。IPA 版不再直接進入 R01 onboarding，而是先顯示 R07.s：版面沿用 R07（120 pt Hero、28 pt 標題、15 pt 置中內文、StatusPill），Hero 圖示改為 `icon/phone`，標題「匯入配對檔」，內文「在電腦匯出這支 iPhone 的配對檔，再點下方按鈕匯入。」，失敗 Toast「無法匯入這個配對檔。請在電腦匯出這支 iPhone 的配對檔後再試一次。」（SideStore 與 AltStore 側載共用，不綁定特定工具），pill「尚未匯入」，底部加 R04 同款分隔線與 Primary Large 按鈕「匯入配對檔」。點擊後開啟系統檔案選擇器選電腦匯出的 `pairingFile.plist`（例如 iloader；SideStore 與 AltStore 側載共用）。R07.s 位於 VPN 引導（R04）之前，匯入當下無法連回手機，因此以檔案內 `UDID` 綁定；之後每次裝置操作由 `VerifiedDeviceSession` 經 LocalDevVPN 連回 remotepairingd（連接埠以 Bonjour 探索）讀回手機 UDID 比對，不符即停止且不送出定位。匯入成功後重新執行 setup 檢查並進入 R01 onboarding。Mac 安裝版仍顯示原 R07。
+- **設計更新：R07.s 匯入配對檔（IPA 版，2026-11-02；Figma 與 App 已實作，已實機驗證）**：Figma 04 新增 Light `351:22573`（A 區第一列 x=2269）及說明節點 `351:22603`。IPA 版不再直接進入 R01 onboarding，而是先顯示 R07.s：版面沿用 R07（120 pt Hero、28 pt 標題、15 pt 置中內文、StatusPill），Hero 圖示改為 `icon/phone`，標題「匯入配對檔」，內文「在電腦匯出這支 iPhone 的配對檔，再點下方按鈕匯入。」，失敗 Toast「無法匯入這個配對檔。請在電腦匯出這支 iPhone 的配對檔後再試一次。」（SideStore 與 AltStore 側載共用，不綁定特定工具），pill「尚未匯入」，底部加 R04 同款分隔線與 Primary Large 按鈕「匯入配對檔」。點擊後開啟系統檔案選擇器選電腦匯出的 `pairingFile.plist`（例如 iloader；SideStore 與 AltStore 側載共用）。R07.s 位於 VPN 引導（R04）之前，匯入當下無法連回手機，因此以檔案內 `UDID` 綁定；之後每次裝置操作由 `VerifiedDeviceSession` 經 LocalDevVPN 連回 remotepairingd（連接埠以 Bonjour 探索）讀回手機 UDID 比對，不符即停止且不送出定位。匯入成功後重新執行 setup 檢查並進入 R01 onboarding。Mac 安裝版仍顯示原 R07。
 - R07.s 缺口：Dark 變體、驗證中／匯入失敗狀態、英文與簡中 Figma 文案（App 已有字串）、裝置支援檔（DDI／cryptex）來源均未設計；錯誤暫定使用共用 Toast。缺少 `UDID` 或 RPPairing 欄位的配對檔（例如僅含 lockdown 欄位者）會被拒絕。
-- R07.s 實作：`GoFlySetupBootstrapPhase.awaitingPairingImport`（僅 `GoFlyRequiresMacSetup=false` 的實機版且無有效配對時；模擬器維持一般啟動）、`GoFlyPairingImportView`、`PairingFileStore.importSideloadedPairing`，字串 `setup.pairingImport.*`（英文按鈕「Import」）。simulator 與 iphoneos Debug 建置、`swift test` 通過；未做實機、Light／Dark 截圖與 UI 測試。
+- R07.s 實作：`GoFlySetupBootstrapPhase.awaitingPairingImport`（僅 `GoFlyRequiresMacSetup=false` 的實機版且無有效配對時；模擬器維持一般啟動）、`GoFlyPairingImportView`、`PairingFileStore.importSideloadedPairing`，字串 `setup.pairingImport.*`（英文按鈕「Import」）。simulator 與 iphoneos Debug 建置、`swift test` 通過。
+- R07.s 實機驗證（2026-11-02，iPhone 15 Pro，SideStore 安裝 `work/dist/ipa/GoFly-1.0.4.ipa`，Bundle ID `com.neven.gofly.48xd59469v`）：匯入 iloader 匯出的配對檔後完成 onboarding；瞬移、路線背景移動正常。自動漫步背景移動時好時壞：失敗時 diagnostics 顯示背景任務已啟動、漫步仍為 moving，但 App 進背景約 1 秒後即無任何事件，回前景才恢復，判斷為 iOS 暫停行程而非 GoFly 停止漫步；成功時背景持續送點（約 52 秒內 194→497 m）。尚未與 Mac 安裝版同情境比對；手機上的 DDI 推測已由先前工具掛載，重開機後的定位尚未驗證。未做 Light／Dark 截圖與 UI 測試。
 - R07.s 驗收：IPA 首次啟動顯示 R07.s；取消選檔維持本頁；格式錯誤、缺少 UDID 或原生驗證失敗時不寫入任何配對資料並顯示錯誤 Toast；配對檔屬於別支手機時，首次裝置操作因 UDID 不符停止；成功後離開 R07.s 進入 onboarding；Mac 安裝版行為不變。
-- 驗收：來源及 Mac build 保持 `true`；IPA Payload 必須為 `false`；其餘 metadata、背景識別字及檔案權限保留；套件檢查涵蓋原始檔不變、錯誤旗標拒絕與 checksum。IPA 及實機驗收待 UI 更新後進行，既有 1.0.4 IPA 不視為已修正。
+- 驗收：來源及 Mac build 保持 `true`；IPA Payload 必須為 `false`；其餘 metadata、背景識別字及檔案權限保留；套件檢查涵蓋原始檔不變、錯誤旗標拒絕與 checksum。R07.s 版 IPA 已於 2026-11-02 實機驗收（見上方 R07.s 實機驗證）；`work/dist/GoFly-1.0.4.ipa` 為舊版（仍有 Mac 啟動限制）。IPA 一律輸出至 `work/dist/ipa/`，同版本舊檔移至 `work/dist/ipa/archive/<UTC 時間>/`。
 
 ## 2026-11-02 VPN 引導加入「允許區域網路」（使用者指示；App 與 Figma 04 已同步）
 

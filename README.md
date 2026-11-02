@@ -67,9 +67,9 @@ The app is ad-hoc signed, **not notarized**, so macOS will not open it by double
 
 For SideStore, follow its [setup guide](https://docs.sidestore.io/docs/installation/install), then import the same IPA under **My Apps → +** with Wi-Fi and LocalDevVPN connected.
 
-The IPA packaging script disables the Mac-only startup gate; the Mac installer retains it. Both routes use the iOS location, Local Network, and VPN onboarding. These permissions do not create GoFly pairing records or device support: positioning still requires those, and the Mac handoff to a SideStore/AltStore-signed bundle remains unverified. Removing the startup gate alone does not enable positioning. The previously packaged 1.0.4 IPA retains the gate; a replacement will be generated after the pending UI updates.
+On first launch, the IPA asks you to import a pairing file: export this iPhone’s pairing file on your computer (for example, with iloader), then tap **Import** in GoFly and choose it. Location, Local Network, and VPN setup follow. The Mac installer keeps its Mac pairing flow. On 2026-11-02, import, teleport, and background route movement were verified on a device installed with SideStore; iOS occasionally suspends auto-wander in the background.
 
-To build the replacement unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` (requires the prepared native archive under `work/gofly-ios/native`). It preserves the Mac build and refuses to overwrite existing output; archive prior release files or pass a new output directory as the first argument.
+To build the replacement unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` (requires the prepared native archive under `work/gofly-ios/native`). Output always goes to `work/dist/ipa/`; an earlier IPA and checksum of the same version move to `work/dist/ipa/archive/<UTC time>/` instead of being overwritten or deleted. The Mac build is unchanged.
 
 ## Let an AI install it for you
 

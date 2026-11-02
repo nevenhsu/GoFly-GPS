@@ -3,7 +3,7 @@ set -euo pipefail
 task_root="$(cd "$(dirname "$0")/../../.." && pwd)"
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 task_build="$task_root/work/gofly-ios/sidestore"
-task_output="${1:-$task_root/work/dist}"
+task_output="${1:-$task_root/work/dist/ipa}"
 mkdir -p "$task_build"
 
 # Check native source patches and the Swift shim before using the prepared archive.
