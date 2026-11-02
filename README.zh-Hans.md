@@ -2,11 +2,27 @@
 
 [English](README.md) · [繁體中文](README.zh-Hant.md) · **简体中文**
 
-GoFly 是一个在你自己的 iPhone 上选择并移动模拟位置的 App。**GoFly for Mac** 是配套的 Mac App，唯一的工作是用你自己在 Xcode 登录的 Apple 账号，通过 USB **把 iPhone App 安装到手机**，并持续维持签名。
+GoFly 是一个让你在自己的 iPhone 上选择并移动模拟 GPS 位置的 App。**GoFly for Mac** 使用你在 Xcode 登录的 Apple 账号，通过 USB 安装 iPhone App，并可更新签名，让 App 持续可用。
 
 [**下载最新版 GoFly for Mac（DMG）**](https://github.com/nevenhsu/GoFly/releases/latest)
 
+**开发状态（2026-11-02）：GoFly iOS App 已开发完成。** 可通过 GoFly for Mac 安装，或使用 SideStore／AltStore 安装 IPA。已知限制与尚待验证项目见下方说明。
+
 ## iPhone App 的功能
+
+**Light 外观**
+
+<div style="overflow-x: auto; white-space: nowrap;">
+  <img src="docs/images/ios/map-teleport.png" alt="地图与瞬移" width="180">&nbsp;&nbsp;<img src="docs/images/ios/routes.png" alt="路线规划" width="180">&nbsp;&nbsp;<img src="docs/images/ios/joystick.png" alt="摇杆与漫步" width="180">
+</div>
+
+**Dark 外观**
+
+<div style="overflow-x: auto; white-space: nowrap;">
+  <img src="docs/images/ios/map-teleport-dark.png" alt="地图与瞬移" width="180">&nbsp;&nbsp;<img src="docs/images/ios/routes-dark.png" alt="路线规划" width="180">&nbsp;&nbsp;<img src="docs/images/ios/joystick-dark.png" alt="摇杆与漫步" width="180">
+</div>
+
+<br>
 
 - **地图与搜索**：搜索地点并跳转过去，界面参考 Google Maps 的版面。
 - **瞬移**：把模拟位置移到指定的点，并保持在那里。

@@ -2,11 +2,29 @@
 
 **English** · [繁體中文](README.zh-Hant.md) · [简体中文](README.zh-Hans.md)
 
-GoFly is an iPhone app for choosing and moving a simulated location on your own device. **GoFly for Mac** is the companion app whose only job is to **install the iPhone app** (and keep it signed) over USB, using your own Apple Account in Xcode.
+GoFly is an iPhone app for choosing and moving a simulated GPS location on your own device. **GoFly for Mac** installs the iPhone app over USB with your own Apple Account in Xcode and renews its signing so you can keep using it.
 
 [**Download the latest GoFly for Mac (DMG)**](https://github.com/nevenhsu/GoFly/releases/latest)
 
+**Development status (2026-11-02): GoFly iOS app development is complete.** It supports installation through GoFly for Mac or as an IPA through SideStore / AltStore. Known limitations and remaining verification are listed below.
+
 ## What the iPhone app does
+
+**Light**
+
+<div style="overflow-x: auto; white-space: nowrap;">
+  <img src="docs/images/ios/map-teleport.png" alt="Map and teleport" width="180">&nbsp;&nbsp;<img src="docs/images/ios/routes.png" alt="Route planning" width="180">&nbsp;&nbsp;<img src="docs/images/ios/joystick.png" alt="Joystick and wander" width="180">
+</div>
+
+<br>
+
+**Dark**
+
+<div style="overflow-x: auto; white-space: nowrap;">
+  <img src="docs/images/ios/map-teleport-dark.png" alt="Map and teleport" width="180">&nbsp;&nbsp;<img src="docs/images/ios/routes-dark.png" alt="Route planning" width="180">&nbsp;&nbsp;<img src="docs/images/ios/joystick-dark.png" alt="Joystick and wander" width="180">
+</div>
+
+<br>
 
 - **Map and search** — find a place and jump to it; the map follows a Google Maps–style layout.
 - **Teleport** — move the simulated location to a chosen point and hold it there.
