@@ -141,7 +141,7 @@ info = {
     "CFBundleIconFile": "AppIcon",
     "CFBundlePackageType": "APPL",
     "CFBundleShortVersionString": "1.0.6",
-    "CFBundleVersion": "3",
+    "CFBundleVersion": "4",
     "LSMinimumSystemVersion": "15.0",
     "NSHighResolutionCapable": True,
     "NSPrincipalClass": "NSApplication",
