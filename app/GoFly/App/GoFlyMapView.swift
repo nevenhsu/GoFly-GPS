@@ -1628,7 +1628,7 @@ struct GoFlyMapView: View {
 
     private var currentPositionTitle: String {
         guard let place = currentPositionPlace else { return goFlyString("sheet.noPosition") }
-        return GoFlyLocationTitle.resolve(for: place)
+        return GoFlyLocationTitle.resolve(label: currentPositionFavorite?.label, for: place)
     }
 
     private func locationCardTitleLabel(for place: MapPlace) -> String? {
