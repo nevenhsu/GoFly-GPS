@@ -442,7 +442,6 @@
 "settings.status.timedOut" = "檢查逾時";
 "settings.status.locationServicesOff" = "定位服務已關閉";
 "settings.status.authorized" = "使用期間";
-"settings.status.authorizedApproximate" = "使用期間 · 大概位置";
 "settings.status.denied" = "未允許";
 "settings.status.notDetermined" = "尚未決定";
 "settings.status.restricted" = "受限制";

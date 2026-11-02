@@ -43,7 +43,7 @@ struct GoFlyJoystickPanel: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.bottom, bottomPadding ?? (isCollapsed ? 16 : 20))
+        .padding(.bottom, bottomPadding ?? 20)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .goFlyTracksSystemPresentation(showingSpeedSheet, id: "joystick.speedSheet")
         .sheet(isPresented: $showingSpeedSheet) {

@@ -718,7 +718,10 @@ Figma 內部不一致（記錄、不視為已設計）：`Toast / 系統訊息 /
 
 - 已實作：全部地點 ✕／清除（danger 色）與路線列 ✕ 在 2 個以上地點時刪除起終點；Ghost Secondary（瞬移「查看全部」、全部地點「反轉順序」）；Location card 主按鈕 hug＋左右 12、星號 sheet 對已收藏者顯示刪除、複製 toast 距 card 上緣 8（card 高 180）；路線線色 `color/map/route`（Light #4DA3FF／Dark #66B3FF）、起終點／停靠點圖示統一 primary 環＋白底；速度 sheet chip 下間距 24；背景運行時間 sheet 無標題、改為可連續拖曳的滾輪；裝置與簽名移除小字；最愛路線搜尋列移除貼上；規劃路線 card（D24，`GoFlyRouteStartSheet`，開始時逐段規劃；成功自動開始、部分成功刪除失敗地點後自動開始、全部失敗清空地點）。
 - Light `color/icon/warning` 由 #B85C00 改為 #E39A18（狀態 pill 的警告圓點）。
-- 最愛路線與最愛地點共用 `GoFlyFavoritesBottomBar`，僅以 `showsPasteControl` 區分。
+- 設定列（2026-11-03 使用者指示，App 已改、Figma 04 F1 僅有中文且無「拒絕」變體）：標題與值放不下一行時，值改排到標題下方（間距 2 pt），不再截斷任一邊；放得下時維持單行。設定首頁「定位權限」為拒絕時只顯示 ⚠︎ 圖示（22 pt，沿用 warning toast 的外框三角＋驚嘆號圖示；Light 外框 #B85C00 → #DC750C，warning toast 圖示同步），不顯示「未允許」文字，VoiceOver 仍讀出狀態；網路需注意時維持 ⚠︎＋文字。`color/text/warning` Light 由 #8A5A00 改為 #DC750C（Dark #DDA862 不變），套用於設定頁 warning 值與 warning 狀態 banner 文字；Figma 變數已同步，F1 拒絕狀態畫面仍未設計。尚未設定時設定首頁該列不顯示值（定位權限子頁仍顯示「尚未設定」）；已允許時不論精確或大概位置一律顯示「使用期間／While Using」，不再顯示「· 大概位置／· Approx.」。模擬器英文「Location permission / Not allowed」已確認；未實機驗證。
+- Location card 標題（2026-11-02 使用者指示，App 已改、Figma 04 LocationCard 尚未同步）：由 `Theme/headline` 17 pt Semibold 改為 `Theme/title` 20 pt Semibold（App `GoFlyFont.title`），標題到地址間距由 4 pt 改為 8 pt（地址到經緯度維持 4 pt）；headline token 本身不變，導覽列等其他用途不受影響；未實機驗證。
+- 瞬移收合位置摘要（2026-11-02 使用者指示，App 已改、Figma 04 B1 尚未同步）：「目前模擬位置」標籤、地名、經緯度／地址三行間距由 4 pt 改為 8 pt；模擬器確認收合高度仍容納，未實機驗證。
+- 最愛路線與最愛地點共用 `GoFlyFavoritesBottomBar`；此搜尋列只有清除 ✕，沒有貼上按鈕。貼上按鈕（`GoFlyPasteControl.swift`）只用於地圖頂部搜尋列與搜尋頁。
 - 尚未做：規劃中 sheet 在 0.4 秒內完成時不顯示（避免閃現）；成功狀態因自動開始，實際不會停留；UI 測試截圖需重拍；未實機驗證。
 - 設定（2026-10-31 使用者指示，App 已改、設計稿 F6／F5 尚未同步）：背景執行頁刪除「背景延續」狀態卡（`GoFlyContinuationStatus` 不再顯示）；時間輸入只保留一個背景色，不再另畫選取列的 pill 底（系統滾輪自身的選取樣式不受控）；VPN 通道頁與引導頁的英文按鈕改為「Open LocalDevVPN」（中文原本已是「開啟 LocalDevVPN」）。
 - 路線執行（2026-10-31 使用者指示，App 已改、設計稿尚未同步）：來回開啟時，進度條上方標籤由「目前路線位置」改為「自動來回 (順向)」／「自動來回 (逆向)」，隨目前行進方向變化；來回關閉時仍顯示剩餘時間。

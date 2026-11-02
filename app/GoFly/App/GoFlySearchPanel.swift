@@ -596,24 +596,6 @@ private final class SearchTextFieldAccessoryView: UIView {
     override var intrinsicContentSize: CGSize { CGSize(width: 44, height: 44) }
 }
 
-/// Figma's paste affordance, drawn by the system paste control so iOS does
-/// not ask "Allow Paste" on every read. A clear base color is drawn black by
-/// the system control, so it takes the search bar's input surface instead.
-struct GoFlyPasteButton: View {
-    let accessibilityLabel: String
-    let accessibilityIdentifier: String
-    var isVisible = true
-    let onPaste: (String) -> Void
-
-    var body: some View {
-        GoFlySystemPasteControl(accessibilityLabel: accessibilityLabel,
-                                accessibilityIdentifier: accessibilityIdentifier,
-                                isVisible: isVisible,
-                                onPaste: onPaste)
-            .frame(width: 44, height: 44)
-    }
-}
-
 private func trimmedPasteText(_ itemStrings: [NSAttributedString]) -> NSAttributedString {
     let pastedText = itemStrings.map(\.string).joined().trimmingCharacters(in: .whitespacesAndNewlines)
     return NSAttributedString(string: pastedText)

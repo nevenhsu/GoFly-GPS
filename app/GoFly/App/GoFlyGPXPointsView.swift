@@ -9,7 +9,21 @@ struct GoFlyGPXPointList: View {
     var onShowAll: () -> Void = {}
 
     var body: some View {
-        LazyVStack(spacing: 0) {
+        // Summarized is at most five rows inside the self-sizing route panel: a lazy stack reports a stale
+        // height on first layout after launch and clips the Cancel / Start row against the tab bar.
+        listContent
+        .background(summarized ? GoFlyStyle.secondarySurface : GoFlyStyle.cardSurface,
+                    in: RoundedRectangle(cornerRadius: 12))
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(GoFlyStyle.border, lineWidth: 0.5) }
+        .accessibilityIdentifier("imports.points.list")
+    }
+
+    @ViewBuilder private var listContent: some View {
+        if summarized { VStack(spacing: 0) { rows } } else { LazyVStack(spacing: 0) { rows } }
+    }
+
+    @ViewBuilder private var rows: some View {
+        Group {
             if summarized && points.count > 10 {
                 GoFlyListRow(minimumHeight: 46, separatorLeadingInset: 16, separatorTrailingInset: 16) { pointRow(0, compact: true) }
                 GoFlyListRow(minimumHeight: 46, separatorLeadingInset: 16, separatorTrailingInset: 16) { pointRow(1, compact: true) }
@@ -41,10 +55,6 @@ struct GoFlyGPXPointList: View {
                 }
             }
         }
-        .background(summarized ? GoFlyStyle.secondarySurface : GoFlyStyle.cardSurface,
-                    in: RoundedRectangle(cornerRadius: 12))
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(GoFlyStyle.border, lineWidth: 0.5) }
-        .accessibilityIdentifier("imports.points.list")
     }
 
     private func pointRow(_ index: Int, compact: Bool = false) -> some View {

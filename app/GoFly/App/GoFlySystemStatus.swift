@@ -9,7 +9,6 @@ import UIKit
 final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var locationAuthorization: CLAuthorizationStatus
     @Published private(set) var locationServicesEnabled: Bool?
-    @Published private(set) var accuracyAuthorization: CLAccuracyAuthorization
     @Published private(set) var backgroundRefreshStatus: UIBackgroundRefreshStatus
     @Published private(set) var pairingReady: Bool?
     @Published private(set) var externalOpenFailed = false
@@ -22,7 +21,6 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
         locationManager = CLLocationManager()
         locationAuthorization = locationManager.authorizationStatus
         locationServicesEnabled = nil
-        accuracyAuthorization = locationManager.accuracyAuthorization
         backgroundRefreshStatus = UIApplication.shared.backgroundRefreshStatus
         pairingReady = nil
         super.init()
@@ -39,9 +37,8 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
         guard let locationServicesEnabled else { return "settings.status.unknown" }
         guard locationServicesEnabled else { return "settings.status.locationServicesOff" }
         switch locationAuthorization {
-        case .authorizedAlways, .authorizedWhenInUse:
-            return accuracyAuthorization == .fullAccuracy
-                ? "settings.status.authorized" : "settings.status.authorizedApproximate"
+        // Precise and approximate access both read "While Using"; the accuracy is not shown.
+        case .authorizedAlways, .authorizedWhenInUse: return "settings.status.authorized"
         case .denied: return "settings.status.denied"
         case .restricted: return "settings.status.restricted"
         case .notDetermined: return "settings.status.notDetermined"
@@ -80,7 +77,6 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
                 self.pairingReadyQueryTask = nil
             }
         }
-        accuracyAuthorization = locationManager.accuracyAuthorization
         backgroundRefreshStatus = UIApplication.shared.backgroundRefreshStatus
     }
 

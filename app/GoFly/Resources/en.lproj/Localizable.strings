@@ -432,7 +432,6 @@
 "settings.status.timedOut" = "Timed out";
 "settings.status.locationServicesOff" = "Location Services off";
 "settings.status.authorized" = "While Using";
-"settings.status.authorizedApproximate" = "While Using · Approx.";
 "settings.status.denied" = "Not allowed";
 "settings.status.notDetermined" = "Not determined";
 "settings.status.restricted" = "Restricted";

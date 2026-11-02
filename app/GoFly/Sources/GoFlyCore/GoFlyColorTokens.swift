@@ -111,7 +111,7 @@ public enum GoFlyColorTokens {
         GoFlyColorToken(name: "color/text/status/secondary", lightHex: "#6A6A6F", darkHex: "#C7C7CC"),
         GoFlyColorToken(name: "color/text/success", lightHex: "#1E7A34", darkHex: "#6FC48B"),
         GoFlyColorToken(name: "color/text/tertiary", lightHex: "#77777C", darkHex: "#8A8A8E"),
-        GoFlyColorToken(name: "color/text/warning", lightHex: "#8A5A00", darkHex: "#DDA862"),
+        GoFlyColorToken(name: "color/text/warning", lightHex: "#DC750C", darkHex: "#DDA862"),
         GoFlyColorToken(name: "common/black", lightHex: "#000000", darkHex: "#000000"),
         GoFlyColorToken(name: "common/gray/100", lightHex: "#F2F2F7", darkHex: "#F2F2F7"),
         GoFlyColorToken(name: "common/gray/200", lightHex: "#EEEEF0", darkHex: "#EEEEF0"),

@@ -156,7 +156,11 @@ struct ServiceSettingsView: View {
         if localNetwork.authorization == .denied { return goFlyString("settings.status.denied") }
         return goFlyString("settings.wifi.connected")
     }
-    private var locationSummary: String { goFlyString(systemStatus.locationStatusKey) }
+    /// Not determined leaves the row blank; the location page still names the status.
+    private var locationSummary: String? {
+        let key = systemStatus.locationStatusKey
+        return key == "settings.status.notDetermined" ? nil : goFlyString(key)
+    }
     private var backgroundSummary: String { goFlyString(systemStatus.backgroundStatusKey) }
 
     @ViewBuilder
@@ -211,8 +215,12 @@ struct ServiceSettingsView: View {
                     .multilineTextAlignment(.leading)
             } value: {
                 if let value {
-                    if (titleKey == "settings.location" && systemStatus.locationAuthorization == .denied) ||
-                       (titleKey == "settings.network" && networkNeedsAttention) {
+                    if titleKey == "settings.location" && systemStatus.locationAuthorization == .denied {
+                        // Denied shows only ⚠︎ so the title keeps its single line; VoiceOver still reads the status.
+                        // The outlined toast glyph keeps its "!" visible; the template alert fills solid.
+                        GoFlyIcon(.toastWarning, size: 22)
+                            .accessibilityLabel(value)
+                    } else if titleKey == "settings.network" && networkNeedsAttention {
                         GoFlyIconLabel(title: value, icon: GoFlySymbols.warning)
                             .goFlyFont(GoFlyFont.subheadline)
                             .foregroundStyle(GoFlyTextColor.warning)

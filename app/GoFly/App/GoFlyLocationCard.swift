@@ -47,9 +47,11 @@ struct GoFlyLocationCard: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(GoFlyLocationTitle.resolve(label: titleLabel, for: place))
-                    .goFlyFont(.bodyEmphasis)
+                    .goFlyFont(.title)
                     .foregroundStyle(GoFlyTextColor.primary)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    // 8 pt below the 20 pt title; the smaller lines keep 4 pt between them.
+                    .padding(.bottom, 4)
                     .accessibilityIdentifier("\(identifier).title")
 
                 Text(place.address ?? "")

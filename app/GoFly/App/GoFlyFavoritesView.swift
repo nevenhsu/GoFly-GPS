@@ -26,26 +26,31 @@ struct GoFlyFavoritesView: View {
             header
                 .goFlyDismissesKeyboardOnTap()
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     failureNotice
+                    // Like favorite routes, the empty state sits on the page; only rows get the card.
                     if favorites.loadState == .ready, visible.isEmpty {
                         GoFlyEmptyState(symbol: GoFlySymbols.favorite,
                             message: goFlyString(query.isEmpty ? "favorites.empty" : "favorites.noMatches"))
                             .padding(.vertical, 24)
                             .accessibilityIdentifier("favorites.empty")
                     }
-                    ForEach(visible) { favorite in
-                        let showsSeparator = favorite.id != visible.last?.id
-                        GoFlyListRow(minimumHeight: 64,
-                                     separatorLeadingInset: showsSeparator ? 60 : nil,
-                                     separatorTrailingInset: 12) {
-                            row(favorite)
-                                .padding(.horizontal, 8)
+                    if !visible.isEmpty {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(visible) { favorite in
+                                let showsSeparator = favorite.id != visible.last?.id
+                                GoFlyListRow(minimumHeight: 64,
+                                             separatorLeadingInset: showsSeparator ? 60 : nil,
+                                             separatorTrailingInset: 12) {
+                                    row(favorite)
+                                        .padding(.horizontal, 8)
+                                }
+                            }
                         }
+                        .goFlyCard(radius: GoFlyStyle.cardRadius)
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 0, alignment: .top)
-                .goFlyCard(radius: GoFlyStyle.cardRadius)
                 .padding(.horizontal, 16)
                 .padding(.top, GoFlyStyle.favoriteListTopSpacing)
             }

@@ -115,7 +115,7 @@ struct GoFlyRoutePanel: View {
     }
 
     /// Figma D1/D2: header 12 pt below the sheet top, list card, add / inspect row,
-    /// star + Start row, 35 pt above the tab bar. Only the list scrolls (D2: up to 4 rows).
+    /// star + Start row, 20 pt above the tab bar. Only the list scrolls (D2: up to 4 rows).
     private var editingView: some View {
         ScrollViewReader { proxy in
             VStack(alignment: .leading, spacing: 0) {

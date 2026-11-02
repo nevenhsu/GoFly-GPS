@@ -1566,12 +1566,12 @@ struct GoFlyMapView: View {
     /// Figma B1/B8/B9: the collapsed Teleport sheet keeps its position summary
     /// and favorite/copy actions, including while a position hold is paused.
     private var collapsedPositionSummary: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(goFlyString(collapsedPositionTitleKey))
                 .goFlyFont(GoFlyFont.footnote)
                 .foregroundStyle(GoFlyTextColor.secondary)
             HStack(alignment: .center, spacing: 8) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text(currentPositionTitle)
                         .goFlyFont(GoFlyFont.title)
                         .monospacedDigit()
