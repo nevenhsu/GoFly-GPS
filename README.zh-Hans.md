@@ -58,16 +58,28 @@ GoFly for Mac 不是定位工具。它用**你的** Xcode 签名 Team 构建 iPh
 
 ## 用 SideStore 或 AltStore 安装 IPA
 
-[AltStore](https://altstore.io) 是专为 sideloading 设计的 app store：用你自己的 Apple ID 重新签名，把 App 装到 iPhone。
+不想用 Mac App 时，可以用 [SideStore](https://sidestore.io) 或 [AltStore](https://altstore.io) 以你自己的 Apple ID 重新签名并安装 IPA。两者使用同一份 IPA，第一次打开时要导入这台 iPhone 的配对文件。
 
-1. 按 [AltStore 说明](https://faq.altstore.io/)在 Mac 安装 AltServer，并在 iPhone 安装 AltStore。
-2. 从[最新版 Release](https://github.com/nevenhsu/GoFly/releases/latest)下载 `GoFly-<版本>.ipa` 到 iPhone（或用 AirDrop 传过去）。
-3. 在 AltStore 打开 **My Apps**，点 **+**，选这个 `.ipa`。
-4. 让 AltStore 持续刷新。免费 Apple ID 的签名只有 7 天。
+**准备**
 
-使用 SideStore 时，先按[官方流程](https://docs.sidestore.io/docs/installation/install)完成设置，再保持 Wi-Fi 与 LocalDevVPN 连接，在 **My Apps → ＋** 导入同一份 IPA。
+- iPhone：iOS 26 以上，已打开**开发者模式**。
+- 已安装 [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044) 并允许添加 VPN；使用 GoFly 时连接 Wi‑Fi。
+- 一台电脑，用 [iloader](https://github.com/nab138/iloader) 导出这台 iPhone 的配对文件（`pairingFile.plist`）。
 
-IPA 版第一次打开会显示「导入配对文件」：在电脑导出这台 iPhone 的配对文件（例如用 iloader），再在 GoFly 点「导入配对文件」选取。之后进入定位、本地网络与 VPN 引导。Mac 安装版保持原来的 Mac 配对流程。2026-11-02 已用 SideStore 实机验证导入、瞬移与路线后台移动；自动漫步在后台偶尔会被 iOS 暂停。
+**安装**
+
+1. 从[最新版 Release](https://github.com/nevenhsu/GoFly/releases/latest)下载 `GoFly-<版本>.ipa`（可用同名 `.sha256` 核对），传到 iPhone。
+2. 选一个侧载工具安装：
+   - **SideStore**：按[官方流程](https://docs.sidestore.io/docs/installation/install)完成设置，保持 Wi‑Fi 与 LocalDevVPN 连接，在 **My Apps → ＋** 选这个 IPA。
+   - **AltStore**：按 [AltStore 说明](https://faq.altstore.io/)在电脑安装 AltServer、在 iPhone 安装 AltStore，再在 **My Apps → ＋** 选这个 IPA。
+3. 免费 Apple ID 的签名约 7 天，请让 SideStore／AltStore 定期刷新；刷新会保留 App 内的数据。
+
+**第一次打开**
+
+1. GoFly 会显示「导入配对文件」。在电脑用 iloader 导出这台 iPhone 的配对文件，传到 iPhone（AirDrop 或「文件」App），点**导入配对文件**选取。
+2. 依次允许定位与本地网络，并连接 LocalDevVPN，就可以开始使用。
+
+配对文件必须属于这台 iPhone；其他手机的配对文件会在第一次连接时被拦下。IPA 版不需要 Mac App；Mac 安装版仍使用原来的 USB 配对流程。2026-11-02 已用 SideStore 实机验证导入、瞬移、路线后台移动，以及手机重启后的定位；自动漫步在后台偶尔会被 iOS 暂停。
 
 开发者运行 `bash app/GoFly/scripts/package-ipa.sh` 生成未签名 IPA 与 SHA-256（须先有 `work/gofly-ios/native` 中已构建的原生库）。输出一律放在 `work/dist/ipa/`；同版本的旧 IPA 与校验文件会先移到 `work/dist/ipa/archive/<UTC 时间>/`，不会被覆盖或删除。脚本不修改 Mac 构建。
 

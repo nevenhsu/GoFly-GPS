@@ -58,18 +58,30 @@ The app is ad-hoc signed, **not notarized**, so macOS will not open it by double
 
 ## Install the IPA with SideStore or AltStore
 
-[AltStore](https://altstore.io) is an app store designed for sideloading: it installs apps on your iPhone and re-signs them with your own Apple ID.
+If you'd rather not use the Mac app, [SideStore](https://sidestore.io) or [AltStore](https://altstore.io) can re-sign and install the IPA with your own Apple ID. Both use the same IPA; on first launch you import this iPhone's pairing file.
 
-1. Install AltServer on your Mac and AltStore on your iPhone by following the [AltStore guide](https://faq.altstore.io/).
-2. Download `GoFly-<version>.ipa` from the [latest release](https://github.com/nevenhsu/GoFly/releases/latest) to your iPhone (or AirDrop it).
-3. In AltStore, open **My Apps**, tap **+**, and choose the `.ipa`.
-4. Keep AltStore refreshing the app. A free Apple ID signature lasts 7 days.
+**Before you start**
 
-For SideStore, follow its [setup guide](https://docs.sidestore.io/docs/installation/install), then import the same IPA under **My Apps → +** with Wi-Fi and LocalDevVPN connected.
+- iPhone on iOS 26 or later with **Developer Mode** on.
+- [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044) installed and allowed to add a VPN; stay on Wi‑Fi while using GoFly.
+- A computer with [iloader](https://github.com/nab138/iloader) to export this iPhone's pairing file (`pairingFile.plist`).
 
-On first launch, the IPA asks you to import a pairing file: export this iPhone’s pairing file on your computer (for example, with iloader), then tap **Import** in GoFly and choose it. Location, Local Network, and VPN setup follow. The Mac installer keeps its Mac pairing flow. On 2026-11-02, import, teleport, and background route movement were verified on a device installed with SideStore; iOS occasionally suspends auto-wander in the background.
+**Install**
 
-To build the replacement unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` (requires the prepared native archive under `work/gofly-ios/native`). Output always goes to `work/dist/ipa/`; an earlier IPA and checksum of the same version move to `work/dist/ipa/archive/<UTC time>/` instead of being overwritten or deleted. The Mac build is unchanged.
+1. Download `GoFly-<version>.ipa` from the [latest release](https://github.com/nevenhsu/GoFly/releases/latest) (check it with the matching `.sha256`) and move it to your iPhone.
+2. Install it with one sideloading app:
+   - **SideStore**: finish its [setup guide](https://docs.sidestore.io/docs/installation/install), keep Wi‑Fi and LocalDevVPN connected, then choose the IPA under **My Apps → +**.
+   - **AltStore**: install AltServer on your computer and AltStore on your iPhone by following the [AltStore guide](https://faq.altstore.io/), then choose the IPA under **My Apps → +**.
+3. A free Apple ID signature lasts about 7 days, so keep SideStore or AltStore refreshing GoFly. Refreshing keeps your GoFly data.
+
+**First launch**
+
+1. GoFly shows **Import pairing file**. Export this iPhone's pairing file with iloader on your computer, move it to the iPhone (AirDrop or the Files app), tap **Import**, and choose it.
+2. Allow Location and Local Network, connect LocalDevVPN, and you're ready.
+
+The pairing file must belong to this iPhone; a file for another phone is stopped at the first connection. The IPA does not need the Mac app; the Mac installer keeps its USB pairing flow. On 2026-11-02, import, teleport, background route movement, and positioning after an iPhone restart were verified on a device installed with SideStore; iOS occasionally suspends auto-wander in the background.
+
+To build the unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` (requires the prepared native archive under `work/gofly-ios/native`). Output always goes to `work/dist/ipa/`; an earlier IPA and checksum of the same version move to `work/dist/ipa/archive/<UTC time>/` instead of being overwritten or deleted. The Mac build is unchanged.
 
 ## Let an AI install it for you
 
