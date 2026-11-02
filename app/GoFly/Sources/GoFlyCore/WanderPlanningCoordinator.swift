@@ -153,10 +153,13 @@ public final class WanderPlanningCoordinator: ObservableObject {
                            joystickMoving: joystick.phase == .moving)
         let last = lastTriggers
         lastTriggers = now
-        // Leaving the foreground or losing the connection drops uncommitted planning.
-        if (last.sceneActive && !now.sceneActive)
-            || (now.connection != last.connection && now.connection != .available) {
+        // Leaving the foreground or losing the connection drops uncommitted
+        // planning. A wander waiting in place keeps its lease and its planning
+        // across the scene change; only a lost connection interrupts it.
+        if now.connection != last.connection && now.connection != .available {
             cancelUncommitted()
+        } else if last.sceneActive && !now.sceneActive {
+            cancelUncommitted(keepingInPlace: joystick.isAwaitingNextTargetInPlace)
         }
         // Becoming clear resumes whatever was interrupted. While clear, an
         // acknowledged start installs as soon as the joystick owner admits it,
@@ -243,7 +246,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
                                 id: .coordinate(planned.start), title: planned.start.displayText,
                                 coordinate: planned.start))),
                               case .preparing(let intent) = service.pointState else {
-                            failPlanning(planningID); return
+                            failPlanning(planningID, reason: "originTeleportRefused"); return
                         }
                         joystickOrigin.request = JoystickOriginRequest(isSetting: true, intentID: intent.id)
                         pendingStart = PendingStart(plannerID: planningID,
@@ -252,13 +255,23 @@ public final class WanderPlanningCoordinator: ObservableObject {
                     }
                     return
                 } catch is CancellationError { return }
+                catch let throttled as RoutePlanningThrottled {
+                    // Maps limits request bursts: wait out the reset before the
+                    // next attempt instead of burning every attempt at once.
+                    Diagnostics.shared.record("wander.planThrottled", category: .movement, level: .notice)
+                    try? await Task.sleep(for: throttled.retryAfter)
+                }
                 catch {
+                    Diagnostics.shared.record("wander.startPlanFailed", category: .movement, level: .notice, [
+                        "error": .text(String(describing: type(of: error))),
+                        "connection": .text(String(describing: service.movementConnection))
+                    ])
                     if service.movementConnection == .unavailable { return }
                     continue
                 }
             }
             guard !Task.isCancelled, self.planningID == planningID else { return }
-            failPlanning(planningID)
+            failPlanning(planningID, reason: "noRoute")
         }
     }
 
@@ -274,7 +287,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
               joystick.installWanderRoute(target: target, route: planned),
               joystick.setWanderEnabled(true) else {
             if !host.isSceneActive() || host.isRecoveryChecking() || service.movementConnection == .unavailable { return false }
-            failPlanning(plannerID)
+            failPlanning(plannerID, reason: "joystickRefused")
             return false
         }
         joystick.clearWanderError()
@@ -285,8 +298,14 @@ public final class WanderPlanningCoordinator: ObservableObject {
         return true
     }
 
-    private func failPlanning(_ plannerID: UUID) {
+    private func failPlanning(_ plannerID: UUID, reason: String) {
         guard planningID == plannerID else { return }
+        Diagnostics.shared.record("wander.startFailed", category: .movement, level: .notice, [
+            "reason": .text(reason),
+            "joystick": .text(joystick.phase.rawValue),
+            "canBegin": .flag(service.canBeginJoystick),
+            "simulation": .flag(service.displayPositionMarker?.source == .simulation)
+        ])
         pendingStart = nil
         planningID = nil
         planningTask = nil
@@ -323,7 +342,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
         if pendingStart?.teleportIntentID == intentID {
             let plannerID = pendingStart?.plannerID
             pendingStart = nil
-            if let plannerID { failPlanning(plannerID) }
+            if let plannerID { failPlanning(plannerID, reason: "originNotSent") }
         } else if startDeferred {
             start()
         }
@@ -338,9 +357,9 @@ public final class WanderPlanningCoordinator: ObservableObject {
 
     // MARK: Continuation
 
-    /// Plans from the last ACK endpoint while the existing joystick lease is
-    /// paused, or, in the background, while it waits in place. A failed
-    /// endpoint selection/planning gets fresh target retries.
+    /// Plans from the last ACK endpoint while the existing joystick lease
+    /// waits in place, or is paused after a manual input or a failed plan.
+    /// A failed endpoint selection/planning gets fresh target retries.
     public func planNextSegment(preselectedTarget: WanderTarget? = nil) {
         guard joystick.wanderEnabled, joystick.wanderNeedsTarget,
               replanningTask == nil else { return }
@@ -359,8 +378,8 @@ public final class WanderPlanningCoordinator: ObservableObject {
                 try? await Task.sleep(for: .milliseconds(40))
             }
             guard !Task.isCancelled, replanningID == planningID else { return }
-            // A paused segment end plans only in the foreground; a background
-            // run keeps its lease waiting in place and plans there.
+            // A paused segment end plans only in the foreground; a lease
+            // waiting in place plans in either scene.
             let inPlace = joystick.isAwaitingNextTargetInPlace
             let canContinue = { [joystick, host] in
                 host.isJoystickMode() && joystick.wanderEnabled
@@ -585,14 +604,15 @@ public final class WanderPlanningCoordinator: ObservableObject {
 
     /// The scene left the foreground or the connection dropped: drop planning
     /// that has not committed and remember it for `resumePending()`.
-    public func cancelUncommitted() {
-        if let activeCheckpoint { interruptedCheckpoint = activeCheckpoint }
-        activeCheckpoint = nil
+    public func cancelUncommitted(keepingInPlace: Bool = false) {
         if pendingStart == nil {
             planningTask?.cancel()
             planningTask = nil
             planningID = nil
         }
+        if keepingInPlace, replanningTask != nil { return }
+        if let activeCheckpoint { interruptedCheckpoint = activeCheckpoint }
+        activeCheckpoint = nil
         replanningTask?.cancel()
         replanningTask = nil
         replanningID = nil

@@ -18,7 +18,9 @@
    Teleport、路線與搖桿／漫步共用同一個 native session owner。`DeviceSessionKeeper`（GoFlyCore）決定
    session 重用、閒置關閉與寫入失敗後是否關閉 session；每筆寫入只嘗試一次，不自行重試；`NativeDeviceService`
    也只做單次嘗試。裝置可能仍有模擬位置時（任何已派送的寫入之後，直到 clear ACK），session 不因閒置關閉；
-   只有 clear 之後才套用閒置 30 秒後在下次操作前重建。已派送的暫時性服務／通道／adapter timeout 錯誤，
+   只有 clear 之後才套用閒置 30 秒後在下次操作前重建。瞬移（定點維持的繼續／重試）、路線、搖桿與漫步每次「繼續」（resume）都先在 FIFO 內
+   關閉舊 session 並確認通道，繼續後的第一筆寫入在新 session 上送出：App 暫停後在背景被掛起數分鐘時，iOS
+   可能已斷開舊連線，沿用它會讓繼續後第一筆寫入失敗而顯示「繼續失敗」（2026-11-02，實機待驗）。已派送的暫時性服務／通道／adapter timeout 錯誤，
    由 `ConnectionRecoveryController` 決定自動重連：只在同 lease、執行中、未停止且仍具前景或有效背景授權時，
    經 `ServiceController.repairConnection` 在 FIFO 內重建 session 並重新確認同一絕對座標。同一任務內自動重連
    每 60 秒最多一次（ADR 0001；2026-11-01 程式補上此間隔，先前成功後立即重置）；使用者明確重試不計入並重新
@@ -106,7 +108,7 @@
 - 「目前的移動」（`ActiveMovement`，GoFlyCore）是唯一判斷「裝置上正在跑或停在哪一件移動、為何暫停、能否繼續」的地方：依序看路線、搖桿／漫步、瞬移維持，與目前分頁無關。狀態 pill、恢復提示、`isResumeState` 與背景阻擋診斷都讀它；分頁只由 view 用 `kind` 再過濾。瞬移維持暫停時記錄原因（連線或背景），不再一律視為使用者暫停（2026-11-01）。
 - 前景生命週期（`SceneLifecycle`，GoFlyCore）是前景狀態進入 Core 的唯一入口：地圖畫面只回報 scenePhase，真實定位、繼續執行與 keepalive 在活動狀態改變時各收到一次（重複回報不重跑）。檢查點擷取、連線前景檢查與 1 秒 UI 穩定計時仍在 view；繼續執行對 recovery／瞬移維持的轉發依其 lease 判斷，留在 `MovementContinuationController`（2026-11-01）。
 - 地圖上方有哪些浮動提示、誰壓過誰，由 `MapNoticeBoard`（GoFlyCore）依領域狀態算出有序清單；地圖 view 只渲染並接上動作。規則：靜默修復進行中或可重試時，只顯示連線提示（不再顯示服務錯誤或恢復提示）；瞬移分頁的未確認點位提示壓過服務、準備失敗、連線與恢復提示；使用者自己暫停的路線或漫步不顯示恢復提示；恢復提示等前景穩定 1 秒後才出現。Status pill 仍由 `SessionStatusErrors` 判斷，因為關閉提示不清除錯誤；設定頁的兩個提示維持各自邏輯（2026-11-01）。
-- 漫步規劃何時恢復由 `WanderPlanningCoordinator` 自己決定：它監聽 service、joystick、recovery 與前景生命週期，在「前景、未檢查連線、連線可用」成立時恢復中斷的規劃，並在成立期間一旦搖桿可接手就啟動已 ACK 的起點；離開前景或連線不可用時放棄未提交的規劃；漫步偏離道路或完成一段時自行重新規劃。漫步中手動搖桿接管時，手指經過搖桿中心不算放開：箭頭保持最後方向、原地不動，自動漫步不介入；放開後先規劃從箭頭到原目的地的道路，規劃失敗則直線走回目前路線上最近且尚未走過的點並沿原路線繼續，不顯示「無法規劃路線」（2026-11-01，實機待驗）。coordinator、搖桿起點與瞬移維持的防搶 lease 接線改由 runtime（`GoFlyMovementModel`）建立一次，不再由 view 的 onChange 觸發（2026-11-01）。
+- 漫步規劃何時恢復由 `WanderPlanningCoordinator` 自己決定：它監聽 service、joystick、recovery 與前景生命週期，在「前景、未檢查連線、連線可用」成立時恢復中斷的規劃，並在成立期間一旦搖桿可接手就啟動已 ACK 的起點；離開前景或連線不可用時放棄未提交的規劃，但一段走完、lease 仍在原地等待下一段時，離開前景不取消該規劃（前景與背景換段都原地等待、不暫停 lease，背景任務不中斷；只有規劃最終失敗才暫停並顯示重試，2026-11-02，實機待驗）；第一筆位置一律立即寫入、不等節奏：瞬移本身就是立即寫入；路線開始時準備階段即寫入起點，路線繼續時先立即重寫已確認的位置（不算抵達端點）；道路漫步開始（瞬移到起點後）與每次繼續時也先立即寫入目前所在位置，讓第一個 ACK 馬上確認任務並申請背景任務；先前要等約 1 秒，這段時間離開 App 會因尚無背景任務而暫停（2026-11-02，實機待驗）；開始漫步遇到 Maps 限流（`RoutePlanningThrottled`）會等待重置時間再試，不立即顯示「無法規劃路線」，且每個開始失敗分支都記錄 `wander.startFailed`（原因：noRoute／originTeleportRefused／joystickRefused／originNotSent）與 `wander.startPlanFailed` 錯誤類型（2026-11-02，實機待驗）；漫步偏離道路或完成一段時自行重新規劃。漫步中手動搖桿接管時，手指經過搖桿中心不算放開：箭頭保持最後方向、原地不動，自動漫步不介入；放開後先規劃從箭頭到原目的地的道路，規劃失敗則直線走回目前路線上最近且尚未走過的點並沿原路線繼續，不顯示「無法規劃路線」（2026-11-01，實機待驗）。coordinator、搖桿起點與瞬移維持的防搶 lease 接線改由 runtime（`GoFlyMovementModel`）建立一次，不再由 view 的 onChange 觸發（2026-11-01）。
 - 路線／漫步進行與暫停使用執行模式。路線結束沿用取消路線；漫步結束呼叫 `setWanderEnabled(false)`，沿用取消漫步、保留最後模擬位置；設定的 Stop／Restore 仍是清除定位入口。
 - 啟動先以 Logo 銜接既有 detached setup check，500ms 後才顯示進度；沒有提前建立第二份 runtime。
 - 首次引導與設定共用 `GoFlyVPNHelpPage`、`GoFlyExternalLinks`；URL 依 LocalDevVPN、App Store 順序嘗試，全部失敗才提示手動搜尋。權限只請求 When In Use，不新增背景定位模式。

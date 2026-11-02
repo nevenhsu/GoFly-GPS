@@ -22,6 +22,7 @@ struct WanderControllerIntegrationTests {
         let controller = JoystickMovementController(commands: service, clock: clock)
         #expect(controller.installWanderRoute(target: WanderTarget(place: firstPlace), route: firstRoute))
         #expect(controller.setWanderEnabled(true))
+        await acknowledgeImmediateWrite(device)
         let owner = try #require(controller.intent)
         await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
         await wait { await device.waiting }
@@ -66,6 +67,7 @@ struct WanderControllerIntegrationTests {
         #expect(controller.installWanderRoute(target: WanderTarget(place: place(destination)),
                                               route: try PlannedRoute(points: [origin, destination])))
         #expect(controller.setWanderEnabled(true))
+        await acknowledgeImmediateWrite(device)
         await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
         await wait { await device.waiting }
         #expect(await device.claim()); await device.finish(.acknowledged)
@@ -104,7 +106,7 @@ struct WanderControllerIntegrationTests {
         #expect(past.points == [offRoad, c, d], "A point already passed is never walked back to")
     }
 
-    @Test func realArrivalWithoutNextTargetPausesAuthorityAndGoThenRetryUsesTheSameLease() async throws {
+    @Test func realArrivalWithoutNextTargetWaitsInPlaceAndAFailedPlanPausesThenRetryUsesTheSameLease() async throws {
         let device = JoystickControlledDevice(), clock = RouteTestClock(), samples = IntegrationWanderSamples([[0], []])
         let service = ServiceController(service: device)
         service.observeRealLocation(location())
@@ -117,6 +119,12 @@ struct WanderControllerIntegrationTests {
         await wait { await device.waiting }
         #expect(await device.coordinates == [firstPoint])
         #expect(await device.claim()); await device.finish(.acknowledged)
+        // A foreground segment end keeps the lease running, so leaving the app
+        // while the next road is planned cannot strand a paused wander.
+        await wait { controller.isAwaitingNextTargetInPlace }
+        #expect(controller.phase == .moving && controller.wanderNeedsTarget)
+        #expect(service.movementAuthority.snapshot.runState == .running)
+        controller.stopAwaitingNextTargetInPlace()
         await wait { controller.phase == .suspended }
         #expect(controller.suspensionReason == .targetUnavailable && controller.wanderNeedsTarget)
         #expect(service.movementAuthority.snapshot.lease == operation.lease)
@@ -126,14 +134,21 @@ struct WanderControllerIntegrationTests {
         let nextPoint = GeoCoordinate(latitude: 25.00002, longitude: 121)!
         let nextPlace = place(nextPoint)
         let nextRoute = try PlannedRoute(points: [firstPoint, nextPoint])
+        #expect(await device.rebuilds == 0)
         #expect(controller.installNextWanderRouteAndResume(target: WanderTarget(place: nextPlace), route: nextRoute))
         #expect(controller.intent == operation && service.movementAuthority.snapshot.runState == .running)
         #expect(controller.wanderRoute == nextRoute && !controller.wanderNeedsTarget)
+        // The resume drops the old session, rewrites where the wander stands
+        // on a fresh one without waiting for the cadence, then walks on.
+        #expect(clock.sleepingCount == 0)
+        await acknowledgeImmediateWrite(device)
+        #expect(await device.rebuilds == 1)
+        #expect(await device.coordinates.last == firstPoint)
         await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
         await wait { await device.waiting }
         #expect(await device.coordinates.last == nextPoint)
         #expect(await device.claim()); await device.finish(.acknowledged)
-        await wait { controller.phase == .suspended }
+        await wait { controller.isAwaitingNextTargetInPlace }
         #expect(controller.lastAcknowledgedCoordinate == nextPoint)
         #expect(controller.setWanderEnabled(false)); await wait { controller.phase == .neutral }
         #expect(service.movementAuthority.snapshot.lease == nil)
@@ -142,8 +157,8 @@ struct WanderControllerIntegrationTests {
     }
 
     /// iOS accepts a continued-processing submission only in the foreground, so
-    /// a background segment end keeps the lease running while it waits for the
-    /// next road instead of pausing it.
+    /// a segment end keeps the lease running while it waits for the next road
+    /// instead of pausing it.
     @Test func backgroundSegmentEndWaitsInPlaceAndInstallsTheNextRoadWithoutPausing() async throws {
         let device = JoystickControlledDevice(), clock = RouteTestClock()
         let service = ServiceController(service: device)
@@ -155,6 +170,12 @@ struct WanderControllerIntegrationTests {
         let controller = JoystickMovementController(commands: service, clock: clock)
         #expect(controller.installWanderRoute(target: WanderTarget(place: place(end)), route: try PlannedRoute(points: [origin, bend, end])))
         #expect(controller.setWanderEnabled(true))
+        // The start point is written at once, so its ACK can request the
+        // background task before the first cadence wait.
+        await wait { await device.waiting }
+        #expect(clock.sleepingCount == 0)
+        #expect(await device.coordinates == [origin])
+        #expect(await device.claim()); await device.finish(.acknowledged)
         let operation = try #require(controller.intent)
         await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
         await wait { await device.waiting }
@@ -195,6 +216,7 @@ struct WanderControllerIntegrationTests {
         let controller = JoystickMovementController(commands: service, clock: clock)
         #expect(controller.installWanderRoute(target: WanderTarget(place: place(end)), route: try PlannedRoute(points: [origin, bend, end])))
         #expect(controller.setWanderEnabled(true))
+        await acknowledgeImmediateWrite(device)
         await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
         await wait { await device.waiting }
         #expect(await device.claim()); await device.finish(.acknowledged)
@@ -219,6 +241,7 @@ struct WanderControllerIntegrationTests {
         let controller = JoystickMovementController(commands: service, clock: clock)
         #expect(controller.installWanderRoute(target: WanderTarget(place: oldPlace), route: oldRoute))
         #expect(controller.setWanderEnabled(true))
+        await acknowledgeImmediateWrite(device)
         let operation = try #require(controller.intent)
         await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
         await wait { await device.waiting }
@@ -352,6 +375,12 @@ struct WanderControllerIntegrationTests {
 
     private func location() -> RealLocationObservation { RealLocationObservation(latitude: 25, longitude: 121, horizontalAccuracy: 1, observedAt: Date())! }
     private func place(_ coordinate: GeoCoordinate) -> MapPlace { MapPlace(id: .coordinate(coordinate), title: coordinate.displayText, coordinate: coordinate) }
+    /// A road wander writes the position it stands on before its first
+    /// cadence wait, on start and on every resume.
+    private func acknowledgeImmediateWrite(_ device: JoystickControlledDevice) async {
+        await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
+    }
     private func wait(_ condition: @MainActor () async -> Bool) async {
         let deadline = ContinuousClock.now + .seconds(2)
         while !(await condition()) && ContinuousClock.now < deadline { await Task.yield() }

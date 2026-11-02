@@ -529,9 +529,12 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
         owner.unknownFailure != nil || owner.tick?.gate?.hasDispatched == true
     }
 
-    @discardableResult public func teleport(to candidate: TeleportCandidate) -> Bool {
+    /// `rebuildingConnection` is a teleport hold's resume: like every other
+    /// resume it drops the possibly stale session before its first write.
+    @discardableResult public func teleport(to candidate: TeleportCandidate, rebuildingConnection: Bool = false) -> Bool {
         guard canTeleport else { return false }
         admitExplicitOperation()
+        if rebuildingConnection { rebuildConnectionForResume("teleport") }
         beginPreparation(.point(PointMoveIntent(candidate: candidate)))
         return true
     }
@@ -1299,7 +1302,9 @@ extension ServiceController {
               !clearScheduled, !routeUnconfirmed, !joystickUnconfirmed,
               movementAuthority.snapshot.health == .confirmedHealthy,
               movementAuthority.snapshot.runState == .paused else { return false }
-        return movementAuthority.resumeForeground(lease)
+        guard movementAuthority.resumeForeground(lease) else { return false }
+        rebuildConnectionForResume("route")
+        return true
     }
     public func endRoute(executionID: UUID, lease: MovementTaskLease) {
         guard let owner = routeOwners[executionID], owner.intent.lease == lease else { return }
@@ -1929,6 +1934,7 @@ extension ServiceController {
               !clearScheduled, !pointUnconfirmed, !routeUnconfirmed, !joystickUnconfirmed,
               movementAuthority.snapshot.lease == lease, movementAuthority.snapshot.health == .confirmedHealthy else { return false }
         guard movementAuthority.resumeForeground(lease) else { return false }
+        rebuildConnectionForResume("joystick")
         owner.inputRevision = JoystickInputRevision()
         owner.paused = false; owner.neutral = true
         joystickSubject.send(.availabilityChanged)
@@ -1942,10 +1948,24 @@ extension ServiceController {
               movementAuthority.snapshot.lease == lease, movementAuthority.snapshot.runState == .paused,
               movementAuthority.snapshot.health == .confirmedHealthy else { return false }
         guard movementAuthority.resumeForeground(lease) else { return false }
+        rebuildConnectionForResume("joystickStream")
         owner.inputRevision = JoystickInputRevision()
         owner.paused = false; owner.neutral = false
         joystickSubject.send(.availabilityChanged)
         return true
+    }
+    /// A paused task's session may have been dropped by iOS while the app sat
+    /// suspended, and its first write then failed as "resume failed". Every
+    /// resume closes the old session first; the resumed owner's next write,
+    /// queued behind this in the FIFO, opens a fresh one.
+    private func rebuildConnectionForResume(_ op: String) {
+        enqueueAdapter({ device in
+            do { try await device.rebuildClientConnection(); return .success }
+            catch { return .failure(error as? DeviceServiceFailure ?? .serviceUnavailable) }
+        }) { [weak self] result in
+            guard let self else { return }
+            self.diagnoseResult("resume.rebuild", result, op: op, matched: true, outstanding: self.outstandingWork)
+        }
     }
     public func waitForJoystickIdle(executionID: UUID, lease: MovementTaskLease) async -> JoystickIdleSettlement {
         guard let owner = joystickOwners[executionID], owner.intent.lease == lease else { return .settled }

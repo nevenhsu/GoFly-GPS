@@ -350,6 +350,9 @@ struct ConnectionRecoveryControllerTests {
         #expect(joystick.setWanderEnabled(true))
         let nearby = MapPlace(id: .coordinate(origin), title: "nearby", coordinate: origin)
         #expect(joystick.applyWanderTarget(nearby))
+        await wait { joystick.isAwaitingNextTargetInPlace }
+        // Planning the next road failed, leaving the wander paused for Retry.
+        joystick.stopAwaitingNextTargetInPlace()
         await wait { joystick.phase == .suspended && joystick.wanderNeedsTarget }
 
         let route = RouteExecutionController(planner: RecoveryControllerPlanner(), commands: service,

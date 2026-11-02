@@ -992,7 +992,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         let physicalID = beginPhysicalOperation()
         task = Task { [weak self] in
             defer { Task { @MainActor [weak self] in self?.finishPhysicalOperation(physicalID) } }
-            await self?.run(intent, token: token)
+            await self?.run(intent, token: token, writesCurrentPositionFirst: true)
         }
         return true
     }
@@ -1088,12 +1088,20 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         }
     }
 
-    private func run(_ intent: RouteExecutionIntent, token: UInt64) async {
+    /// A resume first rewrites the committed position without the cadence
+    /// wait, like a wander: its ACK lands on the rebuilt connection at once and
+    /// the phone never sits on a dropped simulation for a whole cadence.
+    private func run(_ intent: RouteExecutionIntent, token: UInt64, writesCurrentPositionFirst: Bool = false) async {
         var sequence: UInt64 = 1
         // Resume must continue the service's next sequence, not reuse an old one.
         if let previous = nextSequence[intent.id] { sequence = previous }
+        var writesCurrentPositionFirst = writesCurrentPositionFirst
         while revision == token, phase == .running {
-            do { try await clock.sleep(for: cadence) } catch { return }
+            let immediate = writesCurrentPositionFirst
+            writesCurrentPositionFirst = false
+            if !immediate {
+                do { try await clock.sleep(for: cadence) } catch { return }
+            }
             guard revision == token, phase == .running, !Task.isCancelled else { return }
             guard sequence < UInt64.max else {
                 continuationDidBecomeUnavailable()
@@ -1101,8 +1109,8 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             }
             guard let controlRevision = commands.routeControlRevision(executionID: intent.id, lease: intent.lease) else { return }
             let direction = heading == .forward ? 1.0 : -1.0
-            let distance = min(intent.route.totalDistanceMeters, max(0,
-                (progress?.committedDistanceMeters ?? 0) + direction * liveSpeed(of: intent).metersPerSecond * cadenceSeconds))
+            let step = immediate ? 0 : direction * liveSpeed(of: intent).metersPerSecond * cadenceSeconds
+            let distance = min(intent.route.totalDistanceMeters, max(0, (progress?.committedDistanceMeters ?? 0) + step))
             guard let coordinate = intent.route.coordinate(at: distance) else { phase = .interrupted; error = .invalidPath; return }
             let outcome = await commands.sendRoutePoint(executionID: intent.id, lease: intent.lease,
                 sequence: sequence, expectedControlRevision: controlRevision, coordinate: coordinate)
@@ -1111,7 +1119,8 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             case .acknowledged:
                 let previousDistance = progress?.committedDistanceMeters ?? 0
                 let delta = abs(distance - previousDistance)
-                let atEndpoint = distance == 0 || distance == intent.route.totalDistanceMeters
+                // Rewriting where a resumed route stands is not an arrival.
+                let atEndpoint = !immediate && (distance == 0 || distance == intent.route.totalDistanceMeters)
                 // Commit the accepted physical axis before publishing the
                 // ACK. Synchronous consumers may change RT at the endpoint;
                 // they must compute a zero remaining goal from this actual

@@ -200,6 +200,7 @@ struct RouteRoundTripTests {
             cadence: .milliseconds(500))
         try await runToTwoAcknowledgedSteps(controller, device, clock)
         let axis = try #require(controller.progress).committedDistanceMeters
+        let route = try #require(controller.intent).route
         #expect(controller.pause())
         await wait { controller.phase == .paused }
         #expect(controller.toggleHeading())
@@ -213,6 +214,11 @@ struct RouteRoundTripTests {
         clock.advance(by: .seconds(1000))
         #expect(await device.coordinates.count == 3)
         #expect(controller.resume())
+        // A resume first rewrites the committed position without a cadence wait.
+        #expect(clock.sleepingCount == 0)
+        await wait { await device.waiting }; await device.finish(.acknowledged)
+        #expect(await device.coordinates.last == route.coordinate(at: axis))
+        #expect(controller.phase == .running, "Rewriting where the route stands is not an arrival")
         for index in 0..<2 {
             await wait { clock.sleepingCount == 1 }
             clock.advance(by: .milliseconds(500))
@@ -301,6 +307,7 @@ struct RouteRoundTripTests {
         #expect(controller.heading == .reverse)
         #expect(controller.progress?.committedDistanceMeters == axis)
         #expect(controller.resume())
+        await wait { await device.waiting }; await device.finish(.acknowledged)
         await wait { clock.sleepingCount == 1 }
         clock.advance(by: .milliseconds(500))
         await wait { await device.waiting }; await device.finish(.acknowledged)

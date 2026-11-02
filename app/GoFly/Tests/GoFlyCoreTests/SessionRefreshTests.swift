@@ -24,6 +24,25 @@ struct SessionRefreshTests {
         #expect(SessionStatusErrors(connection: .reachable).isEmpty)
     }
 
+    /// A teleport hold's resume, like every resume, drops the session iOS may
+    /// have closed while the app was suspended before it writes; a plain
+    /// teleport keeps reusing it.
+    @Test func teleportResumeRebuildsTheConnectionBeforeItsWrite() async throws {
+        let device = RefreshDevice(), service = ServiceController(service: device)
+        #expect(service.start())
+        await wait { service.phase == .ready && !service.nativeBusy }
+        let target = place(GeoCoordinate(latitude: 25.02, longitude: 121.02)!)
+        #expect(service.teleport(to: TeleportCandidate(place: target)))
+        await wait { await device.points.count == 1 }; await wait { !service.nativeBusy }
+        let before = await device.operations.count
+        #expect(!(await device.operations).contains("rebuild"))
+        #expect(service.teleport(to: TeleportCandidate(place: target), rebuildingConnection: true))
+        await wait { await device.points.count == 2 }; await wait { !service.nativeBusy }
+        let after = Array(await device.operations.dropFirst(before))
+        #expect(after.first == "rebuild")
+        #expect(after.last == "point")
+    }
+
     @Test func healthyConnectionIsNotPolledAndPathChangeKeepsLastResultWhileChecking() async throws {
         let f = try fixture()
         #expect(f.service.start())

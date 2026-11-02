@@ -468,6 +468,8 @@ actor JoystickControlledDevice: DeviceService {
     func allowPreparationSuccess() { failuresBeforeSuccess = 0 }
     func clearLocation() async throws { clears += 1 }
     func resetClientConnection() async throws {}
+    var rebuilds = 0
+    func rebuildClientConnection() async throws { rebuilds += 1 }
     func movePoint(to coordinate: GeoCoordinate, dispatch: PointDispatchGate) async -> PointDeliveryOutcome {
         coordinates.append(coordinate); gate = dispatch
         return await withCheckedContinuation { pending = $0 }

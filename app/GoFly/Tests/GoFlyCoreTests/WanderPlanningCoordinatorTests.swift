@@ -237,6 +237,9 @@ struct WanderPlanningCoordinatorTests {
         host.changes.send(())
         #expect(joystick.installWanderRoute(target: target, route: try PlannedRoute(points: [origin, destination])))
         #expect(joystick.setWanderEnabled(true))
+        // The road wander first rewrites where it stands, without a wait.
+        await wait { await device.waiting }
+        #expect(await device.claim()); await device.finish(.acknowledged)
         await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
         await wait { await device.waiting }
         #expect(await device.claim()); await device.finish(.acknowledged)

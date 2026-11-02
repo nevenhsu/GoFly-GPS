@@ -152,7 +152,7 @@ public final class PositionHoldController: ObservableObject {
         intent = nil
         continuationIdentity = nil
 
-        guard service.teleport(to: TeleportCandidate(place: place)) else {
+        guard service.teleport(to: TeleportCandidate(place: place), rebuildingConnection: true) else {
             intent = savedIntent
             phase = savedPhase
             return false

@@ -64,9 +64,10 @@ public final class JoystickMovementController: ObservableObject {
     public var isAwaitingNextTarget: Bool {
         (wanderEnabled && phase == .suspended && suspensionReason == .targetUnavailable) || isAwaitingNextTargetInPlace
     }
-    /// A background wander finished its segment and keeps its lease running in
-    /// place while the next road is planned: iOS accepts a continued-processing
-    /// submission only in the foreground, so pausing here would end the run.
+    /// A wander finished its segment and keeps its lease running in place
+    /// while the next road is planned: iOS accepts a continued-processing
+    /// submission only in the foreground, so pausing here would end a
+    /// background run.
     public var isAwaitingNextTargetInPlace: Bool {
         awaitsTargetInPlace && wanderEnabled && wanderNeedsTarget && phase == .moving && input == nil
     }
@@ -349,10 +350,12 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         }
         return true
     }
-    /// A segment ended with no next target. In the background the running
-    /// lease waits in place; otherwise it pauses while the next road is planned.
+    /// A segment ended with no next target. The running lease waits in place
+    /// while the next road is planned, in the foreground too: pausing here
+    /// would retire the continued-processing task, and leaving the app during
+    /// that gap could not resubmit it, so the wander stayed paused.
     private func awaitNextTarget() {
-        if !sceneActive, phase == .moving, hasAcknowledgedLease, intent != nil {
+        if phase == .moving, hasAcknowledgedLease, intent != nil {
             awaitsTargetInPlace = true
             diagnose("wander.awaitingInPlace", category: .movement, level: .notice)
             objectWillChange.send()
@@ -585,12 +588,21 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     }
 
     private func run(_ operation: JoystickMovementIntent, token: UInt64) async {
+        // A road wander writes the position it stands on at once, without the
+        // cadence wait: that first ACK lets the background task be requested
+        // right after the start teleport (or a resume), so leaving the app a
+        // moment later no longer pauses it.
+        var writesCurrentPositionFirst = wanderEnabled && input == nil && wanderRoute != nil
         while generation == token, phase == .moving, !Task.isCancelled {
             // A finger on the joystick keeps the manual cadence, including
             // during a wander override; road wander alone uses the path cadence.
             let manual = input != nil || !wanderEnabled
             let seconds = manual ? MovementCadence.manualSeconds : MovementCadence.pathSeconds
-            do { try await clock.sleep(for: manual ? MovementCadence.manual : MovementCadence.path) } catch { return }
+            let immediate = writesCurrentPositionFirst
+            writesCurrentPositionFirst = false
+            if !immediate {
+                do { try await clock.sleep(for: manual ? MovementCadence.manual : MovementCadence.path) } catch { return }
+            }
             guard generation == token, phase == .moving, !Task.isCancelled,
                   let revision = commands.joystickInputRevision(executionID: operation.id, lease: operation.lease) else {
                 diagnose("joystick.runEnded", category: .movement, level: .notice, [
@@ -614,6 +626,12 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
                 // A wander finger resting at the centre: no write, and no road step either.
                 guard let displacement = input.displacement(speed: speed, seconds: seconds) else { continue }
                 recipe = .manual(displacement)
+            }
+            else if immediate, wanderEnabled, !wanderNeedsTarget, let route = wanderRoute, let target = wanderTarget,
+                    let coordinate = route.coordinate(at: wanderProgressMeters),
+                    let step = JoystickTargetStep(targetID: target.id, coordinate: coordinate,
+                        maximumDistanceMeters: speed.metersPerSecond * seconds) {
+                recipe = .target(step); capturedRouteRevision = wanderRouteRevision; routeStepDistance = wanderProgressMeters
             }
             else if wanderEnabled, !wanderNeedsTarget, let route = wanderRoute, let target = wanderTarget,
                     let distance = nextRouteStepDistance(route: route, speed: speed, seconds: seconds),
