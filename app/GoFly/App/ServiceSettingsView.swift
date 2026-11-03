@@ -151,15 +151,21 @@ struct ServiceSettingsView: View {
     }
 
     private var networkNeedsAttention: Bool { !network.isWiFiConnected || localNetwork.authorization == .denied }
+    private var vpnNeedsAttention: Bool {
+        switch recovery.connectionState {
+        case .unavailable, .timedOut: true
+        case .unknown, .checking, .reachable: false
+        }
+    }
     private var networkSummary: String {
         if !network.isWiFiConnected { return goFlyString("settings.wifi.notConnected") }
         if localNetwork.authorization == .denied { return goFlyString("settings.status.denied") }
         return goFlyString("settings.wifi.connected")
     }
-    /// Not determined leaves the row blank; the location page still names the status.
+    /// Not determined and denied leave the row blank; the location page still names the status.
     private var locationSummary: String? {
         let key = systemStatus.locationStatusKey
-        return key == "settings.status.notDetermined" ? nil : goFlyString(key)
+        return key == "settings.status.notDetermined" || key == "settings.status.denied" ? nil : goFlyString(key)
     }
     private var backgroundSummary: String { goFlyString(systemStatus.backgroundStatusKey) }
 
@@ -215,15 +221,15 @@ struct ServiceSettingsView: View {
                     .multilineTextAlignment(.leading)
             } value: {
                 if let value {
-                    if titleKey == "settings.location" && systemStatus.locationAuthorization == .denied {
-                        // Denied shows only ⚠︎ so the title keeps its single line; VoiceOver still reads the status.
-                        // The outlined toast glyph keeps its "!" visible; the template alert fills solid.
-                        GoFlyIcon(.toastWarning, size: 22)
-                            .accessibilityLabel(value)
-                    } else if titleKey == "settings.network" && networkNeedsAttention {
-                        GoFlyIconLabel(title: value, icon: GoFlySymbols.warning)
-                            .goFlyFont(GoFlyFont.subheadline)
-                            .foregroundStyle(GoFlyTextColor.warning)
+                    if (titleKey == "settings.network" && networkNeedsAttention)
+                                || (titleKey == "settings.vpn" && vpnNeedsAttention) {
+                        // Same outlined "!" glyph as denied location, followed by warning-colored text.
+                        HStack(spacing: 6) {
+                            GoFlyIcon(.toastWarning, size: 22)
+                            Text(value)
+                                .goFlyFont(GoFlyFont.subheadline)
+                                .foregroundStyle(GoFlyTextColor.warning)
+                        }
                     } else {
                         Text(value)
                             .goFlyFont(GoFlyFont.subheadline)

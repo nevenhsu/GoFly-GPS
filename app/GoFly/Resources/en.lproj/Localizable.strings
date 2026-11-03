@@ -445,8 +445,6 @@
 "settings.background.footerNote" = "Routes and wander continue via system background tasks and pause upon expiry.";
 "settings.vpn.steps" = "Connect iPhone to Wi‑Fi (cellular data alone does not work), open LocalDevVPN, tap Connect, then return to GoFly and check the tunnel.";
 "settings.vpn.statusSection" = "Status";
-"settings.vpn.lastChecked" = "Last Checked";
-"settings.vpn.justNow" = "Just now";
 "settings.vpn.actionsSection" = "Actions";
 "settings.vpn.downloadLocalDevVPN" = "Download LocalDevVPN";
 "settings.vpn.appStore" = "App Store";

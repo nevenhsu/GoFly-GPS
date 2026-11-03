@@ -456,8 +456,6 @@
 "settings.background.footerNote" = "路線與漫步由系統背景任務延續，到期即暫停。";
 "settings.vpn.steps" = "讓 iPhone 連上 Wi‑Fi（只用行動網路無法使用），開啟 LocalDevVPN，按 Connect，再返回 GoFly 檢查通道。";
 "settings.vpn.statusSection" = "狀態";
-"settings.vpn.lastChecked" = "上次檢查";
-"settings.vpn.justNow" = "剛剛";
 "settings.vpn.actionsSection" = "操作";
 "settings.vpn.downloadLocalDevVPN" = "下載 LocalDevVPN";
 "settings.vpn.appStore" = "App Store";

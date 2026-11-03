@@ -305,20 +305,6 @@ struct GoFlyVPNSettingsPage: View {
                                             identifier: "settings.vpn.status")
                         }
                     }
-
-                    Divider().padding(.leading, 16)
-
-                    GoFlySettingsRow {
-                        GoFlySettingsValueRow {
-                            Text(goFlyString("settings.vpn.lastChecked"))
-                                .goFlyFont(GoFlyFont.body)
-                                .foregroundStyle(GoFlyTextColor.primary)
-                        } value: {
-                            Text(goFlyString("settings.vpn.justNow"))
-                                .goFlyFont(GoFlyFont.body)
-                                .foregroundStyle(GoFlyTextColor.secondary)
-                        }
-                    }
                 }
             }
 

@@ -445,8 +445,6 @@
 "settings.background.footerNote" = "路线与漫步由系统后台任务延续，到期即暂停。";
 "settings.vpn.steps" = "让 iPhone 连上 Wi‑Fi（只用蜂窝网络无法使用），打开 LocalDevVPN，点击 Connect，再返回 GoFly 检查通道。";
 "settings.vpn.statusSection" = "状态";
-"settings.vpn.lastChecked" = "上次检查";
-"settings.vpn.justNow" = "刚刚";
 "settings.vpn.actionsSection" = "操作";
 "settings.vpn.downloadLocalDevVPN" = "下载 LocalDevVPN";
 "settings.vpn.appStore" = "App Store";

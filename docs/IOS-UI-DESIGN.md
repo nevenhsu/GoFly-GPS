@@ -206,7 +206,7 @@
 | --- | --- |
 | LocationCard／B1 | App 標題 20 pt Semibold、標題至地址 8 pt、地址至座標 4 pt；B1 三行摘要間距 8 pt；Figma 尚未同步。App 主按鈕最小寬 104 pt、高 40 pt、左右內距 12 pt，長文可擴寬；Figma 約 77 × 40 pt。加寬後實機視覺待驗 |
 | 最愛清單／C2 | App 導覽列至卡片 16 pt，Figma 記錄為 10 pt；C2 儲存下方 App 40 pt、Figma 記錄仍有 20 pt。不得混成同一量測準據 |
-| 設定定位摘要 | App 未設定不顯示首頁值；已允許一律使用期間／While Using，不附大概位置；拒絕僅 22 pt warning 圖示，VoiceOver 保留狀態，網路仍圖示＋文字。Figma F1 無拒絕／英文變體。Light warning 文字與外框 `#DC750C`、pill 圓點 `#E39A18`；文字變數已同步，拒絕版面未設計、未實機驗收 |
+| 設定定位摘要 | App 未設定不顯示首頁值；已允許一律使用期間／While Using，不附大概位置；拒絕與未設定相同，首頁列只留右側箭頭，不顯示文字或 warning 圖示（拒絕為可接受狀態，狀態於定位內頁顯示）；網路未連線／區網拒絕與 VPN tunnel 無法使用／逾時為 22 pt 外框「!」圖示（`status-toast/warning`）＋warning 色文字（2026-11-03 使用者指定，取代網路三角形圖示；尚未實機驗收）。VPN 內頁不顯示「上次檢查」列。Figma F1 無拒絕／英文變體。Light warning 文字與外框 `#DC750C`、pill 圓點 `#E39A18`；文字變數已同步，拒絕版面未設計、未實機驗收 |
 | 路線與漫步線寬 | App 共用 renderer 現行試用 2 pt、圓端／圓角；Figma D／E 仍有較粗線或舊點線。2 pt 實機效果、縮放前後視覺粗細待確認，不能由共用設定推定已一致 |
 | 路線選中節點 | App 32 pt primary 實心、白內容與 3 pt 白外環／陰影；Figma 缺 Selected 變體。GPX 約 7 pt 中間圓點也未補畫 |
 | D9／D21 | D9 舊刪除復原提示已被不顯示提示取代，Figma 尚待同步；D21 顯示 2 項卻多畫第 5 列勾選，應按實際選取數量，不照抄矛盾示例 |
