@@ -30,6 +30,7 @@ try:
     from .setup_config import SetupConfiguration
     from .setup_delivery import deliver_v1_once
     from .setup_journal import JournalStore, uses_full_setup, uses_wifi_renew, stages_for
+    from .setup_retention import retain_archives_locked
     from .setup_protocol import SetupBridgeError, SetupOptions, SetupRequest, bundle_id_matches_team
 except ImportError:  # script execution from the packaged Setup directory
     from setup_adapters import (
@@ -48,6 +49,7 @@ except ImportError:  # script execution from the packaged Setup directory
     from setup_config import SetupConfiguration
     from setup_delivery import deliver_v1_once
     from setup_journal import JournalStore, uses_full_setup, uses_wifi_renew, stages_for
+    from setup_retention import retain_archives_locked
     from setup_protocol import SetupBridgeError, SetupOptions, SetupRequest, bundle_id_matches_team
 
 
@@ -333,7 +335,10 @@ class SetupProducer:
                 # interrupted, the complete stage remains durable but the
                 # transaction remains incomplete and must be restarted from scratch.
                 journal = self.store.update(journal)
-                return self._payload_from_journal(journal, artifact=artifact, receipt=receipt)
+                payload = self._payload_from_journal(journal, artifact=artifact, receipt=receipt)
+                if payload.stage == "complete" and payload.outcome == "confirmed":
+                    retain_archives_locked(self.store)
+                return payload
             except SetupBridgeError as error:
                 # Adapter-safe failures after an install checkpoint are still
                 # unknown.  The error code is surfaced, while the durable

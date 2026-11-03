@@ -122,8 +122,14 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 
 - 安裝或延長簽名中斷、失敗（USB 拔掉、Wi‑Fi 斷線、Mac 睡眠、App 被關閉）時顯示 D14。唯一的動作是「**重新開始**」，會從頭重新安裝或重新簽名，**不做接續**。
 - 重新開始前，先重新觀察手機狀態。手機上已經有 GoFly 就用覆蓋安裝（保留資料）；USB 時重新產生配對，並先作廢舊的、還沒用掉的配對，不套用舊交易的配對。
-- Setup producer 以一筆全域現行 journal 序列化交易。`apply` 遇到任何裝置留下的未完成 journal 時，會先在原交易資料夾中耐久封存為 `journal.abandoned.json`，再移除現行指標並建立新交易；不刪除 App、配對檔或原交易資料夾。只有已證明完成的交易可封存為 `journal.completed.json`；同一 setupID 重送仍衝突。iOS 消費者在讀取前原子 rename `incoming.plist` 為 `incoming.plist.consuming`；Mac 作廢舊交接時原子 rename 到以舊交易 ID 標記的隔離路徑，再驗證並只刪除該隔離檔。若 iOS 已認領、出現替換檔或狀態不明，producer fail closed，不封存舊交易或刪除使用者資料。
+- Setup producer 以一筆全域現行 journal 序列化交易。`apply` 遇到任何裝置留下的未完成 journal 時，會先在原交易資料夾中耐久封存為 `journal.abandoned.json`，再移除現行指標並建立新交易；封存步驟不刪除 App、配對檔或原交易資料夾，歷史交易另依下列保留策略回收。只有已證明完成的交易可封存為 `journal.completed.json`；同一 setupID 重送仍衝突。iOS 消費者在讀取前原子 rename `incoming.plist` 為 `incoming.plist.consuming`；Mac 作廢舊交接時原子 rename 到以舊交易 ID 標記的隔離路徑，再驗證並只刪除該隔離檔。若 iOS 已認領、出現替換檔或狀態不明，producer fail closed，不封存舊交易或刪除使用者資料。
 - 手機上遺留的握手控制檔（`readback-request.json`、`readback-response.json`、`incoming.json`）：「重新開始」時自動處理，不需使用者操作。完整且屬於現行啟用收據的一組封存到 `retired/<setupID>-<nonce>`；不完整（中斷）、不屬於現行收據、或封存名稱已被先前嘗試佔用的，**移入 `retired/abandoned-<uuid>` 後以全新握手檔繼續**，只搬移、不刪除，啟用收據、配對檔、支援映像與使用者資料不動；沒有控制檔時直接繼續。待消費的配對信封（`incoming.plist`）或任何 `.staging` 檔仍須 fail closed。
+- Mac 本機交易保留策略（RET-1／RET-3／RET-6）：新交易完成最終 receipt 耐久寫入、結果為 `complete=true`，且上一筆已於本次 `apply` 開始時封存後，在同一把 `operation.lock` 內先回收大型產物，再回收整筆歷史。不另開排程；第一次成功安裝也對所有既有封存交易套用相同規則。失敗只記錄並留待下一次成功交易重試，不改變本次安裝成功結果。
+  - 整筆保留：`journal.json` 指向的現行交易、其 `intent.pairingSourceSetupID` 配對來源，以及每個 `deviceID` 最近一筆 `journal.completed.json`（包含全域最近一筆）。有 `incoming.plist` 隔離檔、`.consuming`、未知 `.staging`、無有效封存 journal 或狀態不明的交易也保留並記錄。保護優先，因此多裝置／舊配對來源／待處理交接檔可能讓完整產物超過兩筆。例外：已封存交易中 Mac 本機的支援映像暫存（交易根目錄的 `.support.<hex>.staging`、`.support.actual.<hex>.staging`，以及大型產物目錄內的 `.staging` 暫存檔）沒有人會接續，視為大型產物回收。
+  - 其他有效封存交易先只刪列名的 `build/`、`artifact/`、`support/`、`support.actual/`，寫入私有 `pruned.json`（時間、待刪路徑與已刪路徑；先記待刪意圖，刪後再記完成，證據寫入中斷可重試補記）；此階段保留配對、journal 和其他項目。遇到 symlink、非預期型別或無法確認的內容，略過並記錄，不追蹤連結。
+  - 整筆回收階段：在其餘可回收交易中保留最近 10 筆，以及封存未滿 90 天的交易；兩者都不符合才連同 journal、`pruned.json`、配對檔回收。排序與年齡使用封存 journal 的檔案修改時間，不使用清理會改動的交易目錄修改時間；建立時間使用檔案系統 birthtime，缺少時記 `null`。建置失敗留下的 `xcodebuild-error.txt` 隨整筆回收；其他未列名的頂層內容阻擋整筆回收。同一交易的同一種略過或失敗結果只記一次，避免擠掉刪除摘要。
+  - 刪除前耐久寫入 `state/retention-log.jsonl` 摘要（setupID、deviceID、mode、結果、建立／封存時間、配對 SHA-256；最近 1000 行），再寫 `state/retention-pending.json` 待刪意圖，原子 rename 為 `transactions/.deleting-<setupID>`、fsync 後刪除。待刪意圖不隨 log 輪替消失，直到目錄刪除完成才移除；下次清理會續刪中斷殘骸，包括檔案已刪但目錄尚在的情況。沒有待刪意圖的 `.deleting-*` 視為未知並保留。
+  - 僅處理 Mac 的 `state/transactions` 和上述保留紀錄；啟用收據、活動 `PairingFileStore`、已安裝的 App、使用者資料與手機上的任何檔案皆不動。journal 歷史依保留策略自動回收，不可手動刪除；也不可手動刪除配對或 App。DDI 共用快取與 DerivedData 策略未改動。
 - 重新開 Mac App 時，如果上次有未完成的操作，同樣顯示 D14，不提供「繼續」。
 - 安裝、延長簽名或「重新開始」進行中，以及 D14 時，操作中的那支手機一律留在側欄，即使這次還沒掃描到它。
 - D14 側欄狀態依操作類型：首次安裝顯示「安裝未完成」，延長簽名顯示「延長簽名未完成」。
