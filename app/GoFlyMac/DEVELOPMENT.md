@@ -29,8 +29,9 @@ layout and copy follow Figma `05 · Mac Redesign（新版）`.
   device ID, pairing bytes, and digest before removing that quarantined file.
   iOS claims an envelope by atomically renaming it to `incoming.plist.consuming`
   before reading or importing; a live claim makes Mac retirement fail closed.
-  The active pairing store, activation receipt, app, journal history, and other
-  user data remain intact. Ambiguous or mismatched envelopes fail closed.
+  The active pairing store, activation receipt, app, and other user data remain
+  intact. Archived Mac transaction history is reclaimed automatically under the
+  retention policy in the installer spec; do not delete it manually. Ambiguous or mismatched envelopes fail closed.
 - An unknown write outcome is never replayed using the old setup ID. A new
   explicit apply creates a fresh transaction and a newly generated pairing.
 - No setup action connects to or writes a device during offline tests.

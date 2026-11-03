@@ -1,8 +1,8 @@
 # GoFly Mac 安裝資料保留策略 Tickets
 
-狀態：**RET-1、RET-3、RET-6、RET-4 已實作於工作區，待審查**（2026-11-03）；RET-2、RET-5 未實作。僅以暫存目錄 Python 單元測試驗證，未執行實際安裝、裝置或打包驗證。
+狀態：**RET-1、RET-3、RET-6、RET-4 已實作並完成程式審查**（2026-11-03）；RET-2、RET-5 未實作。暫存目錄 Python 測試組 75 項：73 通過、2 項因缺少裝置依賴而跳過。1.0.8（iOS／Mac build 1）的 IPA／DMG 已完成打包與產物完整性校驗；未執行實際安裝或裝置驗證。
 
-實作裁決：依本次明確要求，現行 Wi-Fi 配對來源、每個 deviceID 最新 completed 交易均整筆保留；隔離交接檔與未知 `.staging` 保護整筆，優先於 ≤2 筆目標；已封存交易中 Mac 本機的支援映像暫存（`.support[.actual].<hex>.staging` 與產物目錄內的 `.staging`）照 RET-1 回收。建置失敗的 `xcodebuild-error.txt` 列入小型白名單，可隨 RET-6 整筆回收；重複的略過紀錄同一交易只記一次（審查後修正，2026-11-03）。RET-1／RET-3 的配對與 journal 全保留只適用大型產物回收階段，RET-6 隨後可回收符合條件的整筆交易。年齡依封存 journal 的 mtime；建立時間無 birthtime 時記 null。續刪意圖另耐久存於 `state/retention-pending.json`，不依賴會輪替的摘要 log。
+實作裁決：依本次明確要求，現行 Wi-Fi 配對來源、每個 deviceID 最新 completed 交易均整筆保留；隔離交接檔與交易根目錄未符合已知命名的 `.staging` 保護整筆，優先於 ≤2 筆目標；已封存交易中 Mac 本機的支援映像暫存（`.support[.actual].<hex>.staging` 與產物目錄內的所有 `.staging`）照 RET-1 回收；其他目錄內的巢狀 `.staging` 不會單憑名稱阻擋產物清理，但未列名的頂層內容仍阻擋整筆回收。此 `.staging` 策略已於 2026-11-03 經使用者確認。建置失敗的 `xcodebuild-error.txt` 列入小型白名單，可隨 RET-6 整筆回收；重複的略過紀錄同一交易只記一次（審查後修正，2026-11-03）。RET-1／RET-3 的配對與 journal 全保留只適用大型產物回收階段，RET-6 隨後可回收符合條件的整筆交易。年齡依封存 journal 的 mtime；建立時間無 birthtime 時記 null。續刪意圖另耐久存於 `state/retention-pending.json`，不依賴會輪替的摘要 log。
 
 ## 背景
 
@@ -121,7 +121,7 @@ Mac setup producer 每次安裝或延長簽名都會建立 `~/Library/Applicatio
   - 現行交易（`journal.json` 指向的那筆）。
   - 現行 journal 的 Wi‑Fi 配對來源交易（`intent.pairingSourceSetupID`）。
   - 每支裝置（`deviceID`）最近一筆 `journal.completed.json` 的交易。
-  - 還有未處理交接檔的交易：隔離中的 `incoming.plist`、`.consuming`、未知 `.staging`，或狀態不明。
+  - 還有未處理交接檔的交易：隔離中的 `incoming.plist`、`.consuming`、交易根目錄未符合已知命名的 `.staging`，或狀態不明。
 - 其餘已封存交易：保留最近 **10 筆**，以及最近 **90 天**內的；兩者都不符合才刪。
   數字先用這組預設值，實作時集中定義成常數。
 - 刪除前先在 `state/retention-log.jsonl` 追加一行摘要（setupID、deviceID、mode、結果、建立與封存時間、

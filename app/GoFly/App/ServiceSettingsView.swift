@@ -222,14 +222,11 @@ struct ServiceSettingsView: View {
             } value: {
                 if let value {
                     if (titleKey == "settings.network" && networkNeedsAttention)
-                                || (titleKey == "settings.vpn" && vpnNeedsAttention) {
-                        // Same outlined "!" glyph as denied location, followed by warning-colored text.
-                        HStack(spacing: 6) {
-                            GoFlyIcon(.toastWarning, size: 22)
-                            Text(value)
-                                .goFlyFont(GoFlyFont.subheadline)
-                                .foregroundStyle(GoFlyTextColor.warning)
-                        }
+                        || (titleKey == "settings.vpn" && vpnNeedsAttention) {
+                        // The outlined toast glyph keeps its own colors and visible "!"; the template alert fills solid.
+                        GoFlyIconLabel(title: value, icon: .toastWarning, iconSize: 22, spacing: 6)
+                            .goFlyFont(GoFlyFont.subheadline)
+                            .foregroundStyle(GoFlyTextColor.warning)
                     } else {
                         Text(value)
                             .goFlyFont(GoFlyFont.subheadline)
