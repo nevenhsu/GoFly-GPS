@@ -140,7 +140,7 @@ info = {
     "CFBundleExecutable": "GoFlyMac",
     "CFBundleIconFile": "AppIcon",
     "CFBundlePackageType": "APPL",
-    "CFBundleShortVersionString": "1.0.8",
+    "CFBundleShortVersionString": "1.0.9",
     "CFBundleVersion": "1",
     "LSMinimumSystemVersion": "15.0",
     "NSHighResolutionCapable": True,
