@@ -274,7 +274,8 @@ struct GoFlyMapView: View {
     @StateObject private var wanderSearch: CandidateController
     @State private var cameraIntent: GoFlyCameraIntent?
     private let mapPlaces: any PlaceResolving
-    @State private var pendingGPSRecenter = false
+    /// When Recenter (or a confirmed GPS clear) asked to follow the next real fix.
+    @State private var pendingGPSRecenterAt: Date?
     @State private var projection: GoFlyMapProjection?
     @State private var topFrame = CGRect.zero
     @State private var panelFrame = CGRect.zero
@@ -336,8 +337,8 @@ struct GoFlyMapView: View {
         _recovery = ObservedObject(wrappedValue: movement.recovery)
         _continuation = ObservedObject(wrappedValue: movement.continuation)
         _positionHold = ObservedObject(wrappedValue: movement.positionHold)
-        _search = StateObject(wrappedValue: CandidateController(search: movement.placeSearch))
-        _wanderSearch = StateObject(wrappedValue: CandidateController(search: movement.placeSearch))
+        _search = StateObject(wrappedValue: CandidateController(search: movement.placeSearch, linkExpander: URLSessionMapLinkExpander()))
+        _wanderSearch = StateObject(wrappedValue: CandidateController(search: movement.placeSearch, linkExpander: URLSessionMapLinkExpander()))
         mapPlaces = movement.placeResolver
         _joystickOrigin = ObservedObject(wrappedValue: movement.joystickOrigin)
         _wander = ObservedObject(wrappedValue: movement.wander)
@@ -979,7 +980,11 @@ struct GoFlyMapView: View {
         .onChange(of: joystick.error) { _, newError in notices.reopen(.joystickError, ifPresent: newError) }
         .onChange(of: service.clearState) { _, state in
             // Real GPS can be observed again once the simulated location is cleared.
-            if case .confirmed = state { location.refresh() }
+            // Stop / Restore GPS also returns the camera to the first real fix.
+            if case .confirmed = state {
+                pendingGPSRecenterAt = Date()
+                location.refresh()
+            }
         }
         .onChange(of: mode) { _, newMode in
             if newMode != .route { pendingRouteNodeTapID = nil }
@@ -1181,18 +1186,11 @@ struct GoFlyMapView: View {
     private func mapPins(viewport: CGRect) -> some View {
         // The wander destination is the route's destination dot on the map canvas;
         // only a picked replacement draws a pin here.
-        if let candidate = activeCandidate, let point = projection?.candidatePoint {
-            if isWanderMap {
-                if viewport.contains(point) {
-                    wanderPinOverlay(at: point, size: CGSize(width: max(84, goWidth), height: candidateHeight),
-                                     viewport: viewport, avoiding: projection?.wanderTargetPoint) {
-                        candidatePin(candidate)
-                    }
-                }
-            } else {
-                candidatePin(candidate)
-                    .position(x: point.x, y: point.y - candidateHeight / 2)
-            }
+        // The pin stays on its coordinate while the camera moves, in every mode.
+        if let candidate = activeCandidate, let point = projection?.candidatePoint,
+           !isWanderMap || viewport.contains(point) {
+            candidatePin(candidate)
+                .position(x: point.x, y: point.y - candidateHeight / 2)
         }
     }
 
@@ -2034,8 +2032,6 @@ struct GoFlyMapView: View {
     }
 
     private func handleRealLocationObservation(_ observation: RealLocationObservation?) {
-        let explicitlyRequested = pendingGPSRecenter
-        pendingGPSRecenter = false
         service.observeRealLocation(observation)
         guard observation != nil else {
             joystickOrigin.fixUnavailable()
@@ -2046,6 +2042,7 @@ struct GoFlyMapView: View {
             return
         }
         joystickOrigin.fixAccepted(GeoCoordinate(latitude: accepted.latitude, longitude: accepted.longitude))
+        let explicitlyRequested = consumeGPSRecenter(for: accepted)
         // GPS fixes move the camera only for Recenter or the first
         // camera of the session; later fixes never pan or zoom it.
         guard explicitlyRequested || (cameraIntent == nil && service.confirmedSimulatedLocation == nil),
@@ -2054,6 +2051,27 @@ struct GoFlyMapView: View {
         let intent = GoFlyCameraIntent(coordinate: coordinate, headingDegrees: headingDegrees,
                                        resetsZoom: explicitlyRequested)
         cameraIntent = intent
+    }
+
+    /// A pending Recenter waits for a current real fix. A software-simulated
+    /// cached fix (published as nil), a stale fix, a fix observed while the GPS
+    /// clear is pending, or one older than the confirmed clear never consumes it;
+    /// the request expires after 30 s so a late fix cannot move the camera.
+    private func consumeGPSRecenter(for fix: RealLocationObservation) -> Bool {
+        guard let requestedAt = pendingGPSRecenterAt else { return false }
+        guard Date().timeIntervalSince(requestedAt) <= 30 else {
+            pendingGPSRecenterAt = nil
+            return false
+        }
+        // A new simulated location took over: Recenter no longer targets real GPS.
+        guard service.confirmedSimulatedLocation == nil else {
+            pendingGPSRecenterAt = nil
+            return false
+        }
+        if case .pending = service.clearState { return false }
+        if let clearedAt = service.clearConfirmedAt, fix.observedAt < clearedAt { return false }
+        pendingGPSRecenterAt = nil
+        return true
     }
 
     private func selectRouteNode(_ id: RouteNodeID) {
@@ -2252,41 +2270,11 @@ struct GoFlyMapView: View {
     }
 
 
-    /// Move only the callout within the unobscured map. Its leader keeps the exact coordinate visible.
-    private func wanderPinOverlay<Content: View>(at anchor: CGPoint, size: CGSize, viewport: CGRect,
-                                                avoiding other: CGPoint? = nil,
-                                                @ViewBuilder content: () -> Content) -> some View {
-        let width = min(size.width, viewport.width)
-        let height = min(size.height, viewport.height)
-        let centerY = min(max(anchor.y - height / 2, viewport.minY + height / 2), viewport.maxY - height / 2)
-        var centerX = min(max(anchor.x, viewport.minX + width / 2), viewport.maxX - width / 2)
-        if let other, viewport.contains(other) {
-            let otherX = min(max(other.x, viewport.minX + 22), viewport.maxX - 22)
-            let otherY = min(max(other.y - 22, viewport.minY + 22), viewport.maxY - 22)
-            if abs(centerX - otherX) < (width + 44) / 2,
-               abs(centerY - otherY) < (height + 44) / 2 {
-                let right = otherX + (width + 44) / 2 + 8
-                let left = otherX - (width + 44) / 2 - 8
-                centerX = right + width / 2 <= viewport.maxX ? right : max(viewport.minX + width / 2, left)
-            }
-        }
-        let bottom = CGPoint(x: centerX, y: centerY + height / 2)
-        return ZStack(alignment: .topLeading) {
-            if hypot(bottom.x - anchor.x, bottom.y - anchor.y) > 1 {
-                Path { path in path.move(to: anchor); path.addLine(to: bottom) }
-                    .stroke(GoFlyStyle.primary, lineWidth: 1)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-            content().position(x: centerX, y: centerY)
-        }
-    }
-
     private func recenter() {
         if let simulated = service.confirmedSimulatedLocation {
             cameraIntent = GoFlyCameraIntent(coordinate: simulated, headingDegrees: 0, resetsZoom: true)
         } else {
-            pendingGPSRecenter = true
+            pendingGPSRecenterAt = Date()
             location.requestRecenter()
         }
     }

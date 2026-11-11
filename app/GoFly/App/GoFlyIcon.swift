@@ -15,6 +15,7 @@ enum GoFlyIconAsset: String, CaseIterable, Identifiable {
     case chevronRight = "icon/chevron-right"
     case chevronUp = "icon/chevron-up"
     case close = "icon/close"
+    case cloudDownload = "icon/cloud-download"
     case copy = "icon/copy"
     case directionForward = "icon/direction-forward"
     case directionReverse = "icon/direction-reverse"
@@ -67,6 +68,8 @@ enum GoFlyIconAsset: String, CaseIterable, Identifiable {
     case toastDanger = "status-toast/danger"
     case toastWarning = "status-toast/warning"
     case toastSuccess = "status-toast/success"
+    /// DDI modal done step: Figma `icon/success` with its own light/dark fills.
+    case supportStepDone = "support-step/done"
 
     case mapCandidatePin = "map/candidate-pin"
     case mapNodeEnd = "map/node-end"

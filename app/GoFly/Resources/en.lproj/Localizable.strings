@@ -836,3 +836,46 @@
 "onboarding.vpn.externalOpenFailed.title" = "Can’t open the App Store";
 "setup.pairingImport.failed.title" = "Can’t import pairing file";
 "favoriteRoutes.savedOmittingCurrent.title" = "Saved";
+
+
+/* Device support (DDI) modal — Figma DDI.1–3, DDI.5–6 */
+"support.modal.title.onboarding" = "Preparing device support";
+"support.modal.title.onboardingFailed" = "Couldn't prepare device support";
+"support.modal.title.map" = "Activate device support";
+"support.modal.title.mapFailed" = "Couldn't activate device support";
+"support.modal.message.onboarding" = "First use downloads device support (about 16 MB) so GoFly can simulate location on this iPhone.";
+"support.modal.message.map" = "Device support needs to be reactivated after an iOS update (about 16 MB). Your last action retries when it finishes.";
+"support.modal.downloading" = "Downloading…";
+"support.modal.activating" = "Activating…";
+"support.step.download" = "Download device support";
+"support.step.activate" = "Activate device support";
+"support.step.waiting" = "Waiting";
+"support.step.notStarted" = "Not started";
+"support.step.downloading" = "Downloading…";
+"support.step.activating" = "Activating…";
+"support.step.done" = "Done";
+"support.step.failed" = "Failed";
+"support.download.error.network" = "Couldn't reach the download server. Check your internet connection and try again.";
+"support.download.error.invalid" = "The downloaded files were incomplete. Try again later.";
+"support.download.error.storage" = "Not enough storage to save device support. Free up space and try again.";
+"support.activate.error.connection" = "Couldn't reach this iPhone. Make sure Wi‑Fi and LocalDevVPN are connected, then try again.";
+"support.activate.error.rejected" = "This iPhone didn't activate device support. Try again in a moment.";
+
+/* Settings › Device support (F11) and pairing re-import (F9.a) */
+"settings.support" = "Device support";
+"settings.support.status" = "Status";
+"settings.support.ready" = "Ready";
+"settings.support.needsUpdate" = "Update needed";
+"settings.support.downloading" = "Downloading";
+"settings.support.activating" = "Activating";
+"settings.support.cardTitle" = "Redownload device support";
+"settings.support.cardMessage" = "If location simulation stops working after an iOS update, redownload and activate device support (about 16 MB).";
+"settings.support.redownload" = "Redownload";
+"settings.device.reimportPairing" = "Re-import pairing file";
+"settings.device.reimportPairingNote" = "Importing a new pairing file replaces this iPhone's current pairing data.";
+"setup.pairingImport.imported" = "Imported";
+"setup.pairingImport.message.mac" = "The Mac App imported this iPhone's pairing file.";
+"support.modal.title.macSetup" = "Device support is ready";
+"support.modal.message.macSetup" = "The Mac App installed device support on this iPhone.";
+"settings.support.readyTitle" = "Device support is ready";
+"settings.support.readyMessage" = "Device support was redownloaded and activated on this iPhone.";

@@ -435,6 +435,27 @@ struct GoFlyDeviceSettingsPage: View {
                 }
 
             }
+            VStack(alignment: .leading, spacing: 8) {
+                GoFlySettingsGroup {
+                    NavigationLink {
+                        GoFlyPairingImportView(context: .settings)
+                    } label: {
+                        GoFlySettingsRow {
+                            Text(goFlyString("settings.device.reimportPairing"))
+                                .goFlyFont(GoFlyFont.body)
+                                .foregroundStyle(GoFlyTextColor.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            GoFlyIcon(GoFlySymbols.disclosure)
+                                .goFlyIconSize(size: 13, maximum: 16)
+                                .foregroundStyle(GoFlyTextColor.secondary)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("settings.device.reimportPairing")
+                }
+                GoFlySettingsFooterNote(textKey: "settings.device.reimportPairingNote")
+            }
         }
         .onAppear { status.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
@@ -457,6 +478,143 @@ struct GoFlyDeviceSettingsPage: View {
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
+    }
+}
+
+/// F11 / F11.a / F11.b / F11.c: device support (DDI) for sideloaded installs.
+/// The card reuses the DDI modal's hero and step section inline; 「重新下載」
+/// always downloads the full set again, then activates it.
+struct GoFlyDeviceSupportSettingsPage: View {
+    @ObservedObject private var support = GoFlySupportPreparation.shared
+    @State private var hasLocalSupport = GoFlySupportPreparation.shared.hasLocalSupport
+    /// F11.d: a re-download started here finished; the card shows the DDI.4
+    /// ready state until 「完成」 is tapped or the page is left.
+    @State private var showsCompletion = false
+    @State private var startedHere = false
+
+    var body: some View {
+        GoFlySettingsPageContainer(titleKey: "settings.support", rootIdentifier: "settings.support.page") {
+            GoFlySettingsGroup {
+                GoFlySettingsValueRow {
+                    Text(goFlyString("settings.support.status"))
+                        .goFlyFont(GoFlyFont.body)
+                        .foregroundStyle(GoFlyTextColor.primary)
+                } value: {
+                    Text(goFlyString(status.key))
+                        .goFlyFont(GoFlyFont.body)
+                        .foregroundStyle(status.needsUpdate ? GoFlyTextColor.warning : GoFlyTextColor.secondary)
+                }
+                .frame(minHeight: 52)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("settings.support.status")
+            }
+
+            VStack(spacing: 0) {
+                GoFlySupportHero()
+                Text(goFlyString(showsCompletion ? "settings.support.readyTitle" : "settings.support.cardTitle"))
+                    .goFlyFont(GoFlyFont.wheel)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(GoFlyTextColor.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 16)
+                    .accessibilityAddTraits(.isHeader)
+                Text(goFlyString(showsCompletion ? "settings.support.readyMessage" : "settings.support.cardMessage"))
+                    .goFlyFont(GoFlyFont.subheadline)
+                    .foregroundStyle(GoFlyTextColor.secondary)
+                    .multilineTextAlignment(.center)
+                    // Two lines are always reserved so the card keeps its height.
+                    .lineLimit(2, reservesSpace: true)
+                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
+                if showsProgress || showsCompletion {
+                    GoFlySupportProgressSection(preparation: support, errorIdentifier: "settings.support.error")
+                        .padding(.top, 24)
+                }
+                Button(action: primaryAction) {
+                    HStack(spacing: 8) {
+                        if isRunning { ProgressView() }
+                        Text(goFlyString(buttonKey))
+                    }
+                }
+                .buttonStyle(GoFlyButtonStyle(variant: .primary))
+                .disabled(isRunning)
+                .padding(.top, 24)
+                .accessibilityIdentifier("settings.support.action")
+            }
+            .padding(.top, 24)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .frame(maxWidth: .infinity)
+            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(GoFlyStyle.subtleBorder, lineWidth: 0.5)
+                    .allowsHitTesting(false)
+            }
+            .accessibilityIdentifier("settings.support.card")
+        }
+        .onChange(of: support.phase) { _, phase in
+            hasLocalSupport = support.hasLocalSupport
+            switch phase {
+            case .ready where startedHere:
+                showsCompletion = true
+                startedHere = false
+            case .failed:
+                startedHere = false
+            default:
+                break
+            }
+        }
+        .onDisappear {
+            showsCompletion = false
+        }
+    }
+
+    private var buttonKey: String {
+        if showsCompletion { return "common.done" }
+        return showsProgress ? support.phase.actionKey : "settings.support.redownload"
+    }
+
+    private var isRunning: Bool {
+        switch support.phase {
+        case .downloading, .activating: true
+        case .idle, .failed, .ready: false
+        }
+    }
+
+    /// The card expands into the step section only while a run is active or
+    /// has failed; idle and ready keep it collapsed (F11 / F11.c).
+    private var showsProgress: Bool {
+        switch support.phase {
+        case .downloading, .activating, .failed: true
+        case .idle, .ready: false
+        }
+    }
+
+    private var status: (key: String, needsUpdate: Bool) {
+        switch support.phase {
+        case .downloading: ("settings.support.downloading", false)
+        case .activating: ("settings.support.activating", false)
+        case .failed: ("settings.support.needsUpdate", true)
+        case .ready: ("settings.support.ready", false)
+        case .idle: hasLocalSupport ? ("settings.support.ready", false) : ("settings.support.needsUpdate", true)
+        }
+    }
+
+    private func primaryAction() {
+        if showsCompletion {
+            showsCompletion = false
+        } else {
+            redownload()
+        }
+    }
+
+    private func redownload() {
+        startedHere = true
+        Task { await support.start(force: true) }
     }
 }
 

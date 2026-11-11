@@ -22,15 +22,15 @@ final class GoFlyRuntimeAssembly: ObservableObject {
         let service: ServiceController
         #if DEBUG && targetEnvironment(simulator)
         let isUITestFixture = GoFlyUITestOverrides.isFrameMode || GoFlyUITestOverrides.isFirstLaunchFixture
-        if isUITestFixture {
-            service = ServiceController(service: GoFlyUITestDeviceService())
-        } else {
-            service = ServiceController(service: NativeDeviceService())
-        }
+        let device: any DeviceService = isUITestFixture ? GoFlyUITestDeviceService() : NativeDeviceService()
+        service = ServiceController(service: device)
         #else
         let isUITestFixture = false
-        service = ServiceController(service: NativeDeviceService())
+        let device: any DeviceService = NativeDeviceService()
+        service = ServiceController(service: device)
         #endif
+        // The DDI modal activates support through the same device boundary.
+        GoFlySupportPreparation.shared.device = device
         let snapshot = recovery.initialSnapshot
         let restoredPosition: SessionDisplayPosition?
 #if DEBUG && targetEnvironment(simulator)

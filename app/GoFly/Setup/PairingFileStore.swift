@@ -142,6 +142,23 @@ enum PairingFileStore {
         try importPairingData(data, expectedDeviceUDID: udid, fileManager: fileManager)
     }
 
+    /// Settings › 裝置與簽名 › 重新匯入配對檔 (F9.a), for both the sideload IPA
+    /// and Mac-installed builds. The file must name the iPhone already bound
+    /// to the stored record; with no stored record it binds like R07.s. A Mac
+    /// renew later replaces this pairing through its own handoff.
+    static func reimportPairing(_ sourceURL: URL, fileManager: FileManager = .default) throws {
+        let data = try readPickedFile(sourceURL, fileManager: fileManager)
+        guard let object = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
+              let dictionary = object as? [String: Any],
+              let udid = dictionary["UDID"] as? String else {
+            throw StoreError.invalidPairingFile
+        }
+        if let bound = expectedDeviceUDID, normalizeTarget(bound) != normalizeTarget(udid) {
+            throw StoreError.invalidPairingFile
+        }
+        try importPairingData(data, expectedDeviceUDID: udid, fileManager: fileManager)
+    }
+
     private static func readPickedFile(_ sourceURL: URL, fileManager: FileManager) throws -> Data {
         let accessing = sourceURL.startAccessingSecurityScopedResource()
         defer {

@@ -600,6 +600,9 @@ private struct GoFlySetupHeroPage: View {
     let messageKey: String
     let statusKey: String
     let statusIdentifier: String
+    var statusTone: GoFlyStatusTone = .neutral
+    /// R07.s pushed from settings sits under a nav bar; onboarding has none.
+    var topPadding: CGFloat = 136
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -631,12 +634,12 @@ private struct GoFlySetupHeroPage: View {
                     .frame(maxWidth: 287)
                     .padding(.top, 13)
 
-                GoFlyStatusPill(text: goFlyString(statusKey), tone: .neutral, identifier: statusIdentifier)
+                GoFlyStatusPill(text: goFlyString(statusKey), tone: statusTone, identifier: statusIdentifier)
                     .padding(.top, 24)
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 16)
-            .padding(.top, 136)
+            .padding(.top, topPadding)
             .padding(.bottom, 24)
         }
         .background(GoFlyStyle.canvas.ignoresSafeArea())
@@ -644,18 +647,46 @@ private struct GoFlySetupHeroPage: View {
 }
 
 /// R07.s: the sideload IPA's first step. Imports a pairing file exported on a computer;
-/// the Mac build keeps R07.
+/// the Mac build keeps R07. Settings › 裝置與簽名 pushes the same page (F9.a) to
+/// replace the stored pairing; it returns to F9 after a successful import.
+/// R07.s.a: a Mac-installed build opens onboarding with the same page in its
+/// imported state; the button is 「下一步」 and `onImported` continues.
 struct GoFlyPairingImportView: View {
-    let onImported: () -> Void
+    enum Context { case onboarding, settings, macSetup }
+
+    var context: Context = .onboarding
+    var onImported: () -> Void = {}
     @State private var showingImporter = false
     @State private var isImporting = false
     @State private var importFailed = false
+    @State private var hasPairing = PairingFileStore.isReady
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        if context == .settings {
+            VStack(spacing: 0) {
+                GoFlySheetNavBar(title: nil) {
+                    GoFlyNavBackButton(title: goFlyString("settings.device"), identifier: "setup.pairingImport.back")
+                } trailing: {
+                    EmptyView()
+                }
+                .padding(.horizontal, 16)
+                page(topPadding: 92)
+            }
+            .background(GoFlyStyle.canvas.ignoresSafeArea())
+            .goFlyPushedFullScreen()
+        } else {
+            page(topPadding: 136)
+        }
+    }
+
+    private func page(topPadding: CGFloat) -> some View {
         GoFlySetupHeroPage(icon: .phone, titleKey: "setup.pairingImport.title",
-                           messageKey: "setup.pairingImport.message",
-                           statusKey: "setup.pairingImport.notImported",
-                           statusIdentifier: "setup.pairingImport.status")
+                           messageKey: context == .macSetup ? "setup.pairingImport.message.mac" : "setup.pairingImport.message",
+                           statusKey: hasPairing ? "setup.pairingImport.imported" : "setup.pairingImport.notImported",
+                           statusIdentifier: "setup.pairingImport.status",
+                           statusTone: hasPairing ? .success : .neutral,
+                           topPadding: topPadding)
         .goFlyToastOverlay(topInset: 64) {
             if importFailed {
                 GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "setup.pairingImport.failed"), message: goFlyString("setup.pairingImport.failed"),
@@ -664,12 +695,16 @@ struct GoFlyPairingImportView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Button {
+                if context == .macSetup {
+                    onImported()
+                    return
+                }
                 importFailed = false
                 showingImporter = true
             } label: {
                 HStack(spacing: 8) {
                     if isImporting { ProgressView() }
-                    Text(goFlyString("setup.pairingImport.action"))
+                    Text(goFlyString(context == .macSetup ? "onboarding.next" : "setup.pairingImport.action"))
                 }
             }
             .buttonStyle(GoFlyButtonStyle(variant: .primary))
@@ -677,7 +712,7 @@ struct GoFlyPairingImportView: View {
             .accessibilityIdentifier("setup.pairingImport.action")
             .padding(.horizontal, 16)
             .padding(.top, 16)
-            .padding(.bottom, 8)
+            .goFlyBottomActionPadding()
             .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
             .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
         }
@@ -694,12 +729,18 @@ struct GoFlyPairingImportView: View {
         isImporting = true
         Task {
             // Native validation reads the file through the FFI, off the main actor.
+            let context = context
             let imported = await Task.detached(priority: .userInitiated) {
-                (try? PairingFileStore.importSideloadedPairing(url)) != nil
+                switch context {
+                case .onboarding: (try? PairingFileStore.importSideloadedPairing(url)) != nil
+                case .settings, .macSetup: (try? PairingFileStore.reimportPairing(url)) != nil
+                }
             }.value
             isImporting = false
             if imported {
+                hasPairing = true
                 onImported()
+                if context == .settings { dismiss() }
             } else {
                 importFailed = true
             }

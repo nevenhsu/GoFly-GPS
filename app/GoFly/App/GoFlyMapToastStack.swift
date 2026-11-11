@@ -27,6 +27,7 @@ struct GoFlyMapToastStack: View {
     let isResumeState: Bool
     @ObservedObject private var network = GoFlyNetworkMonitor.shared
     @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
+    @ObservedObject private var support = GoFlySupportPreparation.shared
     @Environment(\.scenePhase) private var scenePhase
 
     private var unconfirmedID: UUID? { service.pointState.unconfirmedID }
@@ -49,6 +50,42 @@ struct GoFlyMapToastStack: View {
             isWiFiConnected: network.isWiFiConnected,
             localNetworkDenied: localNetwork.authorization == .denied,
             continuationNoticeKey: continuation.noticeKey)
+    }
+
+    private static let supportKey = DeviceServiceFailure.devicePreparationRequired.rawValue
+
+    /// Sideloaded installs show the DDI modal (DDI.5–6) for a device-support
+    /// error instead of a toast; Mac installs keep the USB toast.
+    private var supportNotice: MapNotice? {
+        guard support.appliesToThisInstall else { return nil }
+        return MapNoticeBoard.notices(for: boardInputs).first { Self.supportKey == Self.errorKey(of: $0) }
+    }
+
+    private var visibleNotices: [MapNotice] {
+        let notices = MapNoticeBoard.notices(for: boardInputs)
+        guard support.appliesToThisInstall else { return notices }
+        return notices.filter { Self.errorKey(of: $0) != Self.supportKey }
+    }
+
+    private static func errorKey(of notice: MapNotice) -> String? {
+        switch notice {
+        case .serviceError(let key), .preparedOperationFailed(let key), .joystickError(let key):
+            key
+        case .routeError(let key, _):
+            key
+        default:
+            nil
+        }
+    }
+
+    /// Repeats what failed once support is ready.
+    private func supportRetry(for notice: MapNotice) -> () -> Void {
+        if case .preparedOperationFailed = notice {
+            return {
+                if let id = service.preparedOperation?.id { _ = service.retryPreparedOperation(id: id) }
+            }
+        }
+        return { retryInCurrentMode() }
     }
 
     /// The one toast button for an error key. Retry stays in the current mode:
@@ -96,9 +133,18 @@ struct GoFlyMapToastStack: View {
                     self.searchPasteWarning = nil
                 }
             }
-            ForEach(MapNoticeBoard.notices(for: boardInputs)) { notice in
+            ForEach(visibleNotices) { notice in
                 banner(for: notice)
             }
+        }
+        .onChange(of: supportNotice?.id, initial: true) { _, id in
+            guard id != nil, let notice = supportNotice else { return }
+            support.presentForMap(retry: supportRetry(for: notice))
+        }
+        .sheet(isPresented: $support.isMapModalPresented, onDismiss: { support.closeMap() }) {
+            GoFlySupportModal(context: .map, preparation: support,
+                              onRetry: { support.retryFromMap() },
+                              onClose: { support.closeMap() })
         }
     }
 

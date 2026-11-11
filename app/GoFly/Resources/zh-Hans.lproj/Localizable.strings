@@ -836,3 +836,46 @@
 "onboarding.vpn.externalOpenFailed.title" = "无法打开 App Store";
 "setup.pairingImport.failed.title" = "无法导入配对文件";
 "favoriteRoutes.savedOmittingCurrent.title" = "已保存";
+
+
+/* Device support (DDI) modal — Figma DDI.1–3, DDI.5–6 */
+"support.modal.title.onboarding" = "准备设备支持";
+"support.modal.title.onboardingFailed" = "无法准备设备支持";
+"support.modal.title.map" = "启用设备支持";
+"support.modal.title.mapFailed" = "无法启用设备支持";
+"support.modal.message.onboarding" = "首次使用需下载设备支持（约 16 MB），让 GoFly 能在这台 iPhone 模拟定位。";
+"support.modal.message.map" = "iOS 更新后需要重新启用设备支持（约 16 MB）。完成后会自动重试刚才的操作。";
+"support.modal.downloading" = "下载中…";
+"support.modal.activating" = "启用中…";
+"support.step.download" = "下载设备支持";
+"support.step.activate" = "启用设备支持";
+"support.step.waiting" = "等待中";
+"support.step.notStarted" = "未开始";
+"support.step.downloading" = "下载中…";
+"support.step.activating" = "启用中…";
+"support.step.done" = "完成";
+"support.step.failed" = "失败";
+"support.download.error.network" = "无法连接到下载服务器，请检查网络后重试。";
+"support.download.error.invalid" = "下载的文件不完整，请稍后再试。";
+"support.download.error.storage" = "存储空间不足，请释放空间后重试。";
+"support.activate.error.connection" = "无法连接到这台 iPhone，请确认 Wi‑Fi 与 LocalDevVPN 已连接后重试。";
+"support.activate.error.rejected" = "iPhone 未能启用设备支持，请稍后重试。";
+
+/* Settings › Device support (F11) and pairing re-import (F9.a) */
+"settings.support" = "设备支持";
+"settings.support.status" = "状态";
+"settings.support.ready" = "已就绪";
+"settings.support.needsUpdate" = "需要更新";
+"settings.support.downloading" = "下载中";
+"settings.support.activating" = "启用中";
+"settings.support.cardTitle" = "重新下载设备支持";
+"settings.support.cardMessage" = "iOS 更新后若无法模拟定位，可重新下载并启用设备支持（约 16 MB）。";
+"settings.support.redownload" = "重新下载";
+"settings.device.reimportPairing" = "重新导入配对文件";
+"settings.device.reimportPairingNote" = "导入新的配对文件会取代这台 iPhone 当前的配对数据。";
+"setup.pairingImport.imported" = "已导入";
+"setup.pairingImport.message.mac" = "Mac App 已导入这台 iPhone 的配对文件。";
+"support.modal.title.macSetup" = "设备支持已就绪";
+"support.modal.message.macSetup" = "Mac App 已为这台 iPhone 安装设备支持。";
+"settings.support.readyTitle" = "设备支持已就绪";
+"settings.support.readyMessage" = "已重新下载并启用这台 iPhone 的设备支持。";

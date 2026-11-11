@@ -835,3 +835,46 @@
 "onboarding.vpn.externalOpenFailed.title" = "無法開啟 App Store";
 "setup.pairingImport.failed.title" = "無法匯入配對檔";
 "favoriteRoutes.savedOmittingCurrent.title" = "已儲存";
+
+
+/* Device support (DDI) modal — Figma DDI.1–3, DDI.5–6 */
+"support.modal.title.onboarding" = "準備裝置支援";
+"support.modal.title.onboardingFailed" = "無法準備裝置支援";
+"support.modal.title.map" = "啟用裝置支援";
+"support.modal.title.mapFailed" = "無法啟用裝置支援";
+"support.modal.message.onboarding" = "首次使用需下載裝置支援（約 16 MB），讓 GoFly 能在這支 iPhone 模擬定位。";
+"support.modal.message.map" = "iOS 更新後需要重新啟用裝置支援（約 16 MB）。完成後會自動重試剛才的動作。";
+"support.modal.downloading" = "下載中…";
+"support.modal.activating" = "啟用中…";
+"support.step.download" = "下載裝置支援";
+"support.step.activate" = "啟用裝置支援";
+"support.step.waiting" = "等待中";
+"support.step.notStarted" = "未開始";
+"support.step.downloading" = "下載中…";
+"support.step.activating" = "啟用中…";
+"support.step.done" = "完成";
+"support.step.failed" = "失敗";
+"support.download.error.network" = "無法連線到下載伺服器，請檢查網路後重試。";
+"support.download.error.invalid" = "下載的檔案不完整，請稍後再試。";
+"support.download.error.storage" = "儲存空間不足，請釋放空間後重試。";
+"support.activate.error.connection" = "無法連線到這支 iPhone，請確認 Wi‑Fi 與 LocalDevVPN 已連線後重試。";
+"support.activate.error.rejected" = "iPhone 未能啟用裝置支援，請稍後重試。";
+
+/* Settings › 裝置支援 (F11) and pairing re-import (F9.a) */
+"settings.support" = "裝置支援";
+"settings.support.status" = "狀態";
+"settings.support.ready" = "已就緒";
+"settings.support.needsUpdate" = "需要更新";
+"settings.support.downloading" = "下載中";
+"settings.support.activating" = "啟用中";
+"settings.support.cardTitle" = "重新下載裝置支援";
+"settings.support.cardMessage" = "iOS 更新後若無法模擬定位，可重新下載並啟用裝置支援（約 16 MB）。";
+"settings.support.redownload" = "重新下載";
+"settings.device.reimportPairing" = "重新匯入配對檔";
+"settings.device.reimportPairingNote" = "匯入新的配對檔會取代這支 iPhone 目前的配對資料。";
+"setup.pairingImport.imported" = "已匯入";
+"setup.pairingImport.message.mac" = "Mac App 已匯入這支 iPhone 的配對檔。";
+"support.modal.title.macSetup" = "裝置支援已就緒";
+"support.modal.message.macSetup" = "Mac App 已為這支 iPhone 安裝裝置支援。";
+"settings.support.readyTitle" = "裝置支援已就緒";
+"settings.support.readyMessage" = "已重新下載並啟用這支 iPhone 的裝置支援。";

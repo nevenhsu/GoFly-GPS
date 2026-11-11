@@ -25,13 +25,16 @@ public final class CandidateController: ObservableObject {
     private var blockedByInvalidInput = false
     private var blockedByUnselectedNameQuery = false
     private let search: any PlaceSearching
+    private let linkExpander: (any MapLinkExpanding)?
     private let debounce: Duration
     private var revision: UInt64 = 0
     private var searchTask: Task<Void, Never>?
     private var metadataTask: Task<Void, Never>?
 
-    public init(search: any PlaceSearching, debounce: Duration = .milliseconds(300)) {
+    public init(search: any PlaceSearching, linkExpander: (any MapLinkExpanding)? = nil,
+                debounce: Duration = .milliseconds(300)) {
         self.search = search
+        self.linkExpander = linkExpander
         self.debounce = debounce
     }
     deinit { searchTask?.cancel(); metadataTask?.cancel() }
@@ -46,27 +49,55 @@ public final class CandidateController: ObservableObject {
         inputError = nil
         searchFailed = false
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parts = trimmed.split(separator: ",", omittingEmptySubsequences: false)
-        let first = parts.first.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let coordinateLike = parts.count > 1 && (Double(first) != nil || first.first.map { $0.isNumber || "+-.".contains($0) } == true)
-        guard coordinateLike else {
+        if let shortLink = MapLinkParser.shortLink(trimmed), let linkExpander {
+            // A share link names no place until it is expanded; treat it like a name search.
+            queryKind = .name
+            blockedByUnselectedNameQuery = true
+            results = []
+            searchShortLink(shortLink, expander: linkExpander)
+            return
+        }
+        switch MapLinkParser.parse(trimmed) {
+        case .coordinate(let coordinate, let title)?:
+            acceptCoordinate(coordinate, title: title)
+        case .text(let linkText)?:
+            classify(linkText.trimmingCharacters(in: .whitespacesAndNewlines))
+        case nil:
+            classify(trimmed)
+        }
+    }
+
+    /// Plus Code first, then coordinate notations, otherwise a name or address search.
+    private func classify(_ trimmed: String) {
+        if let plusCode = PlusCodeQuery(trimmed) {
+            if plusCode.kind == .full, let coordinate = OpenLocationCode.decode(plusCode.code) {
+                acceptCoordinate(coordinate)
+                return
+            }
+            if plusCode.kind == .short, let locality = plusCode.locality {
+                // The locality anchors the short code; the result still needs an explicit selection.
+                queryKind = .name
+                blockedByUnselectedNameQuery = true
+                results = []
+                recoverPlusCode(plusCode.code, near: locality, title: trimmed)
+                return
+            }
+        }
+        switch CoordinateTextParser.parse(trimmed) {
+        case .coordinate(let coordinate):
+            acceptCoordinate(coordinate)
+        case .invalid(let failure):
+            rejectCoordinates(failure)
+        case .notCoordinate:
             queryKind = trimmed.isEmpty ? .empty : .name
             blockedByUnselectedNameQuery = !trimmed.isEmpty
             results = []
             if !trimmed.isEmpty { searchNames(trimmed) }
-            return
         }
-        guard parts.count == 2,
-              let latitude = Double(first),
-              let longitude = Double(parts[1].trimmingCharacters(in: .whitespacesAndNewlines)),
-              latitude.isFinite, longitude.isFinite else {
-            rejectCoordinates(.format)
-            return
-        }
-        guard (-90...90).contains(latitude) else { rejectCoordinates(.latitudeRange); return }
-        guard (-180...180).contains(longitude) else { rejectCoordinates(.longitudeRange); return }
-        guard let coordinate = GeoCoordinate(latitude: latitude, longitude: longitude) else { return }
-        let place = MapPlace(id: .coordinate(coordinate), title: coordinate.displayText, coordinate: coordinate)
+    }
+
+    private func acceptCoordinate(_ coordinate: GeoCoordinate, title: String? = nil) {
+        let place = MapPlace(id: .coordinate(coordinate), title: title ?? coordinate.displayText, coordinate: coordinate)
         queryKind = .coordinate
         blockedByInvalidInput = false
         blockedByUnselectedNameQuery = false
@@ -150,15 +181,65 @@ public final class CandidateController: ObservableObject {
     }
 
     private func searchNames(_ query: String) {
+        let search = search
+        runSearch { try await search.search(query: query) }
+    }
+
+    /// Looks up the locality, then recovers the short code nearest to its first result.
+    private func recoverPlusCode(_ code: String, near locality: String, title: String) {
+        let search = search
+        runSearch { try await Self.recoverPlusCode(code, near: locality, title: title, search: search) }
+    }
+
+    nonisolated private static func recoverPlusCode(_ code: String, near locality: String, title: String,
+                                                    search: any PlaceSearching) async throws -> [MapPlace] {
+        guard let anchor = try await search.search(query: locality).first,
+              let coordinate = OpenLocationCode.recoverNearest(code, reference: anchor.coordinate) else { return [] }
+        return [MapPlace(id: .coordinate(coordinate), title: title, coordinate: coordinate)]
+    }
+
+    private func searchShortLink(_ link: URL, expander: any MapLinkExpanding) {
+        let search = search
+        runSearch {
+            guard let expanded = try await expander.expand(link),
+                  let target = MapLinkParser.parse(expanded.absoluteString) else { return [] }
+            try Task.checkCancellation()
+            return try await Self.places(for: target, search: search)
+        }
+    }
+
+    /// The places an expanded link points to, using the same rules as typed text.
+    nonisolated private static func places(for target: MapLinkParser.Target,
+                                           search: any PlaceSearching) async throws -> [MapPlace] {
+        switch target {
+        case .coordinate(let coordinate, let title):
+            return [MapPlace(id: .coordinate(coordinate), title: title ?? coordinate.displayText, coordinate: coordinate)]
+        case .text(let text):
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let plusCode = PlusCodeQuery(trimmed) {
+                if plusCode.kind == .full, let coordinate = OpenLocationCode.decode(plusCode.code) {
+                    return [MapPlace(id: .coordinate(coordinate), title: trimmed, coordinate: coordinate)]
+                }
+                if plusCode.kind == .short, let locality = plusCode.locality {
+                    return try await recoverPlusCode(plusCode.code, near: locality, title: trimmed, search: search)
+                }
+            }
+            if case .coordinate(let coordinate) = CoordinateTextParser.parse(trimmed) {
+                return [MapPlace(id: .coordinate(coordinate), title: coordinate.displayText, coordinate: coordinate)]
+            }
+            return trimmed.isEmpty ? [] : try await search.search(query: trimmed)
+        }
+    }
+
+    private func runSearch(_ operation: @escaping @Sendable () async throws -> [MapPlace]) {
         isSearching = true
         let token = revision
-        let search = search
         let debounce = debounce
         searchTask = Task { [weak self] in
             do {
                 if debounce > .zero { try await Task.sleep(for: debounce) }
                 try Task.checkCancellation()
-                let places = try await search.search(query: query)
+                let places = try await operation()
                 try Task.checkCancellation()
                 guard let self, self.revision == token else { return }
                 self.results = places

@@ -1,0 +1,20 @@
+{
+  "images": [
+    {
+      "filename": "support-step-done-light.svg",
+      "idiom": "universal",
+      "appearances": [
+        { "appearance": "luminosity", "value": "light" }
+      ]
+    },
+    {
+      "filename": "support-step-done-dark.svg",
+      "idiom": "universal",
+      "appearances": [
+        { "appearance": "luminosity", "value": "dark" }
+      ]
+    }
+  ],
+  "info": { "author": "xcode", "version": 1 },
+  "properties": { "preserves-vector-representation": true }
+}

@@ -46,8 +46,20 @@ struct GoFlyOnboardingView: View {
         )
     }
 
-    private var welcome: some View {
-        GoFlyWelcomeView(isPreparing: false, onNext: controller.advanceWelcome)
+    /// Mac-installed builds open with R07.s.a (pairing already imported by the
+    /// Mac App, button 「下一步」); the sideload IPA imported on R07.s before
+    /// onboarding and keeps the welcome page.
+    @ViewBuilder private var welcome: some View {
+        if Self.isMacInstall {
+            GoFlyPairingImportView(context: .macSetup, onImported: controller.advanceWelcome)
+                .toolbar(.hidden, for: .navigationBar)
+        } else {
+            GoFlyWelcomeView(isPreparing: false, onNext: controller.advanceWelcome)
+        }
+    }
+
+    private static var isMacInstall: Bool {
+        (Bundle.main.object(forInfoDictionaryKey: "GoFlyRequiresMacSetup") as? Bool) == true
     }
 
     private var location: some View {
@@ -119,7 +131,7 @@ struct GoFlyOnboardingView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
-            .padding(.bottom, 0)
+            .goFlyBottomActionPadding()
             .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
             .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
         }
@@ -258,6 +270,7 @@ private struct GoFlyOnboardingPage<Content: View, Actions: View>: View {
             VStack(spacing: 12) { actions() }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
+                .goFlyBottomActionPadding()
                 .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
                 .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
         }
@@ -360,6 +373,7 @@ private struct GoFlyLocalNetworkOnboardingView: View {
             .accessibilityIdentifier("onboarding.localNetwork.allow")
             .padding(.horizontal, 16)
             .padding(.top, 12)
+            .goFlyBottomActionPadding()
             .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
             .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
         }
@@ -414,6 +428,8 @@ private struct GoFlyVPNOnboardingView: View {
     @State private var externalOpenFailureKey = "onboarding.vpn.externalOpenFailed"
     @ObservedObject private var network = GoFlyNetworkMonitor.shared
     @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
+    @ObservedObject private var support = GoFlySupportPreparation.shared
+    @State private var showingSupport = false
 
     var body: some View {
         ScrollView {
@@ -486,7 +502,7 @@ private struct GoFlyVPNOnboardingView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Button {
                 if controller.vpnState == .reachable {
-                    controller.advanceVPN(onAdvance: onComplete)
+                    controller.advanceVPN(onAdvance: finishVPN)
                 } else {
                     controller.checkConnection()
                 }
@@ -501,7 +517,7 @@ private struct GoFlyVPNOnboardingView: View {
             .accessibilityIdentifier("onboarding.vpn.check")
             .padding(.horizontal, 16)
             .padding(.top, 16)
-            .padding(.bottom, 8)
+            .goFlyBottomActionPadding()
             .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
             .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
         }
@@ -532,10 +548,37 @@ private struct GoFlyVPNOnboardingView: View {
         }
         .onChange(of: controller.vpnState) { _, state in
             guard state == .reachable else { return }
-            controller.advanceVPN(onAdvance: onComplete)
+            controller.advanceVPN(onAdvance: finishVPN)
         }
         .navigationDestination(isPresented: $showingHelp) {
             GoFlyVPNHelpPage(onReturn: recheckAfterHelp)
+        }
+        .sheet(isPresented: $showingSupport) {
+            if support.appliesToThisInstall {
+                GoFlySupportModal(context: .onboarding, preparation: support, onRetry: prepareSupport)
+            } else {
+                GoFlySupportModal(context: .macSetup, preparation: support, onRetry: {
+                    showingSupport = false
+                    onComplete()
+                })
+            }
+        }
+    }
+
+    /// DDI.1–3: sideloaded installs prepare device support in a modal that
+    /// cannot be dismissed or skipped. DDI.4: Mac-provisioned installs show the
+    /// same modal already ready; 「下一步」 finishes onboarding.
+    private func finishVPN() {
+        showingSupport = true
+        guard support.appliesToThisInstall else { return }
+        prepareSupport()
+    }
+
+    private func prepareSupport() {
+        Task { @MainActor in
+            guard await support.start() else { return }
+            showingSupport = false
+            onComplete()
         }
     }
 

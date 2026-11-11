@@ -15,7 +15,7 @@
 
 **同一失敗只留一張 toast**：操作失敗（`preparedOperationFailed`，有重試）顯示時，或搖桿／路線模式的錯誤 toast 已在報告同一個錯誤碼時，不再同時顯示 App 級通用服務錯誤 toast（`serviceError`）；只保留一張。尚未在真機驗證。
 
-**`error.devicePreparationRequired`（2026-11-03 實作文案）**：實機確認（iPhone 15 Pro，27.0.1 → 27.2）裝置支援只在 iOS 更新後失效，一般重開機不受影響；用 USB 接上裝有 Xcode 的 Mac 後，Mac 會在背景自動重新掛載，按重試即可恢復。toast 文案引導用 USB 連接 Mac 並用 Mac 端安裝工具（GoFly Mac App 或 iloader）重新安裝，文案刻意不指名；toast 標題用專屬短句，第二行就是上表文案；按鈕保留「重試」，供重新安裝後恢復。只裝 GoFly Mac App、沒有 Xcode 的 Mac 是否也會自動掛載尚未驗證。Figma F11.b 專用 toast「需要更新裝置支援」（按鈕「更新」開啟 設定 › 裝置支援）屬於手機自行更新的設計，暫緩：Apple 沒有可匿名下載 DDI 的來源，手機端下載方案尚未定案。
+**`error.devicePreparationRequired`（2026-11-03 實作文案）**：實機確認（iPhone 15 Pro，27.0.1 → 27.2）裝置支援只在 iOS 更新後失效，一般重開機不受影響；用 USB 接上裝有 Xcode 的 Mac 後，Mac 會在背景自動重新掛載，按重試即可恢復。toast 文案引導用 USB 連接 Mac 並用 Mac 端安裝工具（GoFly Mac App 或 iloader）重新安裝，文案刻意不指名；toast 標題用專屬短句，第二行就是上表文案；按鈕保留「重試」，供重新安裝後恢復。只裝 GoFly Mac App、沒有 Xcode 的 Mac 是否也會自動掛載尚未驗證。**2026-11-11 更新（側載版改用 DDI modal，已實作、未實機驗收）**：SideStore 不會掛載 DDI，舊結論「沒有可匿名下載的來源」不再成立——社群 DeveloperDiskImage 鏡像提供檔案，個人化簽署由 Apple TSS 匿名完成（同日以 Mac 內附 pymobiledevice3、不經 Xcode，在 iOS 27.2.1 實機掛載成功）。側載版（`GoFlyRequiresMacSetup=false` 且無正式 activation）遇到此錯誤**不顯示 toast**，改開 Figma 共用元件 `Light · Modal / 裝置支援（DDI）`（DDI.5–6），文案見下方「裝置支援 modal」表；Mac 安裝版維持上表 toast。舊 Figma F11.b 專用 toast 已移除（F11.b 現為設定 › 裝置支援的下載失敗狀態）；設定 › 裝置支援可隨時重新下載（見 IOS-UI-DESIGN.md F11）。
 
 其餘錯誤**不放按鈕**，只留關閉（×）：文案已說明該怎麼做（選起點、選地點、移除一筆再試），使用者直接在原畫面操作即可。
 
@@ -176,3 +176,22 @@ struct GoFlyIssue: Identifiable {
 1. 驗證類（約 8 項）不計入 Pill 的 Error，會改動 [IOS-STATUS-ERRORS.md](IOS-STATUS-ERRORS.md)「77 項全為 Error」的規則，是否同意？
 2. 連續失敗 2 次後換成「設定」，次數是否合適？
 3. 與 Figma `04 · iOS Redesign` 的 Toast 變體尚未比對。
+
+## 裝置支援 modal（側載版，DDI.1–3、DDI.5–6）
+
+不是 toast；固定高度 modal 的文案。錯誤文字放在預留的 2 行位置。
+
+| Key | 繁中 | English |
+| --- | --- | --- |
+| `support.modal.title.onboarding`／`.onboardingFailed` | 準備裝置支援／無法準備裝置支援 | Preparing device support／Couldn't prepare device support |
+| `support.modal.title.map`／`.mapFailed` | 啟用裝置支援／無法啟用裝置支援 | Activate device support／Couldn't activate device support |
+| `support.modal.message.onboarding` | 首次使用需下載裝置支援（約 16 MB），讓 GoFly 能在這支 iPhone 模擬定位。 | First use downloads device support (about 16 MB) so GoFly can simulate location on this iPhone. |
+| `support.modal.message.map` | iOS 更新後需要重新啟用裝置支援（約 16 MB）。完成後會自動重試剛才的動作。 | Device support needs to be reactivated after an iOS update (about 16 MB). Your last action retries when it finishes. |
+| `support.step.download` | 下載裝置支援（唯一步驟列；下載後的啟用顯示在同列右側「啟用中…」，2026-11-11 移除獨立啟用列） | Download device support |
+| `support.step.*` 狀態 | 等待中、下載中…、啟用中…、完成、失敗；下載中顯示「8.2 / 16 MB」 | Waiting, Downloading…, Activating…, Done, Failed |
+| 按鈕 | 下載中…／啟用中…（停用）；失敗為「重試」 | Downloading…／Activating… (disabled); Retry on failure |
+| `support.download.error.network` | 無法連線到下載伺服器，請檢查網路後重試。 | Couldn't reach the download server. Check your internet connection and try again. |
+| `support.download.error.invalid` | 下載的檔案不完整，請稍後再試。 | The downloaded files were incomplete. Try again later. |
+| `support.download.error.storage` | 儲存空間不足，請釋放空間後重試。 | Not enough storage to save device support. Free up space and try again. |
+| `support.activate.error.connection` | 無法連線到這支 iPhone，請確認 Wi‑Fi 與 LocalDevVPN 已連線後重試。 | Couldn't reach this iPhone. Make sure Wi‑Fi and LocalDevVPN are connected, then try again. |
+| `support.activate.error.rejected` | iPhone 未能啟用裝置支援，請稍後重試。 | This iPhone didn't activate device support. Try again in a moment. |

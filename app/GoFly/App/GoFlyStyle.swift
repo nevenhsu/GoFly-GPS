@@ -1,4 +1,5 @@
 import GoFlyCore
+import UIKit
 import SwiftUI
 
 /// Semantic color aliases used by shared controls and screens.
@@ -781,6 +782,7 @@ enum GoFlyTextColor {
     static let accent = GoFlyThemeColor.textAccent
     static let input = GoFlyThemeColor.textInputDefault
     static let inputIcon = GoFlyThemeColor.iconInputDefault
+    static let iconAccent = GoFlyThemeColor.iconAccent
 }
 
 /// Page and sheet title row: the title stays centered on the page whatever the
@@ -802,5 +804,28 @@ extension View {
         simultaneousGesture(TapGesture().onEnded {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         })
+    }
+}
+
+extension View {
+    /// A · 啟動與首次引導 and the DDI modal: the bottom action's lower edge sits
+    /// 40 pt above the screen edge. Apply inside a bottom `safeAreaInset` (or a
+    /// sheet), where the home-indicator inset already counts toward the 40 pt.
+    func goFlyBottomActionPadding() -> some View {
+        modifier(GoFlyBottomActionPadding())
+    }
+}
+
+private struct GoFlyBottomActionPadding: ViewModifier {
+    static let screenEdgeGap: CGFloat = 40
+
+    func body(content: Content) -> some View {
+        content.padding(.bottom, max(0, Self.screenEdgeGap - Self.bottomSafeArea))
+    }
+
+    @MainActor private static var bottomSafeArea: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            .first?.safeAreaInsets.bottom ?? 0
     }
 }

@@ -26,7 +26,7 @@ D8 的 `route.error.planningFailed` 依 Figma 04 渲染由路線頁浮動 danger
 | `error.pairingRequired` | 缺少配對資料。請連接 Mac App 完成裝置準備。 |
 | `error.identityMismatch` | 配對資料屬於其他裝置。請在 Mac App 修復。 |
 | `error.developerModeRequired` | 請開啟開發者模式，再連接 Mac App 完成準備。 |
-| `error.devicePreparationRequired` | 請用 USB 連接 Mac，打開 Mac App 重新安裝。（toast 標題：需要啟用裝置支援） |
+| `error.devicePreparationRequired` | Mac 安裝版：請用 USB 連接 Mac，打開 Mac App 重新安裝。側載版：不顯示 toast，改開裝置支援（DDI）modal 下載並啟用（見 IOS-ERROR-TOAST-COPY.md）。（toast 標題：需要啟用裝置支援） |
 | `error.serviceUnavailable` | 無法連接裝置服務。請檢查 VPN 通道。 |
 | `error.tunnelUnavailable` | 無法連接 VPN 通道。請重新連接 LocalDevVPN 後再試。 |
 | `error.operationTimedOut` | 裝置未在時限內確認，請重試。 |

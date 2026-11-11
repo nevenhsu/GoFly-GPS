@@ -117,8 +117,8 @@ struct DesignAsset: View {
         } else if let url = Bundle.module.url(forResource: name, withExtension: "svg"),
            let image = NSImage(contentsOf: url) {
             Image(nsImage: image).resizable().renderingMode(.template).aspectRatio(contentMode: .fit)
-                .frame(width: name == "WingedArrow" ? size.width * 0.640625 : size.width,
-                       height: name == "WingedArrow" ? size.height * 0.515625 : size.height)
+                .frame(width: name == "WingedArrow" ? size.width * (232.0 / 360.0) : size.width,
+                       height: name == "WingedArrow" ? size.height * (188.0 / 360.0) : size.height)
                 .frame(width: size.width, height: size.height).foregroundStyle(tint).accessibilityHidden(true)
         }
     }

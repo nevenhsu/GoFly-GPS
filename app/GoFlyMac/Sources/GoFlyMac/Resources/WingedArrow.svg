@@ -1,9 +1,7 @@
-<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="61.5" height="49.5" viewBox="0 0 61.5 49.5" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g id="Group">
-<path id="Vector" d="M30.75 0L44.25 49.5L30.75 41.625L17.25 49.5L30.75 0Z" fill="black"/>
-<path id="Vector_2" d="M20.25 25.875L0 17.25L4.875 27.375L18 33.375L20.25 25.875Z" fill="black"/>
-<path id="Vector_3" d="M16.875 37.125L7.5 33L11.625 40.5L17.625 43.125L16.875 37.125Z" fill="black"/>
-<path id="Vector_4" d="M41.25 25.875L61.5 17.25L56.625 27.375L43.5 33.375L41.25 25.875Z" fill="black"/>
-<path id="Vector_5" d="M44.625 37.125L54 33L49.875 40.5L43.875 43.125L44.625 37.125Z" fill="black"/>
-</g>
+<svg width="232" height="188" viewBox="0 0 232 188" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M116 0L168 188L116 158L64 188L116 0Z" fill="black"/>
+<path d="M0 66L75.0327 99.3479L68.0244 124.6853L18.2907 102.5815L0 66Z" fill="black"/>
+<path d="M26.7326 119.4652L64.7899 136.3796L58.8598 157.819L42.2094 150.4188L26.7326 119.4652Z" fill="black"/>
+<path d="M232 66L156.9673 99.3479L163.9756 124.6853L213.7093 102.5815L232 66Z" fill="black"/>
+<path d="M205.2674 119.4652L167.2101 136.3796L173.1402 157.819L189.7906 150.4188L205.2674 119.4652Z" fill="black"/>
 </svg>

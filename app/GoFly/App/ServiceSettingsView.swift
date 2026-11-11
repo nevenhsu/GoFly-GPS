@@ -146,6 +146,9 @@ struct ServiceSettingsView: View {
             settingsSection("settings.deviceSection") {
                 settingsLink(title: "settings.device", value: nil,
                              destination: { GoFlyDeviceSettingsPage(service: service, setupMetadata: setupMetadata) })
+                settingsDivider
+                settingsLink(title: "settings.support", value: nil,
+                             destination: { GoFlyDeviceSupportSettingsPage() })
             }
         }
     }
@@ -257,6 +260,7 @@ struct ServiceSettingsView: View {
         case "settings.network": .wifi
         case "settings.language": .language
         case "settings.appearance": .appearance
+        case "settings.support": .support
         default: .device
         }
     }
