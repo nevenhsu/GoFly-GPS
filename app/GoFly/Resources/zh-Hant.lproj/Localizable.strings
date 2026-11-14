@@ -15,8 +15,6 @@
 "service.start" = "啟動模擬";
 "service.stop" = "停止服務";
 "service.reset" = "重置連線";
-"service.resetSucceeded.title" = "已重置連線";
-"service.resetSucceeded.message" = "可以重新啟動模擬";
 "service.stopped" = "已停止";
 "service.stoppedGPSPending" = "已停止・GPS 待確認";
 "service.connecting" = "連線中…";
@@ -382,7 +380,6 @@
 "recovery.uncertain" = "上次位置變更尚未確認。";
 "recovery.connectionChecking" = "正在檢查連線…";
 "recovery.connectionLost" = "連線無法使用";
-"recovery.connectionRecovered" = "連線已恢復，請手動繼續。";
 "recovery.saving" = "儲存中…";
 "recovery.unsaved" = "變更尚未儲存。";
 "recovery.error.unavailable" = "無法存取已存工作階段，請檢查可用儲存空間。";
@@ -587,7 +584,6 @@
 
 "imports.deleteAction" = "刪除路線";
 
-"imports.imported" = "已匯入「%@」";
 
 
 "favorites.noMatches" = "沒有符合的最愛地點";

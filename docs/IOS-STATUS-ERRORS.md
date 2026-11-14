@@ -140,7 +140,7 @@ D8 的 `route.error.planningFailed` 依 Figma 04 渲染由路線頁浮動 danger
 ## 判斷與清除
 
 - 輸入驗證類（`route.error.missingStart／missingDestination／currentLocationUnavailable`，以及各清單的 `invalidLabel／noSelection／busy／nothingToUndo`）由使用者原地處理，不計入 Error、不讓 Pill 變紅；分類見 `IssueCatalog`，文案與按鈕見 [IOS-ERROR-TOAST-COPY.md](IOS-ERROR-TOAST-COPY.md)。
-- 連線恢復、修復成功或正常操作清除實際錯誤後，再依任務狀態顯示 Standby／Running／Paused／Stopped；不是只換文字或關掉 toast。
+- 地圖上的連線探測或重試成功後，清除已解除的連線錯誤提示，不顯示連線恢復 Toast。連線恢復、修復成功或正常操作清除實際錯誤後，狀態 Pill 依任務狀態顯示 Standby／Running／Paused／Stopped。
 - 資料仍處於 blocked 時，單獨關閉錯誤提示不讓紅色錯誤態假消失。
 - `operationCancelled` 是正常取消，不列為 Error；首次未知、健康探測 pending、定位 ACK pending、使用者暫停／停止也不是錯誤。
 - 搜尋框的座標格式／範圍驗證及尚未提交的局部編輯提示維持在原欄位，未納入全域 session pill；啟動交接鎖定頁與 onboarding 也不屬於已進入正常 runtime 的 session pill。

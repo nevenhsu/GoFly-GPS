@@ -42,8 +42,6 @@ public final class ConnectionRecoveryController: ObservableObject {
     private var foregroundCheckPending = false
     private var lastProbeFinishedAt: Duration?
     private var lastObservedPhase: ServicePhase
-    private var recoveredNotice = false
-    private var probeStartedFromFailure = false
     private var checkNoticeVisible = false
     private var revisionQueued = false
     private var subscriptions: [AnyCancellable] = []
@@ -115,8 +113,6 @@ public final class ConnectionRecoveryController: ObservableObject {
     public var noticeKey: String? {
         if service.coldClearPending { return "recovery.coldClearPending" }
         if isSilentRepairInProgress { return nil }
-        // No "checking connection" toast: a re-check is silent until it fails or recovers.
-        if recoveredNotice { return "recovery.connectionRecovered" }
         switch connectionState {
         case .unavailable, .timedOut: return "recovery.connectionLost"
         case .unknown, .checking, .reachable: return nil
@@ -154,7 +150,6 @@ public final class ConnectionRecoveryController: ObservableObject {
         checkTask?.cancel()
         isChecking = false
         connectionState = .unknown
-        recoveredNotice = false
         checkNoticeVisible = false
         if checkTask == nil {
             route.recoveryProbeDidFinish()
@@ -288,8 +283,7 @@ public final class ConnectionRecoveryController: ObservableObject {
         generation &+= 1
         let token = generation
         let probe = probe
-        probeStartedFromFailure = connectionState == .unavailable || connectionState == .timedOut
-        recoveredNotice = false
+        let probeStartedFromFailure = connectionState == .unavailable || connectionState == .timedOut
         // Re-checking a connection that last succeeded is silent. The first probe
         // after launch (`.connecting`) shows no toast either; only re-checking a
         // known failure shows the checking notice.
@@ -339,10 +333,10 @@ public final class ConnectionRecoveryController: ObservableObject {
                 diagnose("tunnel.probe.end", category: .tunnel, level: .notice, [
                     "result": .text("reachable"),
                     "ms": .milliseconds(elapsedMs),
-                    "recovered": .flag(self.probeStartedFromFailure)
+                    "recovered": .flag(probeStartedFromFailure)
                 ])
                 if !self.canRetryAutomaticRepair {
-                    self.finishConnectionRecovery(recovered: self.probeStartedFromFailure)
+                    self.finishConnectionRecovery()
                 }
             case .failure(let failure):
                 diagnose("tunnel.probe.end", category: .tunnel, level: .error, [
@@ -416,8 +410,7 @@ public final class ConnectionRecoveryController: ObservableObject {
             self.lastProbeFinishedAt = self.clock.now
             if success || self.service.movementConnection != .unavailable {
                 self.failedAutomaticRepair = nil
-                // An automatic repair recovers silently: no "recovered" notice.
-                self.finishConnectionRecovery(recovered: recovery.explicitlyRequested)
+                self.finishConnectionRecovery()
             }
             self.evaluateServiceState()
         }
@@ -433,9 +426,8 @@ public final class ConnectionRecoveryController: ObservableObject {
         automaticRepairTask?.cancel()
     }
 
-    private func finishConnectionRecovery(recovered: Bool) {
+    private func finishConnectionRecovery() {
         connectionState = .reachable
-        recoveredNotice = recovered
         service.setMovementConnectionAvailable(true)
         route.connectionDidBecomeAvailable()
         joystick.connectionDidBecomeAvailable()

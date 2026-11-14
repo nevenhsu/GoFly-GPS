@@ -251,12 +251,11 @@ struct GoFlyMapToastStack: View {
                 isFloating: true
             )
         case .connection(let key, let cold):
-            let recovered = key == "recovery.connectionRecovered"
             GoFlyStatusBanner(
-                tone: recovered ? .success : .danger,
+                tone: .danger,
                 title: goFlyString(key),
-                message: recovered ? nil : goFlyString("recovery.connectionGuidance"),
-                actionTitle: recovered ? nil : goFlyString(cold ? "toast.restore" : "common.retry"),
+                message: goFlyString("recovery.connectionGuidance"),
+                actionTitle: goFlyString(cold ? "toast.restore" : "common.retry"),
                 onAction: {
                     if cold { _ = service.restoreGPS() }
                     else { recovery.checkConnection() }

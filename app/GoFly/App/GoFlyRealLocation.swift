@@ -67,7 +67,7 @@ final class GoFlyRealLocation: NSObject, ObservableObject, CLLocationManagerDele
             if let loc = manager.location {
                 publish(loc)
             }
-            refresher.refreshNow()
+            refresher.refreshNow(waitingForRealFix: true)
         case .denied, .restricted:
             fail()
         @unknown default:
@@ -82,7 +82,7 @@ final class GoFlyRealLocation: NSObject, ObservableObject, CLLocationManagerDele
     /// A confirmed GPS clear: the next fix can be real again.
     func refresh() {
         guard isAuthorized else { return }
-        refresher.refreshNow()
+        refresher.refreshNow(waitingForRealFix: true)
     }
 
     func requestFix() {

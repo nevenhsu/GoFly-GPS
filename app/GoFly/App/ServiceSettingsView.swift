@@ -13,10 +13,8 @@ struct ServiceSettingsView: View {
     @ObservedObject private var network = GoFlyNetworkMonitor.shared
     @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
     @State private var serviceNoticeDismissed = false
-    @State private var awaitingResetSuccessToast = false
     /// The ✕ hides the continuation notice until a different notice appears.
     @State private var dismissedContinuationNotice: String?
-    @State private var resetSuccessToastVisible = GoFlyUITestOverrides.frame == "F1.b"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,7 +35,6 @@ struct ServiceSettingsView: View {
         }
         .background(GoFlyStyle.canvas)
         .goFlyToastOverlay(topInset: 54) { topStatusToasts }
-        .goFlyBottomToastOverlay(bottomInset: 40) { bottomStatusToasts }
         .goFlyPushedFullScreen()
         .onAppear {
             systemStatus.refresh()
@@ -46,8 +43,6 @@ struct ServiceSettingsView: View {
         .onChange(of: bannerFailure) { _, newFailure in
             if newFailure != nil { serviceNoticeDismissed = false }
         }
-        .onChange(of: service.clearConfirmedAt) { _, _ in resolveResetSuccessToast() }
-        .onChange(of: service.phase) { _, _ in resolveResetSuccessToast() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             systemStatus.refresh()
             recovery.requestForegroundCheck()
@@ -81,20 +76,6 @@ struct ServiceSettingsView: View {
                 message: goFlyString("background.systemDecidesRuntime"),
                 onDismiss: { dismissedContinuationNotice = key },
                 identifier: "background.notice.compact",
-                isFloating: true
-            )
-        }
-    }
-
-    @ViewBuilder
-    private var bottomStatusToasts: some View {
-        if resetSuccessToastVisible {
-            GoFlyStatusBanner(
-                tone: .success,
-                title: goFlyString("service.resetSucceeded.title"),
-                message: goFlyString("service.resetSucceeded.message"),
-                onDismiss: { resetSuccessToastVisible = false },
-                identifier: "service.resetSucceeded",
                 isFloating: true
             )
         }
@@ -304,8 +285,7 @@ struct ServiceSettingsView: View {
         let isStop = offersStop && !isReset
         return Button {
             if isReset {
-                awaitingResetSuccessToast = service.forceReset()
-                resetSuccessToastVisible = false
+                _ = service.forceReset()
             } else if isStop {
                 _ = service.stop()
             } else {
@@ -350,12 +330,6 @@ struct ServiceSettingsView: View {
         if isReset { return service.nativeBusy }
         if isStop { return !service.canStop }
         return !service.canStart
-    }
-
-    private func resolveResetSuccessToast() {
-        guard awaitingResetSuccessToast, !service.nativeBusy, service.phase == .stopped else { return }
-        awaitingResetSuccessToast = false
-        resetSuccessToastVisible = service.clearConfirmedAt != nil
     }
 
     private var status: some View {

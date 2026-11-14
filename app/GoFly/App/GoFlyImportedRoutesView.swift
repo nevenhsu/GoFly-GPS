@@ -248,9 +248,7 @@ struct GoFlyImportedRoutesView: View {
         fileTask = Task {
             defer { fileOperationInProgress = false }
             do {
-                guard try await GoFlyGPXFileAccess.importFile(url, into: imports), let snapshot = selectedSnapshot else { return }
-                snackbar = GoFlySnackbarMessage(
-                    text: goFlyLocalizedFormat(goFlyString("imports.imported"), snapshot.record.filename))
+                _ = try await GoFlyGPXFileAccess.importFile(url, into: imports)
             }
             catch { presentFileError(error) }
         }

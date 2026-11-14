@@ -241,20 +241,6 @@ extension View {
                 .zIndex(50)
         }
     }
-
-    func goFlyBottomToastOverlay<Toast: View>(bottomInset: CGFloat = 40,
-                                              @ViewBuilder content: @escaping () -> Toast) -> some View {
-        overlay(alignment: .bottom) {
-            VStack(spacing: 8) {
-                content()
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, bottomInset)
-            .frame(maxWidth: .infinity, alignment: .bottom)
-            .accessibilityElement(children: .contain)
-            .zIndex(50)
-        }
-    }
 }
 
 /// Every toast is a short title plus the key's own copy as its second line;

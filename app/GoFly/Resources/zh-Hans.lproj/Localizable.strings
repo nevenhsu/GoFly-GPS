@@ -15,8 +15,6 @@
 "service.start" = "启动模拟";
 "service.stop" = "停止服务";
 "service.reset" = "重置连接";
-"service.resetSucceeded.title" = "已重置连接";
-"service.resetSucceeded.message" = "可以重新启动模拟";
 "service.stopped" = "已停止";
 "service.stoppedGPSPending" = "已停止・GPS 待确认";
 "service.connecting" = "连接中…";
@@ -372,7 +370,6 @@
 "recovery.uncertain" = "上次位置变更尚未确认。";
 "recovery.connectionChecking" = "正在检查连接…";
 "recovery.connectionLost" = "连接无法使用";
-"recovery.connectionRecovered" = "连接已恢复，请手动继续。";
 "recovery.saving" = "保存中…";
 "recovery.unsaved" = "更改尚未保存。";
 "recovery.error.unavailable" = "无法访问已存会话，请检查可用存储空间。";
@@ -576,7 +573,6 @@
 
 "imports.deleteAction" = "删除路线";
 
-"imports.imported" = "已导入“%@”";
 
 
 "favorites.noMatches" = "没有符合的最爱地点";

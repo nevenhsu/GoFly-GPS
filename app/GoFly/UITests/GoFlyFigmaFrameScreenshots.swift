@@ -369,7 +369,7 @@ final class GoFlyFigmaFrameScreenshots: XCTestCase {
         throw XCTSkip("Shared toast frame fixtures run only in the iOS Simulator.")
         #else
         continueAfterFailure = false
-        let frames = ["B7", "B10", "D8", "F1.b"]
+        let frames = ["B7", "B10", "D8"]
         let output = repositoryRoot.appendingPathComponent(
             "work/gofly-ios-figma04/screenshots/ticket04-feedback-frames", isDirectory: true)
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
@@ -1308,11 +1308,6 @@ final class GoFlyFigmaFrameScreenshots: XCTestCase {
                 XCTAssertTrue(primaryOrReset.waitForExistence(timeout: 10))
                 XCTAssertGreaterThanOrEqual(primaryOrReset.frame.height, 44)
 
-                if frame == "F1.b" {
-                    let toast = app.descendants(matching: .any)["service.resetSucceeded"]
-                    XCTAssertTrue(toast.waitForExistence(timeout: 10))
-                }
-
                 app.terminate()
             }
         }
@@ -1540,10 +1535,7 @@ final class GoFlyFigmaFrameScreenshots: XCTestCase {
             XCTAssertTrue(app.descendants(matching: .any)["map.unconfirmedFailure"].waitForExistence(timeout: 15))
         case "D8":
             XCTAssertTrue(app.descendants(matching: .any)["route.error"].waitForExistence(timeout: 15))
-        case "F1.b":
-            XCTAssertTrue(app.buttons["service.primary"].waitForExistence(timeout: 10))
-            XCTAssertTrue(app.descendants(matching: .any)["service.resetSucceeded"].waitForExistence(timeout: 10))
-        case "F1":
+        case "F1", "F1.b":
             XCTAssertTrue(app.buttons["service.primary"].waitForExistence(timeout: 10))
         case "R07":
             XCTAssertTrue(app.descendants(matching: .any)["setup.mac.status"].waitForExistence(timeout: 10))

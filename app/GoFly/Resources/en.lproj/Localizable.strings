@@ -15,8 +15,6 @@
 "service.start" = "Start";
 "service.stop" = "Stop";
 "service.reset" = "Reset";
-"service.resetSucceeded.title" = "Connection reset";
-"service.resetSucceeded.message" = "You can restart the simulation.";
 "service.stopped" = "Stopped";
 "service.stoppedGPSPending" = "Stopped · GPS unconfirmed";
 "service.connecting" = "Connecting…";
@@ -372,7 +370,6 @@
 "recovery.uncertain" = "Previous position change is unconfirmed.";
 "recovery.connectionChecking" = "Checking connection…";
 "recovery.connectionLost" = "Connection unavailable";
-"recovery.connectionRecovered" = "Connection reachable. Continue explicitly.";
 "recovery.saving" = "Saving…";
 "recovery.unsaved" = "Changes are not saved.";
 "recovery.error.unavailable" = "Can't access the saved session. Check storage.";
@@ -576,7 +573,6 @@
 
 "imports.deleteAction" = "Delete";
 
-"imports.imported" = "Imported “%@”";
 
 
 "favorites.noMatches" = "No matching favorite places";

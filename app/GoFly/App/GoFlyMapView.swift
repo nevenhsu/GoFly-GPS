@@ -736,6 +736,17 @@ struct GoFlyMapView: View {
                 if id != nil { dismissKeyboard() }
             }
             .onReceive(location.$observation) { handleRealLocationObservation($0) }
+            .onChange(of: service.clearConfirmedAt) { _, clearedAt in
+                guard let clearedAt else { return }
+                pendingGPSRecenterAt = Date()
+                // A post-clear fix may have arrived before SwiftUI delivered this change.
+                if let fix = service.realLocation, fix.observedAt >= clearedAt,
+                   Date().timeIntervalSince(fix.observedAt) <= 15, consumeGPSRecenter(for: fix) {
+                    applyGPSRecenter(to: fix.coordinate)
+                } else {
+                    location.refresh()
+                }
+            }
             .onChange(of: route.picker?.id) { _, id in
                 if id != nil {
                     searchFocusRequest = UUID()
@@ -978,14 +989,6 @@ struct GoFlyMapView: View {
             duration: uiTestFixtureFrame == "B6" ? .seconds(30) : nil
         )
         .onChange(of: joystick.error) { _, newError in notices.reopen(.joystickError, ifPresent: newError) }
-        .onChange(of: service.clearState) { _, state in
-            // Real GPS can be observed again once the simulated location is cleared.
-            // Stop / Restore GPS also returns the camera to the first real fix.
-            if case .confirmed = state {
-                pendingGPSRecenterAt = Date()
-                location.refresh()
-            }
-        }
         .onChange(of: mode) { _, newMode in
             if newMode != .route { pendingRouteNodeTapID = nil }
         }
@@ -2042,15 +2045,17 @@ struct GoFlyMapView: View {
             return
         }
         joystickOrigin.fixAccepted(GeoCoordinate(latitude: accepted.latitude, longitude: accepted.longitude))
-        let explicitlyRequested = consumeGPSRecenter(for: accepted)
         // GPS fixes move the camera only for Recenter or the first
         // camera of the session; later fixes never pan or zoom it.
-        guard explicitlyRequested || (cameraIntent == nil && service.confirmedSimulatedLocation == nil),
-              let coordinate = GeoCoordinate(latitude: accepted.latitude, longitude: accepted.longitude) else { return }
-        let headingDegrees: Double? = explicitlyRequested ? 0 : nil
-        let intent = GoFlyCameraIntent(coordinate: coordinate, headingDegrees: headingDegrees,
-                                       resetsZoom: explicitlyRequested)
-        cameraIntent = intent
+        if consumeGPSRecenter(for: accepted) {
+            applyGPSRecenter(to: accepted.coordinate)
+        } else if cameraIntent == nil, service.confirmedSimulatedLocation == nil {
+            cameraIntent = GoFlyCameraIntent(coordinate: accepted.coordinate)
+        }
+    }
+
+    private func applyGPSRecenter(to coordinate: GeoCoordinate) {
+        cameraIntent = GoFlyCameraIntent(coordinate: coordinate, headingDegrees: 0, resetsZoom: true)
     }
 
     /// A pending Recenter waits for a current real fix. A software-simulated
@@ -2059,7 +2064,7 @@ struct GoFlyMapView: View {
     /// the request expires after 30 s so a late fix cannot move the camera.
     private func consumeGPSRecenter(for fix: RealLocationObservation) -> Bool {
         guard let requestedAt = pendingGPSRecenterAt else { return false }
-        guard Date().timeIntervalSince(requestedAt) <= 30 else {
+        guard Date().timeIntervalSince(requestedAt) <= RealLocationRefresher.realFixWaitSeconds else {
             pendingGPSRecenterAt = nil
             return false
         }
@@ -2272,7 +2277,8 @@ struct GoFlyMapView: View {
 
     private func recenter() {
         if let simulated = service.confirmedSimulatedLocation {
-            cameraIntent = GoFlyCameraIntent(coordinate: simulated, headingDegrees: 0, resetsZoom: true)
+            pendingGPSRecenterAt = nil
+            applyGPSRecenter(to: simulated)
         } else {
             pendingGPSRecenterAt = Date()
             location.requestRecenter()
