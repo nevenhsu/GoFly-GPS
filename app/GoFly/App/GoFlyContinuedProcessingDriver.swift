@@ -16,6 +16,7 @@ public final class GoFlyContinuedProcessingDriver: ContinuedProcessingDriving {
     private var eventHandler: (@MainActor @Sendable (ContinuedProcessingEvent) -> Void)?
     private var completion: ContinuedProcessingTaskCompletion?
     private var completed = false
+    private var deliveredText: (title: String, subtitle: String)?
 
     private init() {}
 
@@ -73,9 +74,15 @@ public final class GoFlyContinuedProcessingDriver: ContinuedProcessingDriving {
         guard let request = currentRequest, request.requestID == requestID, let currentTask,
               valid(title, 128), valid(subtitle, 512) else { return }
         let units = ContinuedProcessingProgressUnits.forRequest(request, progress: progress)
-        currentTask.progress.totalUnitCount = units.totalUnitCount
-        currentTask.progress.completedUnitCount = units.completedUnitCount
-        currentTask.updateTitle(title, subtitle: subtitle)
+        let totalChanged = currentTask.progress.totalUnitCount != units.totalUnitCount
+        let completedChanged = currentTask.progress.completedUnitCount != units.completedUnitCount
+        if totalChanged { currentTask.progress.totalUnitCount = units.totalUnitCount }
+        if completedChanged { currentTask.progress.completedUnitCount = units.completedUnitCount }
+        if deliveredText?.title != title || deliveredText?.subtitle != subtitle {
+            currentTask.updateTitle(title, subtitle: subtitle)
+            deliveredText = (title, subtitle)
+        }
+        guard totalChanged || completedChanged else { return }
         Diagnostics.shared.record("background.progressUnits", category: .background, [
             "total": .count(Int(units.totalUnitCount)),
             "completed": .count(Int(units.completedUnitCount)),
@@ -109,6 +116,7 @@ public final class GoFlyContinuedProcessingDriver: ContinuedProcessingDriving {
         }
         let grant = ContinuedProcessingGrant(requestID: request.requestID,
                                              movementID: request.movementID, lease: request.lease)
+        deliveredText = nil
         currentTask = continued
         completion = ContinuedProcessingTaskCompletion(grant: grant)
         Diagnostics.shared.record("background.taskLaunched", category: .background, level: .notice, [
@@ -151,6 +159,7 @@ public final class GoFlyContinuedProcessingDriver: ContinuedProcessingDriving {
     }
 
     private func clearCurrent() {
+        deliveredText = nil
         currentRequest = nil
         currentTask = nil
         completion = nil

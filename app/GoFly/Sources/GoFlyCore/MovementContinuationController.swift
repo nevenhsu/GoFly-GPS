@@ -165,7 +165,7 @@ public final class MovementContinuationController: ObservableObject {
         if lease == nil, hadDemand { noticeKey = "background.unavailable" }
         synchronize()
     }
-    public func refreshPresentation() { forwardProgress(); synchronize() }
+    public func refreshPresentation() { forwardProgress(refreshText: true); synchronize() }
 
     private func installSubscriptions() {
         subscriptions = [
@@ -486,16 +486,24 @@ public final class MovementContinuationController: ObservableObject {
             "movement": .text(demand.movementID.uuidString)
         ])
     }
-    private func forwardProgress() {
+    private var lastForwardedProgress: (requestID: UUID, progress: ContinuedProcessingProgress)?
+
+    private func forwardProgress(refreshText: Bool = false) {
         guard let current = candidate, let progress = current.epoch.progress else { return }
-        diagnose("background.progress", category: .background, [
-            "writes": .count(Int(progress.acknowledgedWrites)),
-            "distance_m": .number(progress.cumulativeAcknowledgedDistanceMeters, digits: 1),
-            "duration_s": .number(progress.cumulativeAcknowledgedDurationSeconds, digits: 1)
-        ])
+        let requestID = current.request.requestID
+        let changed = lastForwardedProgress?.requestID != requestID || lastForwardedProgress?.progress != progress
+        guard changed || refreshText else { return }
+        if changed {
+            diagnose("background.progress", category: .background, [
+                "writes": .count(Int(progress.acknowledgedWrites)),
+                "distance_m": .number(progress.cumulativeAcknowledgedDistanceMeters, digits: 1),
+                "duration_s": .number(progress.cumulativeAcknowledgedDurationSeconds, digits: 1)
+            ])
+        }
         let text = presentation(current.request.kind, progress)
-        _ = runtime.update(requestID: current.request.requestID, progress: progress,
-            title: text.title, subtitle: text.subtitle)
+        if runtime.update(requestID: requestID, progress: progress, title: text.title, subtitle: text.subtitle) {
+            lastForwardedProgress = (requestID, progress)
+        }
     }
     private func queueCleanup() {
         guard !cleanupQueued else { return }
@@ -550,7 +558,7 @@ public final class MovementContinuationController: ObservableObject {
         }
     }
     private func synchronize() {
-        receipts = runtime.receipts
+        if receipts != runtime.receipts { receipts = runtime.receipts }
     }
 }
 

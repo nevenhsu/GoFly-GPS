@@ -17,6 +17,19 @@ struct SessionCheckpointSaverTests {
         #expect(persistence.writes == 1)
     }
 
+    @Test func runtimeOnlyChangesDoNotWriteTheCheckpointAgain() async {
+        let persistence = GatedCheckpointPersistence()
+        let store = SessionRecoveryStore(persistence: persistence)
+        let saver = SessionCheckpointSaver(store: store, backgroundTasks: RecordingBackgroundTasks())
+
+        saver.capture(SessionRecoverySnapshot(mode: .joystick, activeMovement: .manual))
+        #expect(await store.flush())
+        saver.capture(SessionRecoverySnapshot(mode: .joystick,
+            uncertainty: SessionMovementUncertainty(source: .joystick)))
+        #expect(await store.flush())
+        #expect(persistence.writes == 1)
+    }
+
     @Test func leavingWithNothingUnsavedOpensNoWindow() {
         let tasks = RecordingBackgroundTasks()
         let store = SessionRecoveryStore(persistence: GatedCheckpointPersistence())

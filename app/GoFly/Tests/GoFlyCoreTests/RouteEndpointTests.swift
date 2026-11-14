@@ -138,9 +138,11 @@ struct RouteEndpointTests {
         let file = AtomicFile(directory: directory, filename: "legs.json", maximumBytes: RouteLegCache.maximumBytes)
         let draft = try #require(RouteDraft(values: (1...5).map { .place(place($0)) }))
         let first = CountingPlanner()
-        let launched = fixture(draft: draft, planner: first, legCache: RouteLegCache(file: file))
+        let cache = RouteLegCache(file: file)
+        let launched = fixture(draft: draft, planner: first, legCache: cache)
         await settle { launched.plannedRoute != nil }
         #expect(first.calls == 4)
+        try #require(await cache.flush())
 
         let again = CountingPlanner()
         let relaunched = fixture(draft: draft, planner: again, legCache: RouteLegCache(file: file))

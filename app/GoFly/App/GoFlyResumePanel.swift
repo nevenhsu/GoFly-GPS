@@ -5,7 +5,7 @@ import SwiftUI
 /// Features:
 /// - Maximum map and location visibility (76 pt visible height).
 /// - Shows interrupted state title on the left.
-/// - Single primary "Resume" action button on the right (e.g., "繼續路線", "恢復漫步").
+/// - Single primary "Resume" action button on the right (e.g., "繼續").
 struct GoFlyResumePanel: View {
     let title: String
     var subtitle: String? = nil

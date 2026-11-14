@@ -190,14 +190,16 @@ struct WanderControllerIntegrationTests {
         #expect(controller.phase == .moving && controller.isAwaitingNextTarget)
         #expect(service.movementAuthority.snapshot.runState == .running)
         let writes = await device.coordinates.count
-        await wait { clock.sleepingCount == 1 }; clock.advance(by: .seconds(1))
-        await wait { clock.sleepingCount == 1 }
+        #expect(clock.sleepingCount == 0)
+        clock.advance(by: .seconds(3))
         #expect(await device.coordinates.count == writes)
+        #expect(clock.sleepingCount == 0)
 
         let next = GeoCoordinate(latitude: 25.0002, longitude: 121)!
         let endpoint = try #require(service.currentJoystickOrigin)
         #expect(controller.installNextWanderRouteInPlace(target: WanderTarget(place: place(next)), route: try PlannedRoute(points: [endpoint, next])))
         #expect(!controller.wanderNeedsTarget && !controller.isAwaitingNextTargetInPlace)
+        await wait { clock.sleepingCount == 1 }
         clock.advance(by: .seconds(1)); await wait { await device.waiting }
         #expect(controller.intent == operation)
         #expect(await device.claim()); await device.finish(.acknowledged)

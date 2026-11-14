@@ -19,7 +19,7 @@ final class GoFlyRoutePausedUITests: GoFlyRouteModeTestCase {
             XCTAssertEqual(panel.frame.height, 76, accuracy: 1, "narrow resume panel")
             XCTAssertEqual(element(app, "gallery.resumePanel.title").label, "路線已暫停 · 45%")
             XCTAssertEqual(element(app, "gallery.resumePanel.subtitle").label, "剩餘 1.2 km · 預估 14 分鐘")
-            XCTAssertEqual(element(app, "gallery.resumePanel.action").label, "繼續路線")
+            XCTAssertEqual(element(app, "gallery.resumePanel.action").label, "繼續")
             evidence(app, task: "R7", name: "d10-paused-\(appearance)")
             app.terminate()
         }

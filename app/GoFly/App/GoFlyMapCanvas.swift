@@ -304,7 +304,7 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             let dark = map.traitCollection.userInterfaceStyle == .dark
             if appliedNodeDark != dark {
                 appliedNodeDark = dark
-                for node in routeNodeAnnotations { map.view(for: node)?.image = node.kind.image(dark: dark) }
+                for node in routeNodeAnnotations { refreshRouteNode(node, on: map) }
             }
             let color = UIColor(GoFlyThemeColor.mapRoute).resolvedColor(with: map.traitCollection).cgColor
             if appliedRouteColor != color {
@@ -480,49 +480,71 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         func updateRoute(on map: MKMapView) {
             let points = parent.route?.points ?? []
             let places = points.count > 1 ? [] : parent.routeNodePlaces
-            guard points != routePoints || parent.routeWaypoints != routeWaypointsApplied
-                    || parent.showsRoutePoints != showsRoutePointsApplied
-                    || places != routeNodePlacesApplied || parent.selectedRouteNode != selectedRouteNodeApplied else { return }
-            routePoints = points
+            let geometryChanged = points != routePoints
+            let dotsChanged = parent.showsRoutePoints != showsRoutePointsApplied
+            let nodesChanged = geometryChanged || parent.routeWaypoints != routeWaypointsApplied
+                || places != routeNodePlacesApplied
+            if geometryChanged || dotsChanged {
+                routePoints = points
+                showsRoutePointsApplied = parent.showsRoutePoints
+                if let routeOverlay { map.removeOverlay(routeOverlay) }
+                routeOverlay = nil
+                routeRenderer = nil
+                appliedRouteColor = nil
+                if points.count > 1 {
+                    let coordinates = points.map(\.clLocationCoordinate)
+                    let overlay = MKPolyline(coordinates: coordinates, count: coordinates.count)
+                    routeOverlay = overlay
+                    map.addOverlay(overlay, level: .aboveRoads)
+                }
+            }
+            guard nodesChanged else {
+                updateRouteSelection(on: map)
+                return
+            }
             routeWaypointsApplied = parent.routeWaypoints
-            showsRoutePointsApplied = parent.showsRoutePoints
             routeNodePlacesApplied = places
             selectedRouteNodeApplied = parent.selectedRouteNode
             map.removeAnnotations(routeNodeAnnotations)
-            routeNodeAnnotations = []
-            if let routeOverlay { map.removeOverlay(routeOverlay) }
-            routeOverlay = nil
-            routeRenderer = nil
-            appliedRouteColor = nil
-            guard points.count > 1 else {
-                // No road yet: still mark the chosen places so the stops stay visible.
-                guard let first = places.first else { return }
-                var annotations = [RouteNodeAnnotation(first, kind: .start)]
-                if places.count > 1 {
-                    annotations += places.dropFirst().dropLast().enumerated()
-                        .map { RouteNodeAnnotation($1, kind: .waypoint($0 + 1)) }
-                    annotations.append(RouteNodeAnnotation(places[places.count - 1], kind: .destination))
-                }
-                markSelected(annotations)
-                routeNodeAnnotations = annotations
-                map.addAnnotations(annotations)
-                return
+            // Without a planned road, the selected places still supply the nodes.
+            let start = points.first ?? places.first
+            let destination = points.last ?? (places.count > 1 ? places.last : nil)
+            let waypoints = points.isEmpty
+                ? places.dropFirst().dropLast()
+                : parent.routeWaypoints[...]
+            var annotations: [RouteNodeAnnotation] = []
+            if let start { annotations.append(RouteNodeAnnotation(start, kind: .start)) }
+            annotations += waypoints.enumerated().map { RouteNodeAnnotation($1, kind: .waypoint($0 + 1)) }
+            if let destination { annotations.append(RouteNodeAnnotation(destination, kind: .destination)) }
+            if let selected = parent.selectedRouteNode, annotations.indices.contains(selected) {
+                annotations[selected].isSelected = true
             }
-            let coordinates = points.map(\.clLocationCoordinate)
-            let overlay = MKPolyline(coordinates: coordinates, count: coordinates.count)
-            routeOverlay = overlay
-            map.addOverlay(overlay, level: .aboveRoads)
-            var annotations = [RouteNodeAnnotation(points[0], kind: .start)]
-            annotations += parent.routeWaypoints.enumerated().map { RouteNodeAnnotation($1, kind: .waypoint($0 + 1)) }
-            annotations.append(RouteNodeAnnotation(points[points.count - 1], kind: .destination))
-            markSelected(annotations)
             routeNodeAnnotations = annotations
             map.addAnnotations(annotations)
         }
 
-        private func markSelected(_ annotations: [RouteNodeAnnotation]) {
-            guard let selected = parent.selectedRouteNode, annotations.indices.contains(selected) else { return }
-            annotations[selected].isSelected = true
+        private func updateRouteSelection(on map: MKMapView) {
+            let previous = selectedRouteNodeApplied
+            let next = parent.selectedRouteNode
+            guard previous != next else { return }
+            selectedRouteNodeApplied = next
+            for index in [previous, next].compactMap({ $0 }) where routeNodeAnnotations.indices.contains(index) {
+                let node = routeNodeAnnotations[index]
+                node.isSelected = index == next
+                refreshRouteNode(node, on: map)
+            }
+        }
+
+        private func refreshRouteNode(_ node: RouteNodeAnnotation, on map: MKMapView) {
+            guard let view = map.view(for: node) else { return }
+            applyRouteNodeAppearance(node, to: view, on: map)
+        }
+
+        private func applyRouteNodeAppearance(_ node: RouteNodeAnnotation, to view: MKAnnotationView, on map: MKMapView) {
+            let dark = map.traitCollection.userInterfaceStyle == .dark
+            view.image = node.isSelected ? node.kind.selectedImage(dark: dark) : node.kind.image(dark: dark)
+            view.centerOffset = node.kind.centerOffset
+            view.zPriority = node.isSelected ? .max : .defaultUnselected
         }
 
         func updateRangeCircle(on map: MKMapView) {
@@ -695,11 +717,7 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                 let view = mapView.dequeueReusableAnnotationView(withIdentifier: "routeNode")
                     ?? MKAnnotationView(annotation: node, reuseIdentifier: "routeNode")
                 view.annotation = node
-                let dark = mapView.traitCollection.userInterfaceStyle == .dark
-                view.image = node.isSelected ? node.kind.selectedImage(dark: dark) : node.kind.image(dark: dark)
-                view.centerOffset = node.kind.centerOffset
-                // The selected node stays above the others where stops overlap.
-                view.zPriority = node.isSelected ? .max : .defaultUnselected
+                applyRouteNodeAppearance(node, to: view, on: mapView)
                 view.canShowCallout = false
                 configureAccessibility(view, kind: node.kind)
                 return view
@@ -772,25 +790,62 @@ struct GoFlyMapCanvas: UIViewRepresentable {
 private final class GoFlyRoutePolylineRenderer: MKPolylineRenderer {
     var showsPoints = false
 
+    private struct DotBatch {
+        let centers: ArraySlice<CGPoint>
+        let bounds: CGRect
+    }
+
+    // MapKit can draw multiple tiles concurrently. Keep a single immutable
+    // snapshot per scale and release the lock before drawing to a tile.
+    private let dotsLock = NSLock()
+    private var cachedDots: (scale: MKZoomScale, batches: [DotBatch])?
+
+    private func dotBatches(scale: MKZoomScale) -> [DotBatch] {
+        dotsLock.withLock {
+            if let cachedDots, cachedDots.scale == scale { return cachedDots.batches }
+            let spacing = (3.5 / scale) * 3
+            let vertices = polyline.points()
+            var centers: [CGPoint] = []
+            for index in 1..<(polyline.pointCount - 1) {
+                let center = point(for: vertices[index])
+                // Include offscreen points in spacing decisions, as before.
+                if let last = centers.last, hypot(center.x - last.x, center.y - last.y) < spacing { continue }
+                centers.append(center)
+            }
+            let batches = stride(from: 0, to: centers.count, by: 64).map { start in
+                let batch = centers[start..<min(start + 64, centers.count)]
+                var low = centers[start], high = low
+                for center in batch.dropFirst() {
+                    low.x = min(low.x, center.x)
+                    low.y = min(low.y, center.y)
+                    high.x = max(high.x, center.x)
+                    high.y = max(high.y, center.y)
+                }
+                return DotBatch(centers: batch, bounds: CGRect(x: low.x, y: low.y,
+                    width: high.x - low.x, height: high.y - low.y))
+            }
+            cachedDots = (scale, batches)
+            return batches
+        }
+    }
+
     override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
         super.draw(mapRect, zoomScale: zoomScale, in: context)
         guard showsPoints, polyline.pointCount > 2, let color = strokeColor else { return }
         let radius = 3.5 / zoomScale
         let ring = 1.5 / zoomScale
         let visible = rect(for: mapRect).insetBy(dx: -radius - ring, dy: -radius - ring)
-        let vertices = polyline.points()
-        var last: CGPoint?
         context.setLineWidth(ring)
         context.setStrokeColor(color.cgColor)
         context.setFillColor(UIColor.white.cgColor)
-        for index in 1..<(polyline.pointCount - 1) {
-            let center = point(for: vertices[index])
-            if let last, hypot(center.x - last.x, center.y - last.y) < radius * 3 { continue }
-            last = center
-            guard visible.contains(center) else { continue }
-            let dot = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
-            context.fillEllipse(in: dot)
-            context.strokeEllipse(in: dot.insetBy(dx: ring / 2, dy: ring / 2))
+        for batch in dotBatches(scale: zoomScale)
+        where batch.bounds.maxX >= visible.minX && batch.bounds.minX <= visible.maxX
+            && batch.bounds.maxY >= visible.minY && batch.bounds.minY <= visible.maxY {
+            for center in batch.centers where visible.contains(center) {
+                let dot = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+                context.fillEllipse(in: dot)
+                context.strokeEllipse(in: dot.insetBy(dx: ring / 2, dy: ring / 2))
+            }
         }
     }
 }

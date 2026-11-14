@@ -16,7 +16,7 @@ public protocol BackgroundSaveTasks {
 public final class SessionCheckpointSaver: ObservableObject {
     private let store: SessionRecoveryStore
     private let backgroundTasks: any BackgroundSaveTasks
-    private var lastCaptured: SessionRecoverySnapshot
+    private var lastCaptured: SessionRecoverySnapshot?
     private var windowStarted = false
     private var windowID: UUID?
     private var backgroundTask: Int?
@@ -28,9 +28,8 @@ public final class SessionCheckpointSaver: ObservableObject {
     }
 
     public func capture(_ snapshot: SessionRecoverySnapshot) {
-        guard snapshot != lastCaptured else { return }
-        lastCaptured = snapshot
-        _ = store.capture(snapshot)
+        if let lastCaptured, SessionRecoveryCodec.samePersistentContent(snapshot, lastCaptured) { return }
+        lastCaptured = store.capture(snapshot) ? snapshot : nil
     }
 
     /// Captures `snapshot` and opens one save window until the scene is active again.

@@ -19,9 +19,14 @@ public enum SessionRecoveryCodec {
     }
 
     public static func encode(_ snapshot: SessionRecoverySnapshot, revision: UInt64) throws -> Data {
+        try encode(snapshot, revision: revision, encodeGPX: { try GPXCodec.encode($0) })
+    }
+
+    static func encode(_ snapshot: SessionRecoverySnapshot, revision: UInt64,
+                       encodeGPX: (GPXDocument) throws -> Data) throws -> Data {
         do {
             try validateSnapshot(snapshot)
-            let archive = try Archive(snapshot: snapshot, revision: revision)
+            let archive = try Archive(snapshot: snapshot, revision: revision, encodeGPX: encodeGPX)
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
             let data = try encoder.encode(archive)
@@ -67,6 +72,13 @@ public enum SessionRecoveryCodec {
         } catch {
             throw SessionRecoveryFailure.corruptArchive
         }
+    }
+
+    /// The fields in Archive. Runtime history and uncertainty are not serialized.
+    static func samePersistentContent(_ lhs: SessionRecoverySnapshot, _ rhs: SessionRecoverySnapshot) -> Bool {
+        lhs.mode == rhs.mode && lhs.roundTripEnabled == rhs.roundTripEnabled
+            && lhs.joystickSpeed == rhs.joystickSpeed && lhs.position == rhs.position
+            && lhs.draft == rhs.draft
     }
 
     static func validateSnapshot(_ snapshot: SessionRecoverySnapshot) throws {
@@ -144,11 +156,11 @@ public enum SessionRecoveryCodec {
         let joystickSpeed: Int
         let position: PositionDTO?
 
-        init(snapshot: SessionRecoverySnapshot, revision: UInt64) throws {
+        init(snapshot: SessionRecoverySnapshot, revision: UInt64, encodeGPX: (GPXDocument) throws -> Data) throws {
             schemaVersion = SessionRecoveryLimits.schemaVersion
             self.revision = revision
             mode = snapshot.mode
-            draft = try DraftDTO(snapshot.draft)
+            draft = try DraftDTO(snapshot.draft, encodeGPX: encodeGPX)
             roundTripEnabled = snapshot.roundTripEnabled
             joystickSpeed = snapshot.joystickSpeed.kilometersPerHour
             position = snapshot.position.map(PositionDTO.init)
@@ -243,13 +255,13 @@ public enum SessionRecoveryCodec {
         let gpxData: Data?
         let gpxFilename: String?
 
-        init(_ value: RouteDraft) throws {
+        init(_ value: RouteDraft, encodeGPX: (GPXDocument) throws -> Data = { try GPXCodec.encode($0) }) throws {
             speed = value.speed.kilometersPerHour
             switch value.source {
             case .manual(let nodes):
                 sourceKind = "manual"; self.nodes = nodes.map(NodeDTO.init); gpxData = nil; gpxFilename = nil
             case .gpx(let source):
-                sourceKind = "gpx"; nodes = nil; gpxData = try GPXCodec.encode(source.document); gpxFilename = source.displayFilename
+                sourceKind = "gpx"; nodes = nil; gpxData = try encodeGPX(source.document); gpxFilename = source.displayFilename
             }
         }
 

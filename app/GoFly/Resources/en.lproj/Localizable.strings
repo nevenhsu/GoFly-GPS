@@ -164,7 +164,7 @@
 "route.fieldSearchHint" = "Tap again to open location search.";
 "route.start" = "Start";
 "route.pause" = "Pause";
-"route.resume" = "Resume";
+"route.resume" = "Go";
 "route.cancel" = "Cancel";
 "route.speed" = "Speed";
 "route.speedValue" = "%ld km/h";
@@ -354,7 +354,7 @@
 "joystick.startingWander" = "Starting…";
 "joystick.cancelStartingHint" = "Double-tap to cancel starting.";
 "joystick.stopWander" = "Stop";
-"joystick.changePlace" = "Shuffle";
+"joystick.changePlace" = "Next";
 "joystick.randomDestination" = "Random destination";
 "joystick.phase.suspended" = "Waiting to continue";
 "joystick.error.noCandidate" = "No new destination found. Pick one on the map or retry.";
@@ -519,7 +519,7 @@
 "sheet.detent.expanded" = "Expanded";
 "execution.end" = "End";
 "common.undo" = "Undo";
-"common.continue" = "Resume";
+"common.continue" = "Go";
 "gallery.warningTitle" = "Background task stopped";
 "gallery.warningMessage" = "Return to GoFly to continue walking.";
 "gallery.successTitle" = "VPN channel available";
@@ -688,9 +688,9 @@
 "common.confirm" = "Confirm";
 "common.retry" = "Retry";
 "route.clearRoute" = "Clear";
-"route.resumeShort" = "Resume";
-"teleport.resumeShort" = "Resume";
-"wander.resumeShort" = "Resume";
+"route.resumeShort" = "Go";
+"teleport.resumeShort" = "Go";
+"wander.resumeShort" = "Go";
 "route.roundTrip.on" = "Round Trip On";
 "route.roundTrip.off" = "Round Trip Off";
 "route.direction.forward" = "Forward";

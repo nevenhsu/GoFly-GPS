@@ -3,6 +3,7 @@ import Foundation
 
 private actor SessionRecoveryWriter {
     private let persistence: any SessionRecoveryPersistence
+    private var encodedGPX: (document: GPXDocument, data: Data)?
 
     init(persistence: any SessionRecoveryPersistence) {
         self.persistence = persistence
@@ -14,7 +15,12 @@ private actor SessionRecoveryWriter {
     /// unbounded enqueue stream.
     func write(revision: UInt64, snapshot: SessionRecoverySnapshot) -> Result<Void, SessionRecoveryFailure> {
         do {
-            let data = try SessionRecoveryCodec.encode(snapshot, revision: revision)
+            let data = try SessionRecoveryCodec.encode(snapshot, revision: revision) { document in
+                if let encodedGPX, encodedGPX.document == document { return encodedGPX.data }
+                let data = try GPXCodec.encode(document)
+                encodedGPX = (document, data)
+                return data
+            }
             try persistence.replaceAtomically(with: data)
             return .success(())
         } catch let failure as SessionRecoveryFailure {

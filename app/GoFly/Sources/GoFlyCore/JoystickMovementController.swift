@@ -7,21 +7,21 @@ public enum JoystickMovementPhase: String, Equatable, Sendable {
 
 @MainActor
 public final class JoystickMovementController: ObservableObject {
-    @Published public private(set) var phase: JoystickMovementPhase = .neutral
+    @Published public private(set) var phase: JoystickMovementPhase = .neutral { didSet { wakeMovementWaiters() } }
     @Published public private(set) var isRecoveringConnection = false
     @Published public private(set) var speed: RouteSpeed
-    @Published public private(set) var input: JoystickInput?
+    @Published public private(set) var input: JoystickInput? { didSet { wakeMovementWaiters() } }
     @Published public private(set) var activeGestureID: UUID?
     @Published public private(set) var intent: JoystickMovementIntent?
     @Published public private(set) var lastAcknowledgedCoordinate: GeoCoordinate?
     @Published public private(set) var lastAcknowledgedBearingDegrees: Double?
     @Published public private(set) var error: JoystickFailure?
-    @Published public private(set) var wanderEnabled = false
+    @Published public private(set) var wanderEnabled = false { didSet { wakeMovementWaiters() } }
     @Published public private(set) var wanderTarget: WanderTarget?
     @Published public private(set) var wanderRoute: PlannedRoute?
     @Published public private(set) var wanderProgressMeters: Double = 0
     @Published public private(set) var wanderNeedsReplan = false
-    @Published public private(set) var wanderNeedsTarget = false
+    @Published public private(set) var wanderNeedsTarget = false { didSet { wakeMovementWaiters() } }
     @Published public private(set) var wanderError: WanderSelectionFailure?
     @Published public private(set) var suspensionReason: WanderSuspensionReason?
     public var displayInput: JoystickInput? {
@@ -102,7 +102,7 @@ public final class JoystickMovementController: ObservableObject {
     private var generation: UInt64 = 0
     private var settlementRevision: UInt64 = 0
     private var hasAcknowledgedLease = false
-    private var awaitsTargetInPlace = false
+    private var awaitsTargetInPlace = false { didSet { wakeMovementWaiters() } }
     private var resumedNeutralIntent: JoystickMovementIntent?
     private var physicalOperations: Set<UUID> = []
     private let continuationControlSubject = PassthroughSubject<MovementContinuationControlEvent, Never>()
@@ -587,6 +587,42 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         }
     }
 
+    private struct MovementWaiter {
+        let whileWaiting: @MainActor (JoystickMovementController) -> Bool
+        let continuation: CheckedContinuation<Void, Never>
+    }
+
+    private var movementWaiters: [UUID: MovementWaiter] = [:]
+
+    private func resumeMovementWaiter(_ id: UUID) {
+        movementWaiters.removeValue(forKey: id)?.continuation.resume()
+    }
+
+    private func wakeMovementWaiters() {
+        let ready = movementWaiters.compactMap { id, waiter in
+            waiter.whileWaiting(self) ? nil : id
+        }
+        for id in ready { resumeMovementWaiter(id) }
+    }
+
+    private func waitForMovementChange(while predicate: @escaping @MainActor (JoystickMovementController) -> Bool) async {
+        let id = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                guard !Task.isCancelled, predicate(self) else { continuation.resume(); return }
+                movementWaiters[id] = MovementWaiter(whileWaiting: predicate, continuation: continuation)
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.resumeMovementWaiter(id) }
+        }
+    }
+
+    func waitForPauseSettlement() async {
+        while phase == .pausing, !Task.isCancelled {
+            await waitForMovementChange { $0.phase == .pausing }
+        }
+    }
+
     private func run(_ operation: JoystickMovementIntent, token: UInt64) async {
         // A road wander writes the position it stands on at once, without the
         // cadence wait: that first ACK lets the background task be requested
@@ -594,6 +630,10 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         // moment later no longer pauses it.
         var writesCurrentPositionFirst = wanderEnabled && input == nil && wanderRoute != nil
         while generation == token, phase == .moving, !Task.isCancelled {
+            if isAwaitingNextTargetInPlace {
+                await waitForMovementChange { $0.isAwaitingNextTargetInPlace }
+                continue
+            }
             // A finger on the joystick keeps the manual cadence, including
             // during a wander override; road wander alone uses the path cadence.
             let manual = input != nil || !wanderEnabled

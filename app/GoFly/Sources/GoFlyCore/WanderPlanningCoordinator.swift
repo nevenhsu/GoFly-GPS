@@ -374,9 +374,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
                     replanningID = nil
                 }
             }
-            while !Task.isCancelled, joystick.phase == .pausing {
-                try? await Task.sleep(for: .milliseconds(40))
-            }
+            await joystick.waitForPauseSettlement()
             guard !Task.isCancelled, replanningID == planningID else { return }
             // A paused segment end plans only in the foreground; a lease
             // waiting in place plans in either scene.

@@ -133,7 +133,7 @@
 "operation.destination" = "目的地：%@";
 "operation.startSummary" = "準備定位服務，不變更位置。";
 "favorites.title" = "最愛地點";
-"favorites.shortTitle" = "最愛 Favorite";
+"favorites.shortTitle" = "最愛地點";
 "favorites.add" = "加入最愛地點";
 "favorites.remove" = "移除最愛地點";
 "favorites.saved" = "已收藏";
@@ -363,8 +363,8 @@
 "joystick.startWander" = "自動漫步";
 "joystick.startingWander" = "啟動中…";
 "joystick.cancelStartingHint" = "點兩下以取消啟動。";
-"joystick.stopWander" = "停止漫步";
-"joystick.changePlace" = "更換地點";
+"joystick.stopWander" = "停止";
+"joystick.changePlace" = "換地點";
 "joystick.randomDestination" = "隨機目的地";
 "joystick.phase.suspended" = "等待繼續";
 "joystick.error.noCandidate" = "找不到新的目的地。請在地圖選點或重試。";
@@ -662,7 +662,7 @@
 
 "route.list.title" = "全部地點";
 
-"route.exchange" = "反轉順序";
+"route.exchange" = "反轉";
 "route.speedShort" = "%ld km/h";
 "imports.pointsFormat" = "%@ 點";
 "imports.footnote" = "點一下開啟動作選單：載入、查看全部點位、匯出、刪除。匯入路線不可編輯；需要調整請修改來源檔案後重新匯入。";
@@ -687,9 +687,9 @@
 "common.confirm" = "確認";
 "common.retry" = "重試";
 "route.clearRoute" = "清空路線";
-"route.resumeShort" = "繼續路線";
-"teleport.resumeShort" = "恢復瞬移";
-"wander.resumeShort" = "恢復漫步";
+"route.resumeShort" = "繼續";
+"teleport.resumeShort" = "繼續";
+"wander.resumeShort" = "繼續";
 "route.roundTrip.on" = "來回開啟";
 "route.roundTrip.off" = "來回關閉";
 "route.direction.forward" = "順向";

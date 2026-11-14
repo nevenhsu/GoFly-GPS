@@ -777,7 +777,7 @@ final class GoFlyFigmaFrameScreenshots: XCTestCase {
                     XCTAssertGreaterThanOrEqual(currentLocation.frame.height, 52,
                                                 "D5 current-location shortcut shares the compact list-row height.")
                     XCTAssertTrue(favorites.waitForExistence(timeout: 10))
-                    XCTAssertEqual(favorites.label, "最愛 Favorite")
+                    XCTAssertEqual(favorites.label, "最愛地點")
                     XCTAssertGreaterThanOrEqual(favorites.frame.height, 44,
                                                  "D5 primary favorite shortcut keeps a 44 pt hit target.")
                     XCTAssertTrue(app.staticTexts["最近搜尋"].waitForExistence(timeout: 10))
