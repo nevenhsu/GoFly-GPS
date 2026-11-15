@@ -54,12 +54,6 @@
 "onboarding.location.message" = "在地圖顯示你的真實位置，並作為路線與漫步的起點。只需「使用 App 期間」。";
 "onboarding.location.allow" = "允許定位";
 "onboarding.location.skip" = "略過";
-"onboarding.location.continue" = "略過並繼續";
-"onboarding.location.currentStatus" = "目前權限";
-"onboarding.location.status.notDetermined" = "尚未設定";
-"onboarding.location.status.denied" = "未允許";
-"onboarding.location.status.authorized" = "使用 App 期間・已允許";
-"onboarding.location.deniedTitle" = "定位權限未開啟";
 "onboarding.location.authorized" = "已允許定位。";
 "onboarding.location.denied" = "你仍可使用所有模擬定位功能；若要顯示真實位置，可到系統設定開啟。";
 "onboarding.location.openSettings" = "開啟系統設定";
@@ -69,10 +63,6 @@
 "onboarding.vpn.open" = "開啟 LocalDevVPN";
 "onboarding.vpn.appStore" = "前往 App Store";
 "onboarding.vpn.help" = "連線說明";
-"onboarding.vpn.helpLink" = "連線說明";
-"onboarding.vpn.step1" = "連上 Wi‑Fi";
-"onboarding.vpn.step2" = "開啟 LocalDevVPN";
-"onboarding.vpn.step3" = "LocalDevVPN 點連線";
 "onboarding.vpn.help.step1.title" = "下載 LocalDevVPN";
 "onboarding.vpn.help.step2.title" = "開啟 LocalDevVPN";
 "onboarding.vpn.help.step3.title" = "LocalDevVPN 點連線";
@@ -446,7 +436,6 @@
 "settings.openSystemSettings" = "開啟系統設定";
 "settings.externalOpenFailed" = "請手動開啟，再返回 GoFly 重新檢查。";
 "settings.location.purpose" = "只需「使用 App 期間」；背景由系統背景任務延續。";
-"settings.permissionsFooter" = "只需「使用 App 期間」；背景由系統背景任務延續。";
 "settings.background.purposeTitle" = "路線與漫步";
 "settings.backgroundTitle" = "背景執行";
 "settings.background.purpose" = "路線與漫步可在背景繼續模擬 GPS。系統限制執行時會暫停，回到 GoFly 後可按繼續。";
@@ -614,8 +603,6 @@
 "search.validCoordinate" = "有效經緯度";
 "search.nearby" = "附近地點";
 "search.choosing" = "正在選：%@";
-"route.chooseOrigin" = "選擇起點";
-"route.chooseDestination" = "選擇目的地";
 "route.chooseWaypoint" = "選擇停靠點 %ld";
 "sheet.currentPosition" = "目前模擬位置";
 "sheet.realPosition" = "目前位置";
@@ -631,6 +618,17 @@
 "service.statusPill.error" = "需要修復";
 "service.stopService" = "停止服務";
 "service.startService" = "啟動服務";
+
+"onboarding.location.continue" = "略過並繼續";
+"onboarding.location.currentStatus" = "目前權限";
+"onboarding.location.status.notDetermined" = "尚未設定";
+"onboarding.location.status.denied" = "未允許";
+"onboarding.location.status.authorized" = "使用 App 期間・已允許";
+"onboarding.location.deniedTitle" = "定位權限未開啟";
+"onboarding.vpn.helpLink" = "連線說明";
+"onboarding.vpn.step1" = "連上 Wi‑Fi";
+"onboarding.vpn.step2" = "開啟 LocalDevVPN";
+"onboarding.vpn.step3" = "LocalDevVPN 點連線";
 
 "route.planTitle" = "規劃路線";
 "route.roundTripShort" = "來回";
@@ -653,6 +651,7 @@
 "favorites.selectAll" = "全選";
 
 "settings.permissionsAndConnection" = "權限與連線";
+"settings.permissionsFooter" = "只需「使用 App 期間」；背景由系統背景任務延續。";
 
 "settings.deviceSection" = "裝置";
 "onboarding.location.statusFormat" = "目前權限：%@";
@@ -692,8 +691,6 @@
 "wander.resumeShort" = "繼續";
 "route.roundTrip.on" = "來回開啟";
 "route.roundTrip.off" = "來回關閉";
-"route.direction.forward" = "順向";
-"route.direction.reverse" = "逆向";
 
 "status.pill.started" = "啟動";
 "status.pill.connecting" = "連接中";

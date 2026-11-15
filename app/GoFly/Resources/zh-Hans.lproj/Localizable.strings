@@ -603,8 +603,6 @@
 "search.validCoordinate" = "有效经纬度";
 "search.nearby" = "附近地点";
 "search.choosing" = "正在选：%@";
-"route.chooseOrigin" = "选择起点";
-"route.chooseDestination" = "选择目的地";
 "route.chooseWaypoint" = "选择停靠点 %ld";
 "sheet.currentPosition" = "当前模拟位置";
 "sheet.realPosition" = "当前位置";
@@ -693,8 +691,6 @@
 "wander.resumeShort" = "继续";
 "route.roundTrip.on" = "来回开启";
 "route.roundTrip.off" = "来回关闭";
-"route.direction.forward" = "顺向";
-"route.direction.reverse" = "逆向";
 
 "status.pill.started" = "启动";
 "status.pill.connecting" = "连接中";

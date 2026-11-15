@@ -603,8 +603,6 @@
 "search.validCoordinate" = "Valid latitude and longitude";
 "search.nearby" = "Nearby places";
 "search.choosing" = "Choosing: %@";
-"route.chooseOrigin" = "Choose origin";
-"route.chooseDestination" = "Choose destination";
 "route.chooseWaypoint" = "Choose stop %ld";
 "sheet.currentPosition" = "Current simulated position";
 "sheet.realPosition" = "Current location";
@@ -693,8 +691,6 @@
 "wander.resumeShort" = "Go";
 "route.roundTrip.on" = "Round Trip On";
 "route.roundTrip.off" = "Round Trip Off";
-"route.direction.forward" = "Forward";
-"route.direction.reverse" = "Reverse";
 
 "status.pill.started" = "Standby";
 "status.pill.connecting" = "Connecting";
