@@ -36,8 +36,8 @@ struct GoFlyExecutionHeader: View {
                 Text(title)
                     .goFlyFont(GoFlyFont.title)
                     .foregroundStyle(GoFlyTextColor.primary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 if let detail {
                     Text(detail)
                         .goFlyFont(GoFlyFont.footnote)

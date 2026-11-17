@@ -167,7 +167,6 @@
 "route.resume" = "Go";
 "route.cancel" = "Cancel";
 "route.speed" = "Speed";
-"route.speedValue" = "%ld km/h";
 "route.progress" = "Route progress";
 "route.useCurrentLocation" = "Use current location";
 "route.picker.cancel" = "Cancel";
@@ -741,7 +740,6 @@
 "route.paused.progress" = "Route paused · %ld%%";
 "route.paused.remaining" = "%.1f km left · about %d min";
 "route.heading.going" = "To %@";
-"route.heading.paused" = "Paused · To %@";
 "toast.restore" = "Restore";
 
 /* Shared error toast buttons (IssueAction) */

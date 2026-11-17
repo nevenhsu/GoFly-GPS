@@ -167,7 +167,6 @@
 "route.resume" = "继续";
 "route.cancel" = "取消路线";
 "route.speed" = "移动速度";
-"route.speedValue" = "%ld 公里／小时";
 "route.progress" = "路线进度";
 "route.useCurrentLocation" = "使用当前位置";
 "route.picker.cancel" = "取消";
@@ -741,7 +740,6 @@
 "route.paused.progress" = "路线已暂停 · %ld%%";
 "route.paused.remaining" = "剩余 %.1f km · 预计 %d 分钟";
 "route.heading.going" = "前往 %@";
-"route.heading.paused" = "已暂停 · 前往 %@";
 "toast.restore" = "恢复";
 
 /* Shared error toast buttons (IssueAction) */

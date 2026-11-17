@@ -1472,9 +1472,10 @@ struct GoFlyMapView: View {
 
     private var executionTitle: String {
         if joystick.wanderEnabled { return joystick.wanderTarget?.place.title ?? goFlyString("joystick.wander") }
+        // D10 / D10.a: the paused title matches the running one so the header never changes height;
+        // the pause icon, status pill, and 繼續 button carry the paused state.
         if case .place(let place) = route.draft.destination?.value {
-            let paused = [.paused, .interrupted].contains(route.phase)
-            return goFlyLocalizedFormat(goFlyString(paused ? "route.heading.paused" : "route.heading.going"), place.title)
+            return goFlyLocalizedFormat(goFlyString("route.heading.going"), place.title)
         }
         return goFlyString("mode.route")
     }
@@ -1486,28 +1487,27 @@ struct GoFlyMapView: View {
         return [.paused, .interrupted].contains(route.phase) ? GoFlySymbols.pause : GoFlySymbols.heading
     }
 
+    // Route and wander speed live in the bottom panel's speed chip, so the header detail omits it.
     private var executionDetail: String {
         if joystick.wanderEnabled {
-            let speed = goFlyLocalizedFormat(goFlyString("route.speedValue"), joystick.speed.kilometersPerHour)
-            if isWanderReplanning { return goFlyString("wander.planning") + " · " + speed }
+            if isWanderReplanning { return goFlyString("wander.planning") }
             guard let planned = joystick.wanderRoute else {
-                return goFlyString("joystick.phase.\(joystick.phase.rawValue)") + " · " + speed
+                return goFlyString("joystick.phase.\(joystick.phase.rawValue)")
             }
             let remaining = max(0, planned.totalDistanceMeters - joystick.wanderProgressMeters)
             let minutes = Int(ceil(remaining / max(joystick.speed.metersPerSecond, 0.1) / 60))
             return goFlyLocalizedFormat(goFlyString("route.distance"), remaining / 1_000) + " · "
-                + goFlyLocalizedFormat(goFlyString("route.duration"), minutes) + " · " + speed
+                + goFlyLocalizedFormat(goFlyString("route.duration"), minutes)
         }
-        let speed = goFlyLocalizedFormat(goFlyString("route.speedValue"), route.draft.speed.kilometersPerHour)
         guard !route.roundTripEnabled, let progress = route.progress else {
-            return goFlyString("route.phase.\(route.phase.rawValue)") + " · " + speed
+            return goFlyString("route.phase.\(route.phase.rawValue)")
         }
         let remaining = max(0, route.heading == .reverse
             ? progress.committedDistanceMeters
             : progress.totalDistanceMeters - progress.committedDistanceMeters)
         let minutes = Int(ceil(Double(max(0, progress.estimatedRemaining.components.seconds)) / 60))
         return goFlyLocalizedFormat(goFlyString("route.distance"), remaining / 1_000) + " · "
-            + goFlyLocalizedFormat(goFlyString("route.duration"), minutes) + " · " + speed
+            + goFlyLocalizedFormat(goFlyString("route.duration"), minutes)
     }
 
     private func selectSearchPlace(_ place: MapPlace) {

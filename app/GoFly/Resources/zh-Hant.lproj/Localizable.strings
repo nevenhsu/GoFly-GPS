@@ -167,7 +167,6 @@
 "route.resume" = "繼續";
 "route.cancel" = "取消路線";
 "route.speed" = "移動速度";
-"route.speedValue" = "%ld 公里／小時";
 "route.progress" = "路線進度";
 "route.useCurrentLocation" = "使用目前位置";
 "route.picker.cancel" = "取消";
@@ -741,7 +740,6 @@
 "route.paused.progress" = "路線已暫停 · %ld%%";
 "route.paused.remaining" = "剩餘 %.1f km · 預估 %d 分鐘";
 "route.heading.going" = "前往 %@";
-"route.heading.paused" = "已暫停 · 前往 %@";
 "toast.restore" = "恢復";
 
 /* Shared error toast buttons (IssueAction) */
