@@ -156,6 +156,9 @@ struct GoFlyMapCanvas: UIViewRepresentable {
     var showsRoutePoints = false
     /// Start, stops and destination to mark while `route` is not planned yet.
     var routeNodePlaces: [GeoCoordinate] = []
+    /// The list row role of each chosen place in order (empty rows have no
+    /// entry); route nodes take their icon and number from it.
+    var routeNodeRoles: [RouteNodeRole] = []
     /// Which route node (start = 0, stops, destination last) the route list selects.
     var selectedRouteNode: Int? = nil
     var wanderTarget: MapPlace? = nil
@@ -274,6 +277,7 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         private var routeWaypointsApplied: [GeoCoordinate] = []
         private var showsRoutePointsApplied = false
         private var routeNodePlacesApplied: [GeoCoordinate] = []
+        private var routeNodeRolesApplied: [RouteNodeRole] = []
         private var selectedRouteNodeApplied: Int?
         private var routeNodeAnnotations: [RouteNodeAnnotation] = []
         private var appliedNodeDark: Bool?
@@ -570,10 +574,11 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         func updateRoute(on map: MKMapView) {
             let points = parent.route?.points ?? []
             let places = points.count > 1 ? [] : parent.routeNodePlaces
+            let roles = parent.routeNodeRoles
             let geometryChanged = points != routePoints
             let dotsChanged = parent.showsRoutePoints != showsRoutePointsApplied
             let nodesChanged = geometryChanged || parent.routeWaypoints != routeWaypointsApplied
-                || places != routeNodePlacesApplied
+                || places != routeNodePlacesApplied || roles != routeNodeRolesApplied
             if geometryChanged || dotsChanged {
                 routePoints = points
                 showsRoutePointsApplied = parent.showsRoutePoints
@@ -594,18 +599,27 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             }
             routeWaypointsApplied = parent.routeWaypoints
             routeNodePlacesApplied = places
+            routeNodeRolesApplied = roles
             selectedRouteNodeApplied = parent.selectedRouteNode
             map.removeAnnotations(routeNodeAnnotations)
-            // Without a planned road, the selected places still supply the nodes.
-            let start = points.first ?? places.first
-            let destination = points.last ?? (places.count > 1 ? places.last : nil)
-            let waypoints = points.isEmpty
-                ? places.dropFirst().dropLast()
-                : parent.routeWaypoints[...]
-            var annotations: [RouteNodeAnnotation] = []
-            if let start { annotations.append(RouteNodeAnnotation(start, kind: .start)) }
-            annotations += waypoints.enumerated().map { RouteNodeAnnotation($1, kind: .waypoint($0 + 1)) }
-            if let destination { annotations.append(RouteNodeAnnotation(destination, kind: .destination)) }
+            // Each node keeps its list row's role and number: an empty row is
+            // never skipped by promoting the next chosen place. A planned road
+            // supplies the snapped positions (its ends and stops follow the
+            // chosen places in order); otherwise the chosen places do.
+            let positions = points.count > 1
+                ? [points[0]] + parent.routeWaypoints + [points[points.count - 1]]
+                : places
+            let fallback: [RouteNodeRole] = positions.indices.map { index in
+                index == 0 ? .start : (index == positions.count - 1 ? .destination : .waypoint(index))
+            }
+            let kinds = roles.count == positions.count ? roles : fallback
+            var annotations: [RouteNodeAnnotation] = zip(positions, kinds).map { position, role in
+                switch role {
+                case .start: RouteNodeAnnotation(position, kind: .start)
+                case .waypoint(let number): RouteNodeAnnotation(position, kind: .waypoint(number))
+                case .destination: RouteNodeAnnotation(position, kind: .destination)
+                }
+            }
             if let selected = parent.selectedRouteNode, annotations.indices.contains(selected) {
                 annotations[selected].isSelected = true
             }

@@ -86,7 +86,6 @@ struct RouteEndpointTests {
         try await Task.sleep(for: .milliseconds(100))
         #expect(planner.calls == callsBeforeAdd, "The cached legs are reused; nothing is planned again")
         #expect(route.plannedRoute == shown)
-        #expect(!route.canStart)
 
         #expect(route.confirmSelectedNode(with: place(3)))
         await settle { planner.calls == callsBeforeAdd + 1 && route.plannedRoute?.points.last == place(3).coordinate }
@@ -475,6 +474,18 @@ struct RouteEndpointTests {
         #expect(route.draft.nodes.map(\.value) == [.current, .place(place(1))], "only the destination changes")
         #expect(route.selectedNodeID == ids[1], "confirming the destination keeps it selected")
         #expect(!route.selectNode(id: RouteNodeID()), "unknown rows cannot be selected")
+    }
+
+    @Test func chosenPlacesKeepTheirListRowRoles() throws {
+        let draft = try #require(RouteDraft(nodes: [RouteNode(value: .empty), RouteNode(value: .empty),
+                                                    RouteNode(value: .place(place(2))), RouteNode(value: .empty)]))
+        let route = fixture(draft: draft)
+        let ids = route.draft.nodes.map(\.id)
+        #expect(route.chosenPlaceRoles == [.waypoint(2)], "an empty start never promotes stop 2 to the start")
+        #expect(route.selectNode(id: ids[3]))
+        #expect(route.confirmSelectedNode(with: place(3)))
+        #expect(route.chosenPlaceCoordinates == [place(2).coordinate, place(3).coordinate])
+        #expect(route.chosenPlaceRoles == [.waypoint(2), .destination])
     }
 
     @Test func confirmingARowSelectsTheNextRow() throws {

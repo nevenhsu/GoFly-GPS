@@ -294,6 +294,11 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     /// The chosen places in route order, the current location resolved when
     /// known: what the map marks while no road has been planned yet.
     public var chosenPlaceCoordinates: [GeoCoordinate] { draft.nodes.compactMap(chosenCoordinate) }
+    /// The row role of each entry in `chosenPlaceCoordinates`, so a lone
+    /// destination is still marked as the destination while the start is empty.
+    public var chosenPlaceRoles: [RouteNodeRole] {
+        draft.nodes.compactMap { chosenCoordinate($0) == nil ? nil : draft.role(of: $0.id) }
+    }
     /// The selected row's position in `chosenPlaceCoordinates`; nil while it is empty.
     public var selectedChosenPlaceIndex: Int? {
         guard let id = selectedNodeID, let index = draft.nodes.firstIndex(where: { $0.id == id }),
@@ -917,8 +922,13 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     }
     private func resolvedDraft(_ source: RouteDraft) throws -> RouteDraft {
         if let imported = source.gpxSource { _ = try PlannedRoute(imported: imported.document); return source }
-        guard !source.nodes.isEmpty, source.start?.value != .empty else { throw RouteExecutionFailure.missingStart }
-        guard source.nodes.count >= 2, source.destination?.value != .empty else { throw RouteExecutionFailure.missingDestination }
+        // Empty rows are skipped: any two or more chosen places can start, in
+        // list order, whichever rows are still empty (2026-11-17).
+        let filled = source.nodes.filter { $0.value != .empty }
+        guard !filled.isEmpty else { throw RouteExecutionFailure.missingStart }
+        guard filled.count >= 2, let source = RouteDraft(nodes: filled, speed: source.speed) else {
+            throw RouteExecutionFailure.missingDestination
+        }
         let current = source.nodes.contains { $0.value == .current } ? commands.currentRouteOrigin : nil
         guard let resolvedCurrent = source.resolvingCurrent(to: current) else { throw RouteExecutionFailure.currentLocationUnavailable }
         let resolved = resolvedCurrent.mergingConsecutiveDuplicates()

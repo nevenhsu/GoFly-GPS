@@ -1145,6 +1145,7 @@ struct GoFlyMapView: View {
             routeWaypoints: mode == .route && route.draft.gpxSource == nil ? manualRouteWaypoints : [],
             showsRoutePoints: mode == .route && route.draft.gpxSource != nil,
             routeNodePlaces: mode == .route && route.draft.gpxSource == nil ? route.chosenPlaceCoordinates : [],
+            routeNodeRoles: mode == .route && route.draft.gpxSource == nil ? route.chosenPlaceRoles : [],
             selectedRouteNode: mode == .route && route.draft.gpxSource != nil ? gpxSelectedEnd
                 : (mode == .route && route.canEdit ? route.selectedChosenPlaceIndex : nil),
             wanderTarget: isWanderMap ? joystick.wanderTarget?.place : nil,
