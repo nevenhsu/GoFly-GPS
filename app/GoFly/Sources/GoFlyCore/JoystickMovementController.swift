@@ -637,11 +637,16 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             // A finger on the joystick keeps the manual cadence, including
             // during a wander override; road wander alone uses the path cadence.
             let manual = input != nil || !wanderEnabled
-            let seconds = manual ? MovementCadence.manualSeconds : MovementCadence.pathSeconds
+            // Road wander in the background sends every 2 s with a longer step.
+            let background = !manual && !sceneActive
+            let seconds = manual ? MovementCadence.manualSeconds
+                : background ? MovementCadence.backgroundPathSeconds : MovementCadence.pathSeconds
             let immediate = writesCurrentPositionFirst
             writesCurrentPositionFirst = false
             if !immediate {
-                do { try await clock.sleep(for: manual ? MovementCadence.manual : MovementCadence.path) } catch { return }
+                let wait = manual ? MovementCadence.manual
+                    : background ? MovementCadence.backgroundPath : MovementCadence.path
+                do { try await clock.sleep(for: wait) } catch { return }
             }
             guard generation == token, phase == .moving, !Task.isCancelled,
                   let revision = commands.joystickInputRevision(executionID: operation.id, lease: operation.lease) else {

@@ -20,6 +20,21 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
     @Published public private(set) var clearState: ClearState = .unknown
     @Published public private(set) var clearConfirmedAt: Date?
     @Published public private(set) var realLocation: RealLocationObservation?
+    /// The real GPS position captured just before the first simulated write of
+    /// a session. Stop returns here before clearing; a confirmed clear forgets it.
+    @Published public private(set) var flyOrigin: GeoCoordinate?
+    /// The system's cached real fix, consulted when no fresh fix exists at the
+    /// first simulated write. Returns nil without location authorization.
+    public var cachedRealLocation: (@MainActor () -> RealLocationObservation?)?
+    /// How long Stop holds the fly origin before clearing, so apps observe it.
+    public var flyOriginReturnHold: Duration = .milliseconds(1500)
+    /// The oldest cached system fix accepted as a fly origin.
+    public static let flyOriginCachedFixMaxAge: TimeInterval = 600
+    /// The origin the pending clear returns to; shown once that clear succeeds.
+    private var clearReturnOrigin: GeoCoordinate?
+    /// Each acknowledged return to the fly origin during Stop, so the map can
+    /// move its camera there before the clear.
+    @Published public private(set) var flyOriginReturn: FlyOriginReturn?
     @Published public private(set) var pointState: PointMoveState = .idle
     @Published public private(set) var confirmedSimulatedLocation: GeoCoordinate?
     @Published private var simulationDisplayVerified = false
@@ -424,7 +439,7 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
         beginClear()
         phase = .stopping
         nativeBusy = true
-        enqueue(.stopping) { try await $0.clearLocation() }
+        enqueueClear(.stopping, returningTo: flyOrigin)
         return true
     }
 
@@ -679,9 +694,11 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
                 catch { return .failure(error as? DeviceServiceFailure ?? .serviceUnavailable) }
             case .point(let intent):
                 guard self.movementAdmissionAllowed else { return .point(.notSent(.operationCancelled)) }
+                self.captureFlyOriginIfNeeded()
                 return .point(await service.movePoint(to: intent.candidate.place.coordinate, dispatch: context.dispatch))
             case .route(let intent):
                 guard self.movementAdmissionAllowed else { return .point(.notSent(.operationCancelled)) }
+                self.captureFlyOriginIfNeeded()
                 return .point(await service.movePoint(to: intent.route.start, dispatch: context.dispatch))
             }
         }) { [weak self] result in
@@ -730,7 +747,7 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
     @discardableResult public func stop() -> Bool {
         guard canStop else { return false }
         endMovementForClear()
-        enqueue(.stopping) { try await $0.clearLocation() }
+        enqueueClear(.stopping, returningTo: flyOrigin)
         return true
     }
 
@@ -739,6 +756,7 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
     @discardableResult public func forceReset() -> Bool {
         guard canForceReset else { return false }
         diagnose("reset.forced", level: .notice, ["phase": .text(phase.rawValue)])
+        clearReturnOrigin = nil
         endMovementForClear()
         enqueue(.stopping) { service in
             try? await service.rebuildClientConnection()
@@ -773,8 +791,56 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
         guard canRestoreGPS else { return false }
         admitExplicitOperation()
         beginClear()
-        enqueue(.restoring) { try await $0.clearLocation() }
+        enqueueClear(.restoring, returningTo: flyOrigin)
         return true
+    }
+
+    /// Restores an origin persisted by an earlier launch. A live origin wins.
+    public func restoreFlyOrigin(_ origin: GeoCoordinate?) {
+        guard flyOrigin == nil, let origin else { return }
+        flyOrigin = origin
+    }
+
+    /// The first simulated write of a session records where real GPS was:
+    /// a fresh fix, else the system's cached fix. Without either, or without
+    /// location authorization, no origin exists and Stop only clears.
+    private func captureFlyOriginIfNeeded() {
+        guard flyOrigin == nil, !deviceMayHoldSimulation, !coldClearPending else { return }
+        let current = now()
+        func usable(_ fix: RealLocationObservation?, maxAge: TimeInterval) -> GeoCoordinate? {
+            guard let fix, fix.observedAt <= current, current.timeIntervalSince(fix.observedAt) <= maxAge else { return nil }
+            return fix.coordinate
+        }
+        let source: String
+        if let fresh = usable(realLocation, maxAge: 15) {
+            flyOrigin = fresh; source = "fresh"
+        } else if let cached = usable(cachedRealLocation?(), maxAge: Self.flyOriginCachedFixMaxAge) {
+            flyOrigin = cached; source = "cached"
+        } else {
+            source = "none"
+        }
+        diagnose("flyOrigin.captured", level: .notice, ["source": .text(source)])
+    }
+
+    /// Returning to the origin is best effort: its outcome never blocks the clear.
+    private func enqueueClear(_ operation: ServicePhase, returningTo origin: GeoCoordinate?) {
+        let hold = flyOriginReturnHold
+        clearReturnOrigin = origin
+        enqueueCommand(operation) { [weak self] service in
+            if let origin {
+                let outcome = await service.movePoint(to: origin, dispatch: PointDispatchGate())
+                if outcome == .acknowledged, let self {
+                    // The device now holds the origin: show it before the clear.
+                    self.lastDisplayedPosition = DisplayedPosition(coordinate: origin, source: .simulation)
+                    self.flyOriginReturn = FlyOriginReturn(coordinate: origin)
+                }
+                self?.diagnose("flyOrigin.returned", level: .notice,
+                               ["acked": .flag(outcome == .acknowledged)])
+                try? await Task.sleep(for: hold)
+            }
+            do { try await service.clearLocation(); return .success }
+            catch { return .failure(error as? DeviceServiceFailure ?? .serviceUnavailable) }
+        }
     }
 
     private func beginClear() {
@@ -1097,6 +1163,12 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
                 if operation == .stopping || operation == .restoring {
                     coldClearAttempt = false
                     deviceMayHoldSimulation = false
+                    flyOrigin = nil
+                    // The device last held the origin: show it until a real fix replaces it.
+                    if let origin = clearReturnOrigin {
+                        lastDisplayedPosition = DisplayedPosition(coordinate: origin, source: .gps)
+                    }
+                    clearReturnOrigin = nil
                     clearState = .confirmed
                     clearConfirmedAt = now()
                 }
@@ -1272,6 +1344,7 @@ extension ServiceController {
                         self.markRouteUnknown(owner, failure: .operationTimedOut)
                     } else { self.markRouteInterrupted(owner, failure: .operationTimedOut) }
                 }
+                self.captureFlyOriginIfNeeded()
                 return .point(await service.movePoint(to: coordinate, dispatch: gate))
             }) { [weak self] result in
                 guard let self else { continuation.resume(returning: .cancelled); return }
@@ -1786,6 +1859,7 @@ extension ServiceController {
                         _ = self.unknownJoystick(owner, failure: .operationTimedOut)
                     }
                 }
+                self.captureFlyOriginIfNeeded()
                 return .point(await service.movePoint(to: receipt.actualCoordinate, dispatch: gate))
             }) { [weak self] result in
                 guard let self else { continuation.resume(returning: .cancelled); return }
@@ -2036,4 +2110,10 @@ private extension ServiceController {
             }
         }
     }
+}
+
+/// One acknowledged return to the fly origin; a new id per return.
+public struct FlyOriginReturn: Equatable, Sendable {
+    public let id = UUID()
+    public let coordinate: GeoCoordinate
 }

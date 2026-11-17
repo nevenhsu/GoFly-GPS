@@ -1,3 +1,4 @@
+import Combine
 import GoFlyCore
 import GoFlyTransport
 import SwiftUI
@@ -13,6 +14,7 @@ final class GoFlyRuntimeAssembly: ObservableObject {
     let importedRoutes: ImportedRoutesStore
     let favoriteRoutes: FavoriteRoutesStore
     let onboarding: OnboardingController
+    private var flyOriginSubscription: AnyCancellable?
 
     init() {
         let support = FileManager.default.urls(
@@ -44,6 +46,10 @@ final class GoFlyRuntimeAssembly: ObservableObject {
         restoredPosition = snapshot.position
 #endif
         _ = service.restoreColdRecovery(position: restoredPosition)
+        // Restored before any cold clear so a relaunch still returns there first.
+        let flyOrigin = GoFlyFlyOriginStore(enabled: !isUITestFixture)
+        service.restoreFlyOrigin(flyOrigin.load())
+        flyOriginSubscription = service.$flyOrigin.dropFirst().sink { flyOrigin.save($0) }
         if snapshot.activeMovement != nil || snapshot.uncertainty != nil {
             service.markColdClearPending()
             _ = service.beginColdClear()

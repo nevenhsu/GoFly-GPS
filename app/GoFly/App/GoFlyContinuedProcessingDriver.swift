@@ -107,6 +107,17 @@ public final class GoFlyContinuedProcessingDriver: ContinuedProcessingDriving {
         clearCurrent()
     }
 
+    /// A countdown restart on return to the foreground: end a launched task
+    /// as successful so iOS shows no "stopped" activity for it. A task that
+    /// never launched still has to be withdrawn from the scheduler.
+    public func retire(requestID: UUID) {
+        guard currentRequest?.requestID == requestID else { return }
+        _ = completion?.claim(.cancelled)
+        if currentTask != nil { complete(success: true) }
+        else { complete(success: false); scheduler.cancel(taskRequestWithIdentifier: Self.identifier) }
+        clearCurrent()
+    }
+
     private func receive(_ task: BGTask) {
         guard !completed, let request = currentRequest,
               let continued = task as? BGContinuedProcessingTask,

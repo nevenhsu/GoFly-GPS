@@ -222,8 +222,10 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
     private let search: any PlaceSearching
     private let clock: any RouteClock
     private let cadence: Duration
-    private var cadenceSeconds: Double {
-        Double(cadence.components.seconds) + Double(cadence.components.attoseconds) / 1e18
+    /// The interval for the next point: the injected cadence in the
+    /// foreground, stretched in the background to halve writes.
+    private var tickCadence: Duration {
+        sceneActive ? cadence : cadence * MovementCadence.backgroundPathFactor
     }
     public private(set) var favoriteLoadAdmissionRevision: UInt64 = 0
     private var issuedFavoriteLoadAdmission: UInt64?
@@ -1099,8 +1101,11 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         while revision == token, phase == .running {
             let immediate = writesCurrentPositionFirst
             writesCurrentPositionFirst = false
+            // The step matches the interval actually waited, even if the
+            // scene changes during the sleep.
+            let tick = tickCadence
             if !immediate {
-                do { try await clock.sleep(for: cadence) } catch { return }
+                do { try await clock.sleep(for: tick) } catch { return }
             }
             guard revision == token, phase == .running, !Task.isCancelled else { return }
             guard sequence < UInt64.max else {
@@ -1109,7 +1114,8 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             }
             guard let controlRevision = commands.routeControlRevision(executionID: intent.id, lease: intent.lease) else { return }
             let direction = heading == .forward ? 1.0 : -1.0
-            let step = immediate ? 0 : direction * liveSpeed(of: intent).metersPerSecond * cadenceSeconds
+            let step = immediate ? 0 : direction * liveSpeed(of: intent).metersPerSecond *
+                (Double(tick.components.seconds) + Double(tick.components.attoseconds) / 1e18)
             let distance = min(intent.route.totalDistanceMeters, max(0, (progress?.committedDistanceMeters ?? 0) + step))
             guard let coordinate = intent.route.coordinate(at: distance) else { phase = .interrupted; error = .invalidPath; return }
             let outcome = await commands.sendRoutePoint(executionID: intent.id, lease: intent.lease,

@@ -164,6 +164,9 @@ struct GoFlyMapCanvas: UIViewRepresentable {
     var markerBearingDegrees: Double? = nil
     var markerRoute: PlannedRoute? = nil
     var markerRouteDistance: Double? = nil
+    /// A route or wander is advancing along `markerRoute`, so the arrow may
+    /// predict ahead of the last acknowledged point.
+    var markerAdvancing = false
     var adjustsFocusForViewportChanges = true
 #if DEBUG && targetEnvironment(simulator)
     var usesOfflineFixtureTiles = false
@@ -243,6 +246,16 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         private var coordinateAnimationStartedAt: CFTimeInterval = 0
         private var coordinateAnimationDuration: CFTimeInterval = 0.45
         private var lastAcknowledgedUpdateAt: CFTimeInterval?
+        /// The last acknowledged route distance, the route it measures along and
+        /// when it arrived; two of them give the speed the prediction uses.
+        private var ackRoute: PlannedRoute?
+        private var ackDistance: Double?
+        private var ackAt: CFTimeInterval = 0
+        private var predicting = false
+        private var predictionRoute: PlannedRoute?
+        private var predictionRate: Double = 0
+        private var predictionLead: CFTimeInterval = 0
+        private var predictionCorrection: Double = 0
         private var lastMarker: PositionMarker?
         private var appliedIntent: UUID?
         private var appliedViewport = CGRect.zero
@@ -349,6 +362,7 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         func updateMarker(on map: MKMapView) {
             guard let marker = parent.marker else {
                 stopCoordinateAnimation()
+                forgetAcknowledgements()
                 if let positionAnnotation { map.removeAnnotation(positionAnnotation) }
                 positionAnnotation = nil
                 lastMarker = nil
@@ -358,10 +372,18 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                 let shouldAnimate = !parent.reduceMotion && lastMarker?.source == .simulation && lastMarker?.freshness == .fresh
                     && marker.source == .simulation && marker.freshness == .fresh
                 lastMarker = marker
-                if shouldAnimate {
-                    animateCoordinate(marker.coordinate, on: annotation)
+                if shouldAnimate, parent.markerAdvancing, predictAlongRoute(on: annotation) {
+                    // The prediction display link moves the arrow.
+                } else if shouldAnimate {
+                    // A pause or stop pulls a predicted arrow back to the
+                    // acknowledged point quickly instead of over a whole cadence.
+                    let retreating = predicting
+                    if retreating { stopCoordinateAnimation() }
+                    animateCoordinate(marker.coordinate, on: annotation,
+                                      duration: retreating ? Self.predictionCorrectionSeconds : nil)
                 } else {
                     stopCoordinateAnimation()
+                    forgetAcknowledgements()
                     annotation.coordinate = marker.coordinate.clLocationCoordinate
                     displayedRouteDistance = parent.markerRouteDistance
                     displayedRoute = parent.markerRoute
@@ -377,7 +399,73 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             updateMarkerAppearance(on: map)
         }
 
-        private func animateCoordinate(_ target: GeoCoordinate, on annotation: PositionAnnotation) {
+        /// How long a new acknowledgement takes to absorb the prediction error.
+        private static let predictionCorrectionSeconds: CFTimeInterval = 0.3
+
+        /// Route and wander follow a known path at a known speed, so the arrow
+        /// keeps moving along it from the last acknowledged distance at the
+        /// measured speed instead of trailing one cadence behind. It runs at
+        /// most one cadence ahead and stops there if the next point is late;
+        /// each acknowledgement blends the difference out over 0.3 s. Returns
+        /// false when the speed is not known yet, so the caller glides instead.
+        private func predictAlongRoute(on annotation: PositionAnnotation) -> Bool {
+            guard let route = parent.markerRoute, let ack = parent.markerRouteDistance else {
+                forgetAcknowledgements()
+                return false
+            }
+            if route == ackRoute, ack == ackDistance { return predicting }
+            let now = CACurrentMediaTime()
+            let previous = route == ackRoute ? ackDistance : nil
+            let interval = now - ackAt
+            ackRoute = route
+            ackDistance = ack
+            ackAt = now
+            guard let previous, route == displayedRoute, let shown = displayedRouteDistance,
+                  interval >= 0.25, interval <= 2.5 else { return false }
+            let rate = (ack - previous) / interval
+            // Over 60 m per step or that far off is a jump or a replan, not a glide.
+            guard abs(rate) <= 60, abs(shown - ack) <= 60 else { return false }
+            stopCoordinateAnimation()
+            predicting = true
+            predictionRoute = route
+            predictionRate = rate
+            predictionLead = interval
+            predictionCorrection = shown - ack
+            let displayLink = CADisplayLink(target: self, selector: #selector(advancePrediction(_:)))
+            displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 30)
+            coordinateDisplayLink = displayLink
+            displayLink.add(to: .main, forMode: .common)
+            return true
+        }
+
+        @objc private func advancePrediction(_ displayLink: CADisplayLink) {
+            guard predicting, let annotation = positionAnnotation, let route = predictionRoute,
+                  let anchor = ackDistance else {
+                stopCoordinateAnimation()
+                return
+            }
+            let elapsed = CACurrentMediaTime() - ackAt
+            let lead = min(elapsed, predictionLead)
+            let fade = max(0, 1 - elapsed / Self.predictionCorrectionSeconds)
+            let distance = min(max(anchor + predictionRate * lead + predictionCorrection * fade, 0),
+                               route.totalDistanceMeters)
+            displayedRouteDistance = distance
+            annotation.coordinate = (route.coordinate(at: distance) ?? route.end).clLocationCoordinate
+            // At the one-cadence limit the arrow waits for the next point; stop
+            // drawing frames until it arrives, but stay in prediction.
+            if elapsed >= max(predictionLead, Self.predictionCorrectionSeconds) {
+                coordinateDisplayLink?.invalidate()
+                coordinateDisplayLink = nil
+            }
+        }
+
+        private func forgetAcknowledgements() {
+            ackRoute = nil
+            ackDistance = nil
+        }
+
+        private func animateCoordinate(_ target: GeoCoordinate, on annotation: PositionAnnotation,
+                                       duration: CFTimeInterval? = nil) {
             let current = GeoCoordinate(latitude: annotation.coordinate.latitude,
                                         longitude: annotation.coordinate.longitude)
             guard let current else { return }
@@ -413,7 +501,7 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             // Spread each move over the time until the next acknowledgement is
             // expected, at constant speed, so the arrow glides instead of
             // jumping between points. It still never runs ahead of an ACK.
-            coordinateAnimationDuration = min(1.1, max(0.25, interval))
+            coordinateAnimationDuration = duration ?? min(1.1, max(0.25, interval))
             let displayLink = CADisplayLink(target: self, selector: #selector(advanceCoordinateAnimation(_:)))
             // The glide runs for most of every second while moving; 30 fps keeps
             // it smooth without driving a ProMotion display at 120 Hz.
@@ -455,6 +543,8 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         private func stopCoordinateAnimation() {
             coordinateDisplayLink?.invalidate()
             coordinateDisplayLink = nil
+            predicting = false
+            predictionRoute = nil
             coordinateAnimationStart = nil
             coordinateAnimationTarget = nil
             coordinateAnimationRoute = nil

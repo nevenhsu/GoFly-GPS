@@ -255,7 +255,7 @@ public final class MovementContinuationController: ObservableObject {
                 reason: .foregroundGoalChange) {
                 pending = nil; pauseForRuntimeLoss(current, notice: "background.unavailable"); return
             }
-            retireCurrent(reason: .ownerPausedOrEnded)
+            retireCurrent(reason: .ownerPausedOrEnded, asCompleted: restart)
         }
         let last = lastAcknowledgement.flatMap {
             $0.movementID == demand.movementID && $0.lease == demand.lease ? $0.sequence : nil
@@ -417,7 +417,8 @@ public final class MovementContinuationController: ObservableObject {
         handlingRuntimeLoss = false
         noticeKey = "background.durationCompleted"
     }
-    private func retireCurrent(reason: MovementContinuationRetirement, line: Int = #line) {
+    private func retireCurrent(reason: MovementContinuationRetirement, asCompleted: Bool = false,
+                               line: Int = #line) {
         guard let current = candidate else { return }
         let owner = service.movementAuthority.snapshot
         let health: String
@@ -441,7 +442,7 @@ public final class MovementContinuationController: ObservableObject {
         _ = service.retireMovementContinuation(requestID: current.request.requestID,
             lease: current.request.lease, reason: reason)
         if submissionID == current.request.requestID { submitTask?.cancel() }
-        _ = runtime.cancel(requestID: current.request.requestID)
+        _ = runtime.cancel(requestID: current.request.requestID, asCompleted: asCompleted)
     }
     private func movementBoundary(_ lease: MovementTaskLease?) {
         if lease == nil { pending = nil; noticeKey = nil }

@@ -205,7 +205,7 @@ public final class ContinuedProcessingController: ObservableObject {
     }
 
     @discardableResult
-    public func cancel(requestID: UUID) -> Bool {
+    public func cancel(requestID: UUID, asCompleted: Bool = false) -> Bool {
         guard let request = currentRequest, request.requestID == requestID,
               state == .submitting || state == .accepted || state == .running else { return false }
         let hadGrant = grant != nil
@@ -216,8 +216,9 @@ public final class ContinuedProcessingController: ObservableObject {
         completionOutcome = nil
         appendReceipt(for: request, event: .cancelRequested)
         diagnose("background.cancel", category: .background, level: .notice,
-                 ["request": .text(requestID.uuidString), "hadGrant": .flag(hadGrant)])
-        driver.cancel(requestID: requestID)
+                 ["request": .text(requestID.uuidString), "hadGrant": .flag(hadGrant),
+                  "asCompleted": .flag(asCompleted)])
+        if asCompleted { driver.retire(requestID: requestID) } else { driver.cancel(requestID: requestID) }
         if hadGrant {
             publishRuntimeLoss(requestID: requestID, generation: oldGeneration, reason: .cancelled)
         }

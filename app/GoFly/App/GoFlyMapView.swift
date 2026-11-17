@@ -54,6 +54,7 @@ final class GoFlyMovementModel: ObservableObject {
 #else
         location = GoFlyRealLocation()
 #endif
+        service.cachedRealLocation = { [weak location] in location?.cachedFix() }
         let placeSearch: any PlaceSearching
         let placeResolver: any PlaceResolving
 #if DEBUG && targetEnvironment(simulator)
@@ -736,6 +737,10 @@ struct GoFlyMapView: View {
                 if id != nil { dismissKeyboard() }
             }
             .onReceive(location.$observation) { handleRealLocationObservation($0) }
+            // Stop moved the device to the fly origin: the camera follows before the clear.
+            .onChange(of: service.flyOriginReturn) { _, origin in
+                if let origin { applyGPSRecenter(to: origin.coordinate) }
+            }
             .onChange(of: service.clearConfirmedAt) { _, clearedAt in
                 guard let clearedAt else { return }
                 pendingGPSRecenterAt = Date()
@@ -744,6 +749,8 @@ struct GoFlyMapView: View {
                    Date().timeIntervalSince(fix.observedAt) <= 15, consumeGPSRecenter(for: fix) {
                     applyGPSRecenter(to: fix.coordinate)
                 } else {
+                    // The camera already followed the origin return. The first real
+                    // fix turns the arrow blue and recenters through the pending request.
                     location.refresh()
                 }
             }
@@ -1142,6 +1149,7 @@ struct GoFlyMapView: View {
             markerBearingDegrees: activeMarkerBearing,
             markerRoute: isWanderMap ? joystick.markerGlideRoute : movement.presentation.route,
             markerRouteDistance: isWanderMap ? joystick.wanderProgressMeters : movement.presentation.routeDistance,
+            markerAdvancing: isWanderMap ? joystick.phase == .moving : route.phase == .running,
             adjustsFocusForViewportChanges: false,
             attributionBottomInset: attributionBottomInset,
             onDestinationTap: isWanderMap && joystick.wanderTarget != nil ? {

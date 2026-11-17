@@ -224,6 +224,13 @@ public protocol ContinuedProcessingDriving: AnyObject {
     func update(requestID: UUID, progress: ContinuedProcessingProgress, title: String, subtitle: String)
     func finish(requestID: UUID, success: Bool) -> ContinuedProcessingCompletionOutcome?
     func cancel(requestID: UUID)
+    /// Ends the task as a normal completion (not a failure) so iOS does not
+    /// leave a "stopped" activity behind, e.g. when restarting the countdown.
+    func retire(requestID: UUID)
+}
+
+public extension ContinuedProcessingDriving {
+    func retire(requestID: UUID) { cancel(requestID: requestID) }
 }
 
 /// How long a background-continued movement (fixed position, round trip, wander)
