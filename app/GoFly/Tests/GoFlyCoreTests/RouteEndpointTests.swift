@@ -18,13 +18,13 @@ struct RouteEndpointTests {
         #expect(route.removeNode(id: ids[1]))
         #expect(route.draft.nodes.map(\.id) == [ids[0], ids[2]], "waypoint row is deleted")
 
-        // Two or more places: the start ✕ deletes the place instead of clearing it.
-        #expect(route.removeNode(id: ids[0]))
-        #expect(route.draft.nodes.map(\.id) == [ids[2]], "start place is deleted")
-        // The last remaining place is only cleared.
+        // A filled start or destination ✕ clears the place and keeps the row.
         #expect(route.removeNode(id: ids[2]))
-        #expect(route.draft.nodes.map(\.value) == [.empty])
-        #expect(route.draft.nodes.map(\.id) == [ids[2]])
+        #expect(route.draft.nodes.map(\.id) == [ids[0], ids[2]], "destination row is kept")
+        #expect(route.draft.nodes.map(\.value) == [.place(place(1)), .empty])
+        #expect(route.removeNode(id: ids[0]))
+        #expect(route.draft.nodes.map(\.id) == [ids[0], ids[2]], "start row is kept")
+        #expect(route.draft.nodes.map(\.value) == [.empty, .empty])
     }
 
     @Test func movedRowBecomesTheSelectedField() throws {
@@ -514,10 +514,11 @@ struct RouteEndpointTests {
         #expect(!route.canUndoRemoval, "an undo is consumed")
 
         #expect(route.removeNode(id: ids[0]))
-        #expect(route.draft.nodes.map(\.id) == [ids[1], ids[2]], "a start with two or more places is deleted")
+        #expect(route.draft.nodes.map(\.id) == ids, "a filled start is cleared, not deleted")
+        #expect(route.draft.start?.value == .empty)
         #expect(route.undoRemoval())
         #expect(route.draft.nodes.map(\.id) == ids)
-        #expect(route.draft.start?.value == .place(place(1)), "a deleted start gets its place back")
+        #expect(route.draft.start?.value == .place(place(1)), "a cleared start gets its place back")
     }
 
     @Test func onlyTheLatestRemovalCanBeUndone() throws {

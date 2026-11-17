@@ -340,7 +340,7 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             if let onDestinationTap = parent.onDestinationTap,
                let node = routeNodeAnnotations.last(where: { if case .destination = $0.kind { true } else { false } }),
                let view = map.view(for: node) {
-                // At least a 44 pt hit target around the 22 pt node.
+                // At least a 44 pt hit target around the destination pin.
                 let frame = view.frame.insetBy(dx: min(0, (view.frame.width - 44) / 2),
                                                dy: min(0, (view.frame.height - 44) / 2))
                 if frame.contains(point) { onDestinationTap(); return }
@@ -633,8 +633,9 @@ struct GoFlyMapCanvas: UIViewRepresentable {
         private func applyRouteNodeAppearance(_ node: RouteNodeAnnotation, to view: MKAnnotationView, on map: MKMapView) {
             let dark = map.traitCollection.userInterfaceStyle == .dark
             view.image = node.isSelected ? node.kind.selectedImage(dark: dark) : node.kind.image(dark: dark)
-            view.centerOffset = node.kind.centerOffset
-            view.zPriority = node.isSelected ? .max : .defaultUnselected
+            view.centerOffset = node.kind.centerOffset(selected: node.isSelected)
+            // Below the position arrow (`.max`) so the current position stays visible.
+            view.zPriority = node.isSelected ? .defaultSelected : .defaultUnselected
         }
 
         func updateRangeCircle(on map: MKMapView) {
@@ -1060,78 +1061,111 @@ private final class RouteNodeAnnotation: NSObject, MKAnnotation {
     enum Kind {
         case start, waypoint(Int), destination
 
-        var centerOffset: CGPoint { .zero }
+        /// The start sits centred on its coordinate; the destination pin's tip
+        /// marks the route end, so its image rises above the coordinate.
+        func centerOffset(selected: Bool) -> CGPoint {
+            guard case .destination = self else { return .zero }
+            let scale = selected ? Self.selectedPinScale : Self.pinScale
+            return CGPoint(x: 0, y: (Self.pinSize.height / 2 - Self.pinTip.y) * scale)
+        }
 
-        /// Figma `MapNode /` components: white ring start, numbered waypoints,
-        /// and a thick destination dot without a stem, centred on the route end.
-        /// Dark mode inverts them like the `Dark · MapNode /` components.
+        /// Figma `map/node-start`, `map/node-waypoint` and `map/node-end`
+        /// option A (2026-11-17), shared by route and wander: a neutral ring
+        /// start and numbered neutral stops that never read as the blue
+        /// position marker, and a danger teardrop destination whose tip is the
+        /// route end. Dark mode swaps the neutral discs to a dark fill with a
+        /// light ring; the pin keeps a white outline in both themes.
         func image(dark: Bool) -> UIImage {
             let traits = UITraitCollection(userInterfaceStyle: dark ? .dark : .light)
-            // Figma (2026-10-31): primary ring on a white disc in both themes.
-            let ink = UIColor(GoFlyStyle.primary).resolvedColor(with: traits)
-            let paper = UIColor.white
             switch self {
             case .start:
-                return Self.render(CGSize(width: 22, height: 22)) { rect in
-                    paper.setFill(); UIBezierPath(ovalIn: rect.insetBy(dx: 3, dy: 3)).fill()
-                    let ring = UIBezierPath(ovalIn: rect.insetBy(dx: 4.5, dy: 4.5))
-                    ring.lineWidth = 3; ink.setStroke(); ring.stroke()
-                }
+                return Self.neutralNodeImage(diameter: 24, inset: 2, ringWidth: 3, shadow: false, traits: traits)
             case .waypoint(let number):
-                return Self.render(CGSize(width: 24, height: 24)) { rect in
-                    let circle = rect.insetBy(dx: 2, dy: 2)
-                    paper.setFill(); UIBezierPath(ovalIn: circle).fill()
-                    let ring = UIBezierPath(ovalIn: circle.insetBy(dx: 1.25, dy: 1.25))
-                    ring.lineWidth = 2.5; ink.setStroke(); ring.stroke()
-                    let text = NSAttributedString(string: "\(number)", attributes: [
-                        .font: UIFont.systemFont(ofSize: 11, weight: .bold), .foregroundColor: ink])
-                    let size = text.size()
-                    text.draw(at: CGPoint(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2))
-                }
+                return Self.neutralNodeImage(diameter: 24, inset: 2, ringWidth: 2.5, shadow: false,
+                                             number: (number, 11), traits: traits)
             case .destination:
-                return Self.render(CGSize(width: 22, height: 22)) { rect in
-                    paper.setFill(); UIBezierPath(ovalIn: rect).fill()
-                    let ring = UIBezierPath(ovalIn: rect.insetBy(dx: 1.25, dy: 1.25))
-                    ring.lineWidth = 2.5; ink.setStroke(); ring.stroke()
-                    ink.setFill(); UIBezierPath(ovalIn: rect.insetBy(dx: 7, dy: 7)).fill()
-                }
+                return Self.pinImage(scale: Self.pinScale, traits: traits)
             }
         }
 
-        /// The node the route list selects: 32 pt, primary filled with white
-        /// contents, in a white ring with a soft shadow. The shape stays the
-        /// same (ring, number, dot), so it still reads as the same point.
+        /// The node the route list selects: a larger version of the same
+        /// shape with a soft shadow, so it still reads as the same point.
         func selectedImage(dark: Bool) -> UIImage {
             let traits = UITraitCollection(userInterfaceStyle: dark ? .dark : .light)
-            let ink = UIColor(GoFlyStyle.primary).resolvedColor(with: traits)
-            let paper = UIColor.white
-            return UIGraphicsImageRenderer(size: CGSize(width: 40, height: 40)).image { context in
-                let disc = CGRect(x: 4, y: 4, width: 32, height: 32)
-                context.cgContext.saveGState()
-                context.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 4,
-                                            color: UIColor.black.withAlphaComponent(0.3).cgColor)
-                paper.setFill(); UIBezierPath(ovalIn: disc).fill()
-                context.cgContext.restoreGState()
-                let face = disc.insetBy(dx: 3, dy: 3)
-                ink.setFill(); UIBezierPath(ovalIn: face).fill()
-                switch self {
-                case .start:
-                    let ring = UIBezierPath(ovalIn: face.insetBy(dx: 7, dy: 7))
-                    ring.lineWidth = 3; paper.setStroke(); ring.stroke()
-                case .waypoint(let number):
-                    let text = NSAttributedString(string: "\(number)", attributes: [
-                        .font: UIFont.systemFont(ofSize: 14, weight: .bold), .foregroundColor: paper])
-                    let size = text.size()
-                    text.draw(at: CGPoint(x: face.midX - size.width / 2, y: face.midY - size.height / 2))
-                case .destination:
-                    paper.setFill(); UIBezierPath(ovalIn: face.insetBy(dx: 8, dy: 8)).fill()
-                }
+            switch self {
+            case .start:
+                return Self.neutralNodeImage(diameter: 40, inset: 6, ringWidth: 4, shadow: true, traits: traits)
+            case .destination:
+                return Self.pinImage(scale: Self.selectedPinScale, traits: traits)
+            case .waypoint(let number):
+                return Self.neutralNodeImage(diameter: 40, inset: 6, ringWidth: 3, shadow: true,
+                                             number: (number, 14), traits: traits)
             }
         }
 
-        private static func render(_ size: CGSize, _ draw: @escaping (CGRect) -> Void) -> UIImage {
-            UIGraphicsImageRenderer(size: size).image { _ in draw(CGRect(origin: .zero, size: size)) }
+        private static let pinSize = CGSize(width: 28, height: 35)
+        private static let pinTip = CGPoint(x: 14, y: 32)
+        /// The pin is drawn on a 28×35 grid and shown at 75% (21×26 pt) so its
+        /// 18 pt head matches the 20 pt start and stop discs.
+        private static let pinScale: CGFloat = 0.75
+        private static let selectedPinScale: CGFloat = pinScale * 1.3
+
+        /// Start and stop nodes: a `map/marker` disc in a `text/primary` ring,
+        /// 20 pt (28 pt selected), with the stop's number in the ring colour.
+        /// White with a near-black ring in light, near-black with a light ring in dark.
+        private static func neutralNodeImage(diameter: CGFloat, inset: CGFloat, ringWidth: CGFloat, shadow: Bool,
+                                             number: (value: Int, fontSize: CGFloat)? = nil,
+                                             traits: UITraitCollection) -> UIImage {
+            let fill = GoFlyThemeColor.uiColor(named: "color/map/marker").resolvedColor(with: traits)
+            let ink = GoFlyThemeColor.uiColor(named: "color/text/primary").resolvedColor(with: traits)
+            return UIGraphicsImageRenderer(size: CGSize(width: diameter, height: diameter)).image { context in
+                let rect = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+                let disc = rect.insetBy(dx: inset, dy: inset)
+                if shadow {
+                    context.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 4,
+                                                color: UIColor.black.withAlphaComponent(0.3).cgColor)
+                }
+                fill.setFill(); UIBezierPath(ovalIn: disc).fill()
+                context.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+                let ring = UIBezierPath(ovalIn: disc.insetBy(dx: ringWidth / 2, dy: ringWidth / 2))
+                ring.lineWidth = ringWidth; ink.setStroke(); ring.stroke()
+                guard let number else { return }
+                let text = NSAttributedString(string: "\(number.value)", attributes: [
+                    .font: UIFont.systemFont(ofSize: number.fontSize, weight: .bold), .foregroundColor: ink])
+                let size = text.size()
+                text.draw(at: CGPoint(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2))
+            }
         }
+
+        /// `action/danger/surface` teardrop with a white outline and centre
+        /// dot, plus a small ground shadow under the tip.
+        private static func pinImage(scale: CGFloat, traits: UITraitCollection) -> UIImage {
+            let danger = GoFlyThemeColor.uiColor(named: "color/action/danger/surface").resolvedColor(with: traits)
+            let size = CGSize(width: pinSize.width * scale, height: pinSize.height * scale)
+            return UIGraphicsImageRenderer(size: size).image { context in
+                context.cgContext.scaleBy(x: scale, y: scale)
+                let tip = pinTip, head = CGPoint(x: tip.x, y: 13), radius: CGFloat = 12
+                UIColor.black.withAlphaComponent(0.22).setFill()
+                UIBezierPath(ovalIn: CGRect(x: tip.x - 5, y: tip.y - 2, width: 10, height: 4)).fill()
+                // Rounded teardrop: full sides and a softened tip (2026-11-17).
+                let pin = UIBezierPath()
+                pin.move(to: CGPoint(x: head.x, y: head.y - radius))
+                pin.addArc(withCenter: head, radius: radius, startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+                pin.addCurve(to: CGPoint(x: 16.8, y: 30.6),
+                             controlPoint1: CGPoint(x: 26, y: 20), controlPoint2: CGPoint(x: 21.5, y: 25))
+                pin.addQuadCurve(to: CGPoint(x: 11.2, y: 30.6), controlPoint: CGPoint(x: 14, y: 33.4))
+                pin.addCurve(to: CGPoint(x: head.x - radius, y: head.y),
+                             controlPoint1: CGPoint(x: 6.5, y: 25), controlPoint2: CGPoint(x: 2, y: 20))
+                pin.addArc(withCenter: head, radius: radius, startAngle: .pi, endAngle: -.pi / 2, clockwise: true)
+                pin.close()
+                pin.lineWidth = 2
+                danger.setFill(); pin.fill()
+                UIColor.white.setStroke(); pin.stroke()
+                UIColor.white.setFill()
+                UIBezierPath(ovalIn: CGRect(x: head.x - 4.5, y: head.y - 4.5, width: 9, height: 9)).fill()
+            }
+        }
+
     }
 
     @objc dynamic var coordinate: CLLocationCoordinate2D

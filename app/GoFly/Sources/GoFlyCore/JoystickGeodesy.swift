@@ -2,6 +2,8 @@ import Foundation
 
 public enum JoystickGeodesy {
     private static let radius = 6_371_000.0
+    /// A target this close beyond the step cap still counts as reached.
+    static let arrivalToleranceMeters = 0.01
 
     /// At a pole the origin's longitude defines the local north/east tangent basis.
     public static func destination(from origin: GeoCoordinate, displacement: JoystickDisplacement) -> GeoCoordinate {
@@ -51,7 +53,9 @@ public enum JoystickGeodesy {
         let north = -sin(latitude) * cos(longitude) * target.x - sin(latitude) * sin(longitude) * target.y + cos(latitude) * target.z
         let east = -sin(longitude) * target.x + cos(longitude) * target.y
         let bearing = hypot(north, east) < 1e-15 ? 0 : JoystickInput.normalizedBearing(atan2(east, north) * 180 / .pi)
-        if distance <= step.maximumDistanceMeters {
+        // Road steps aim exactly one step ahead; rounding can put that a hair past
+        // the cap, which would stop short and spend the next tick on a 0 m move.
+        if distance <= step.maximumDistanceMeters + arrivalToleranceMeters {
             return JoystickTargetStepResolution(coordinate: step.coordinate, bearingDegrees: bearing, arrived: true)
         }
         return JoystickTargetStepResolution(coordinate: destination(from: origin, bearingDegrees: bearing,

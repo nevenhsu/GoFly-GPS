@@ -473,22 +473,15 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         session.candidates.cancelPendingLookups()
         return true
     }
-    /// A waypoint row is deleted; the start and destination rows are cleared,
-    /// and an empty destination row is deleted (see `RouteDraft.canRemove`).
+    /// A waypoint row is deleted; a filled start or destination row is only
+    /// cleared and keeps its row, and an empty destination row is deleted so
+    /// the previous stop becomes the destination (see `RouteDraft.canRemove`).
     @discardableResult public func removeNode(id: RouteNodeID) -> Bool {
         guard canEdit, draft.canRemove(nodeID: id) else { return false }
         let changed: RouteDraft?
-        let filled = draft.nodes.filter { $0.value != .empty }.count
         let filledNode = draft.nodes.first(where: { $0.id == id }).map { $0.value != .empty } ?? false
         if case .waypoint? = draft.role(of: id) { changed = draft.removing(nodeID: id) }
-        else if !filledNode, draft.role(of: id) == .destination {
-            // The previous stop becomes the destination.
-            changed = draft.removing(nodeID: id)
-        }
-        else if filledNode, filled >= 2 {
-            // With two or more places the start and destination ✕ delete the place instead of clearing it.
-            changed = draft.removing(nodeID: id)
-        }
+        else if !filledNode, draft.role(of: id) == .destination { changed = draft.removing(nodeID: id) }
         else { changed = draft.clearing(nodeID: id) ?? draft.removing(nodeID: id) }
         guard let changed else { return false }
         let before = draft, previousSelection = selection
@@ -1241,16 +1234,20 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
             "movement": .text(intent.id.uuidString)
         ])
         let current = progress?.committedDistanceMeters ?? 0
-        let remaining = heading == .forward
-            ? max(0, intent.route.totalDistanceMeters - current)
-            : max(0, current)
+        let total = intent.route.totalDistanceMeters
+        let remaining = heading == .forward ? max(0, total - current) : max(0, current)
         let kind: ContinuedProcessingKind = roundTripEnabled ? .roundTrip : .finiteRoute
+        // A finite route always reports against the whole route, measured
+        // from the endpoint this heading departs from, so pausing, resuming
+        // or reversing never restarts the system progress bar at zero.
         let goal: ContinuedProcessingGoal? = roundTripEnabled
             ? .finiteDuration(seconds: BackgroundRunDuration.shared.seconds)
-            : (remaining > 0 && remaining.isFinite ? .finiteDistance(meters: remaining) : nil)
+            : (remaining > 0 && total.isFinite ? .finiteDistance(meters: total) : nil)
+        let axisOrigin: Double? = roundTripEnabled ? nil : (heading == .forward ? 0 : total)
         continuationIdentity = MovementContinuationIdentity(movementID: intent.id, lease: intent.lease)
         continuationControlSubject.send(.requested(MovementContinuationDemand(
-            movementID: intent.id, lease: intent.lease, kind: kind, goal: goal)))
+            movementID: intent.id, lease: intent.lease, kind: kind, goal: goal,
+            routeAxisOrigin: axisOrigin)))
     }
 
     private func withdrawContinuation(_ reason: MovementContinuationWithdrawalReason) {

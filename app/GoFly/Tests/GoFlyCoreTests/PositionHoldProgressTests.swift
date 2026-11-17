@@ -51,12 +51,30 @@ struct PositionHoldProgressTests {
             cumulativeAcknowledgedDurationSeconds: 86_400)!
 
         let exactUnits = ContinuedProcessingProgressUnits.forRequest(request, progress: exact)
-        #expect(exactUnits.completedUnitCount == 999_999)
-        #expect(exactUnits.totalUnitCount == 1_000_000)
+        #expect(exactUnits.completedUnitCount == 1_000_000)
+        #expect(exactUnits.totalUnitCount == 1_000_001)
 
         let beyondUnits = ContinuedProcessingProgressUnits.forRequest(request, progress: beyondGoal)
-        #expect(beyondUnits.completedUnitCount == 999_999)
-        #expect(beyondUnits.totalUnitCount == 1_000_000)
+        #expect(beyondUnits.completedUnitCount == 1_000_001)
+        #expect(beyondUnits.totalUnitCount == 1_000_002)
+    }
+
+    /// iOS expires a continued-processing task whose progress stalls; the
+    /// countdown is paused in the foreground, so each write must still move it.
+    @Test func finiteDurationUnitsAdvanceWithWritesWhileCountdownIsPaused() {
+        let request = makeRequest(kind: .wander, seconds: 3_600)!
+        var previous: ContinuedProcessingProgressUnits?
+        for writes in Int64(1)...5 {
+            let progress = ContinuedProcessingProgress(acknowledgedWrites: writes,
+                cumulativeAcknowledgedDistanceMeters: Double(writes) * 7,
+                cumulativeAcknowledgedDurationSeconds: 0)!
+            let units = ContinuedProcessingProgressUnits.forRequest(request, progress: progress)
+            if let previous {
+                #expect(units.completedUnitCount > previous.completedUnitCount)
+            }
+            #expect(units.completedUnitCount < units.totalUnitCount)
+            previous = units
+        }
     }
 
     @Test func controllerCompletesFiniteDurationExactlyOnceAndRejectsBadProgress() async {
@@ -127,8 +145,8 @@ struct PositionHoldProgressTests {
             cumulativeAcknowledgedDurationSeconds: .greatestFiniteMagnitude)!
         let units = ContinuedProcessingProgressUnits.forRequest(request, progress: progress)
 
-        #expect(units.totalUnitCount == 1_000_000)
-        #expect(units.completedUnitCount == 999_999)
+        #expect(units.totalUnitCount == 1_001_000_000)
+        #expect(units.completedUnitCount == 1_000_999_999)
     }
 
     private func makeRequest(kind: ContinuedProcessingKind = .fixedPosition,

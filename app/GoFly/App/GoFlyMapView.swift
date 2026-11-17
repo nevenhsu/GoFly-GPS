@@ -122,7 +122,10 @@ final class GoFlyMovementModel: ObservableObject {
                     return (title: goFlyString("background.activity.\(kind.rawValue)"),
                             subtitle: goFlyLocalizedFormat(goFlyString("background.activity.durationProgress"), percent))
                 }
-                let percent = min(100, max(0, Int((routeForPresentation.progress?.fraction ?? 0) * 100)))
+                // Match the system bar: distance covered from this heading's departure endpoint.
+                let fraction = routeForPresentation.progress?.fraction ?? 0
+                let covered = routeForPresentation.heading == .forward ? fraction : 1 - fraction
+                let percent = min(100, max(0, Int(covered * 100)))
                 return (title: goFlyString("background.activity.\(kind.rawValue)"),
                  subtitle: goFlyLocalizedFormat(
                     goFlyString("background.activity.routeProgress"), percent))

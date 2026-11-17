@@ -56,13 +56,18 @@ public struct MovementContinuationDemand: Equatable, Sendable {
     public let lease: MovementTaskLease
     public let kind: ContinuedProcessingKind
     public let goal: ContinuedProcessingGoal?
+    /// Finite routes only: the route-axis endpoint the trip departs from
+    /// (0 forward, total distance in reverse). Background progress is the
+    /// distance covered from it, so it always tracks the whole route.
+    public let routeAxisOrigin: Double?
 
     init(movementID: UUID, lease: MovementTaskLease, kind: ContinuedProcessingKind,
-         goal: ContinuedProcessingGoal?) {
+         goal: ContinuedProcessingGoal?, routeAxisOrigin: Double? = nil) {
         self.movementID = movementID
         self.lease = lease
         self.kind = kind
         self.goal = goal
+        self.routeAxisOrigin = routeAxisOrigin
     }
 }
 

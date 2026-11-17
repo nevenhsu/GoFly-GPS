@@ -246,6 +246,7 @@ public final class MovementContinuationController: ObservableObject {
                 pending = nil; pauseForRuntimeLoss(current, notice: "background.expired"); return
             }
             if !restart, current.request.kind == demand.kind, current.request.goal == demand.goal,
+               current.epoch.demand.routeAxisOrigin == demand.routeAxisOrigin,
                [.submitting, .accepted, .running].contains(runtime.state),
                current.boundGrant == nil || stillBound { return }
             // Successful explicit Resume has already retired its old binding.
@@ -265,7 +266,9 @@ public final class MovementContinuationController: ObservableObject {
             "hasGoal": .flag(demand.goal != nil),
             "movement": .text(demand.movementID.uuidString)
         ])
-        pending = Epoch(demand: demand, origin: route.progress?.committedDistanceMeters ?? 0, lastSequence: last)
+        pending = Epoch(demand: demand,
+                        origin: demand.routeAxisOrigin ?? route.progress?.committedDistanceMeters ?? 0,
+                        lastSequence: last)
         if case .finiteDuration = demand.goal { durationEpoch = pending }
         if demand.goal == nil { pending = nil; synchronize(); return }
         drainPending()

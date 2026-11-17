@@ -23,6 +23,10 @@ final class GoFlyPositionArrowView: MKAnnotationView {
         isAccessibilityElement = true
         accessibilityIdentifier = "map.positionMarker"
         canShowCallout = false
+        // The current position stays above every route node; a route usually
+        // starts at it, and its start ring would otherwise hide the arrow.
+        zPriority = .max
+        selectedZPriority = .max
         registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self]) {
             (view: GoFlyPositionArrowView, _: UITraitCollection) in view.applyColors()
         }

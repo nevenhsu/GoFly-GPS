@@ -3,6 +3,17 @@ import Testing
 @testable import GoFlyCore
 
 struct JoystickTargetGeometryTests {
+    @Test func aRoadStepThatRoundsAHairPastTheCapStillArrives() throws {
+        let origin = GeoCoordinate(latitude: 25, longitude: 121)!
+        let target = GeoCoordinate(latitude: 25.00006, longitude: 121.00003)!
+        let exact = JoystickGeodesy.distanceMeters(from: origin, to: target)
+        let result = JoystickGeodesy.resolveTarget(from: origin, step: JoystickTargetStep(
+            targetID: UUID(), coordinate: target, maximumDistanceMeters: exact - 1e-9)!)
+        #expect(result.arrived && result.coordinate == target)
+        let short = JoystickGeodesy.resolveTarget(from: origin, step: JoystickTargetStep(
+            targetID: UUID(), coordinate: target, maximumDistanceMeters: exact - 0.5)!)
+        #expect(!short.arrived)
+    }
     @Test func zeroDistanceResolvesTheExactTargetWithoutInventingABearing() throws {
         let origin = GeoCoordinate(latitude: 25, longitude: 121)!
         let target = JoystickTargetStep(targetID: UUID(), coordinate: origin, maximumDistanceMeters: 10)!

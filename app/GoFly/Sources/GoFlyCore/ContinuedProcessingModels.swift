@@ -110,8 +110,16 @@ public struct ContinuedProcessingProgressUnits: Equatable, Sendable {
             return Self(totalUnitCount: 1_000_000, completedUnitCount: completed)
         case .finiteDuration(let goal) where goal.isFinite && goal > 0:
             let ratio = min(max(progress.cumulativeAcknowledgedDurationSeconds / goal, 0), 1)
-            let completed = safeInt64Floor(ratio * 1_000_000, cap: 999_999)
-            return Self(totalUnitCount: 1_000_000, completedUnitCount: completed)
+            let durationUnits = safeInt64Floor(ratio * 1_000_000, cap: 999_999)
+            // The countdown only advances in the background, but iOS expires a
+            // continued-processing task whose progress stalls. Every
+            // acknowledged write adds one unit to both counts so the task keeps
+            // reporting progress while the app stays in the foreground; the
+            // visible fraction still tracks the countdown.
+            let heartbeat = min(max(progress.acknowledgedWrites, 0), 1_000_000_000)
+            let total = 1_000_000 + heartbeat
+            return Self(totalUnitCount: total,
+                        completedUnitCount: min(durationUnits + heartbeat, total - 1))
         case .experimentalIndeterminate:
             return Self(totalUnitCount: -1, completedUnitCount: progress.acknowledgedWrites)
         default:

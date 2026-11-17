@@ -303,14 +303,14 @@ struct MovementDurationIntegrationTests {
 
         #expect(route.start())
         await waitUntil { route.phase == .running && clock.cadenceSleepingCount >= 1 }
+        let total = try #require(route.progress?.totalDistanceMeters)
         clock.advance(by: .seconds(15))
         await waitUntil { route.phase == .editing && driver.finishCount == 1 }
         #expect(facade.state == .finished)
         let request = try #require(driver.requests.first)
         #expect(request.goal != .finiteDuration(seconds: 43_200))
-        if case .finiteDistance = request.goal { } else {
-            Issue.record("finite route did not submit a distance goal")
-        }
+        // The background bar always reports against the whole route.
+        #expect(request.goal == .finiteDistance(meters: total))
         let progress = try #require(driver.lastProgress)
         #expect(progress.cumulativeAcknowledgedDurationSeconds == 0)
     }
