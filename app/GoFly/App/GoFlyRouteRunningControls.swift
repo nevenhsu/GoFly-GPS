@@ -14,6 +14,8 @@ struct GoFlyRouteRunningControls: View {
     var isPaused = false
     /// D10: an interrupted route's primary button retries instead of resuming.
     var isInterrupted = false
+    /// Pause requested but not yet settled: the button shows a spinner (Pause → Pausing… → Go).
+    var isPausing = false
     var canPlayback = true
     var canEnd = true
     var onToggleRoundTrip: () -> Void = { }
@@ -76,13 +78,20 @@ struct GoFlyRouteRunningControls: View {
 
     private var playbackButton: some View {
         Button(action: onPlayback) {
-            GoFlyIconLabel(
-                title: goFlyString(isInterrupted ? "common.continue" : (isPaused ? "route.resume" : "route.pause")),
-                icon: isPaused ? GoFlySymbols.play : GoFlySymbols.pause)
-                .lineLimit(1)
+            if isPausing {
+                HStack(spacing: 8) {
+                    ProgressView().accessibilityHidden(true)
+                    Text(goFlyString("route.phase.pausing")).lineLimit(1)
+                }
+            } else {
+                GoFlyIconLabel(
+                    title: goFlyString(isInterrupted ? "common.continue" : (isPaused ? "route.resume" : "route.pause")),
+                    icon: isPaused ? GoFlySymbols.play : GoFlySymbols.pause)
+                    .lineLimit(1)
+            }
         }
         .buttonStyle(GoFlyButtonStyle(variant: .primary))
-        .goFlySteadyDisabled(!canPlayback)
+        .goFlySteadyDisabled(isPausing || !canPlayback)
         .accessibilityIdentifier(isInterrupted ? "route.retry" : (isPaused ? "route.resume" : "route.pause"))
     }
 }

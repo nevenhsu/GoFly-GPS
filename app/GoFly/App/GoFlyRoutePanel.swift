@@ -282,7 +282,8 @@ struct GoFlyRoutePanel: View {
 
     private var executionPanel: some View {
         VStack(spacing: 16) {
-            if [.planning, .preparing, .pausing, .cancelling].contains(controller.phase) {
+            // Pausing keeps the running controls; only the primary button turns into a spinner.
+            if [.planning, .preparing, .cancelling].contains(controller.phase) {
                 HStack(spacing: 8) {
                     ProgressView()
                     Text(goFlyString("route.phase.\(controller.phase.rawValue)"))
@@ -311,6 +312,7 @@ struct GoFlyRoutePanel: View {
                     canChangeSpeed: controller.canSetSpeed,
                     isPaused: [.paused, .interrupted].contains(controller.phase),
                     isInterrupted: controller.phase == .interrupted,
+                    isPausing: controller.phase == .pausing,
                     canPlayback: controller.phase == .interrupted ? true : (controller.phase == .paused ? controller.canResume : controller.canPause),
                     canEnd: controller.canCancel,
                     onToggleRoundTrip: { _ = controller.setRoundTripEnabled(!controller.roundTripEnabled) },
