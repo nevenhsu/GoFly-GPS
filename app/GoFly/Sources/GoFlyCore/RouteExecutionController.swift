@@ -498,6 +498,16 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         guard let changed else { return false }
         let before = draft, previousSelection = selection
         applyDraft(changed)
+        // ✕ on the start or destination selects that row so the next place
+        // fills it; a deleted empty destination hands the selection to the
+        // stop that became the destination.
+        if picker == nil {
+            if changed.nodes.contains(where: { $0.id == id }) {
+                selection = id  // only a cleared start or destination keeps its row
+            } else if before.role(of: id) == .destination, let last = changed.destination?.id {
+                selection = last
+            }
+        }
         removalUndo = (before, changed, previousSelection)
         return true
     }

@@ -488,6 +488,22 @@ struct RouteEndpointTests {
         #expect(route.chosenPlaceRoles == [.waypoint(2), .destination])
     }
 
+    @Test func clearingTheStartOrDestinationSelectsThatRow() throws {
+        let draft = try #require(RouteDraft(values: [.place(place(1)), .place(place(2)), .place(place(3))]))
+        let route = fixture(draft: draft)
+        let ids = route.draft.nodes.map(\.id)
+        #expect(route.selectNode(id: ids[1]))
+        #expect(route.removeNode(id: ids[2]))
+        #expect(route.draft.nodes[2].value == .empty)
+        #expect(route.selectedNodeID == ids[2], "✕ on the destination selects its row")
+        #expect(route.selectNode(id: ids[1]))
+        #expect(route.removeNode(id: ids[0]))
+        #expect(route.selectedNodeID == ids[0], "✕ on the start selects its row")
+        #expect(route.removeNode(id: ids[2]))
+        #expect(route.draft.nodes.map(\.id) == [ids[0], ids[1]])
+        #expect(route.selectedNodeID == ids[1], "deleting an empty destination selects the new destination")
+    }
+
     @Test func confirmingARowSelectsTheNextRow() throws {
         let draft = try #require(RouteDraft(nodes: [RouteNode(value: .empty), RouteNode(value: .empty), RouteNode(value: .empty)]))
         let route = fixture(draft: draft)
