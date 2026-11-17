@@ -473,8 +473,22 @@ struct RouteEndpointTests {
 
         #expect(route.confirmSelectedNode(with: place(1)))
         #expect(route.draft.nodes.map(\.value) == [.current, .place(place(1))], "only the destination changes")
-        #expect(route.selectedNodeID == ids[1])
+        #expect(route.selectedNodeID == ids[1], "confirming the destination keeps it selected")
         #expect(!route.selectNode(id: RouteNodeID()), "unknown rows cannot be selected")
+    }
+
+    @Test func confirmingARowSelectsTheNextRow() throws {
+        let draft = try #require(RouteDraft(nodes: [RouteNode(value: .empty), RouteNode(value: .empty), RouteNode(value: .empty)]))
+        let route = fixture(draft: draft)
+        let ids = route.draft.nodes.map(\.id)
+        #expect(route.selectedNodeID == ids[0])
+        #expect(route.confirmSelectedNode(with: place(1)))
+        #expect(route.selectedNodeID == ids[1], "the start's confirm moves to the next row")
+        #expect(route.confirmSelectedNode(with: place(2)))
+        #expect(route.selectedNodeID == ids[2])
+        #expect(route.confirmSelectedNode(with: place(3)))
+        #expect(route.selectedNodeID == ids[2], "the destination's confirm stays on its row")
+        #expect(route.draft.nodes.map(\.value) == [.place(place(1)), .place(place(2)), .place(place(3))])
     }
 
     @Test func selectionFallsBackToTheStartWhenItsRowDisappears() throws {

@@ -400,7 +400,14 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         guard canEdit, draft.isManual, picker == nil, let id = selectedNodeID,
               let changed = draft.replacing(nodeID: id, value: .place(place)) else { return false }
         applyDraft(changed)
+        advanceSelection(afterConfirming: id)
         return true
+    }
+    /// After a row is confirmed the next row becomes the selected field;
+    /// confirming the destination keeps the selection on it.
+    private func advanceSelection(afterConfirming id: RouteNodeID) {
+        guard let index = draft.nodes.firstIndex(where: { $0.id == id }) else { return }
+        selection = index + 1 < draft.nodes.count ? draft.nodes[index + 1].id : id
     }
     public var canPause: Bool { phase == .running || isRecoveringConnection }
     public var canSetRoundTrip: Bool { [.editing, .running, .paused].contains(phase) }
@@ -541,6 +548,7 @@ private func diagnose(_ name: String, category: DiagnosticsCategory, level: Diag
         guard let changed = base.replacing(nodeID: session.nodeID, value: value) else { return false }
         applyDraft(changed)
         picker = nil
+        advanceSelection(afterConfirming: session.nodeID)
         return true
     }
     public func cancelPicker(id: UUID) {
