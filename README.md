@@ -84,20 +84,43 @@ If you'd rather not use the Mac app, [SideStore](https://sidestore.io) or [AltSt
 
 - iPhone on iOS 26 or later with **Developer Mode** on.
 - [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044) installed and allowed to add a VPN; stay on Wi‑Fi while using GoFly GPS.
-- A computer with [iloader](https://github.com/nab138/iloader) to export this iPhone's pairing file (`pairingFile.plist`).
+- A computer (and USB data cable) with [iloader](https://github.com/nab138/iloader) ([official download](https://github.com/nab138/iloader/releases/latest) / [iloader.app](https://iloader.app)) to **install SideStore onto the iPhone** and export this iPhone's pairing file (`pairingFile.plist`).
 
-**Install**
+**Install (SideStore `.ipa` flow)**
 
-1. Download `GoFly-GPS-<version>.ipa` from the [latest release](https://github.com/nevenhsu/GoFly-GPS/releases/latest) (check it with the matching `.sha256`) and move it to your iPhone.
-2. Install it with one sideloading app:
-   - **SideStore**: finish its [setup guide](https://docs.sidestore.io/docs/installation/install), keep Wi‑Fi and LocalDevVPN connected, then choose the IPA under **My Apps → +**.
-   - **AltStore**: install AltServer on your computer and AltStore on your iPhone by following the [AltStore guide](https://faq.altstore.io/), then choose the IPA under **My Apps → +**.
-3. A free Apple ID signature lasts about 7 days, so keep SideStore or AltStore refreshing GoFly GPS. Refreshing keeps your GoFly GPS data.
+1. Download `GoFly-GPS-<version>.ipa` and its matching `.sha256` from the [latest release](https://github.com/nevenhsu/GoFly-GPS/releases/latest), and verify the checksum (must print `OK`):
 
-**First launch**
+   ```sh
+   shasum -a 256 -c GoFly-GPS-<version>.ipa.sha256
+   ```
+
+   Transfer the verified `.ipa` to your iPhone (AirDrop, iCloud Drive, or the Files app).
+2. Install and set up SideStore on your iPhone using **iloader**:
+   - Connect your iPhone to the computer over USB, use [iloader](https://github.com/nab138/iloader) to **install SideStore onto the iPhone** (see the [SideStore setup guide](https://docs.sidestore.io/docs/installation/install)), and export this iPhone's pairing file (`pairingFile.plist`).
+   - On the iPhone, trust the developer (Settings → General → VPN & Device Management) and import the pairing file into SideStore.
+   - Keep Wi‑Fi and **LocalDevVPN** connected, open SideStore, and sign in with your Apple ID. If login fails or shows error `(80045)`, see the SideStore login workaround below.
+3. With Wi‑Fi and **LocalDevVPN** connected, open SideStore → **My Apps → +**, choose `GoFly-GPS-<version>.ipa`, and wait for re-signing and installation to finish (trust the developer profile in iOS Settings if prompted).
+4. A free Apple ID signature lasts about 7 days. Keep Wi‑Fi and LocalDevVPN connected and refresh SideStore and GoFly GPS regularly; refreshing keeps your GoFly GPS data (do not uninstall).
+
+If using **AltStore** instead: follow the [AltStore guide](https://faq.altstore.io/) to install AltServer on your computer and AltStore on your iPhone, then choose the verified `.ipa` under **My Apps → +** and keep it refreshed.
+
+**SideStore login bug workaround (including error `80045`)**
+
+If SideStore hits a login bug when signing in with your Apple ID, try this community-reported temporary workaround from SideStore issues (results may vary by version; **no need to delete the app or reset the pairing file**):
+
+1. Open SideStore **Settings → User Customizations**.
+2. Turn off **On-Device Anisette**.
+3. Go to **Settings → Anisette Servers**, select **SideStore (New)**, and confirm the URL is `https://new.ani.sidestore.io`.
+4. Under **Anisette Servers** below, turn off **automatic server rotation**.
+5. Return to **Settings → User Customizations**.
+6. Select **Reset adi.pb**; if **Keep Headers** appears, leave it unchecked.
+7. Force-close and reopen SideStore, keep **LocalDevVPN** connected, and sign in again.
+8. **Error `(80045)` after login**: Even when login succeeds after these changes, SideStore may still display error code `(80045)`. **Restart your iPhone** — after rebooting, SideStore will show that you are signed in.
+
+**First launch of GoFly GPS**
 
 1. GoFly GPS shows **Import pairing file**. Export this iPhone's pairing file with iloader on your computer, move it to the iPhone (AirDrop or the Files app), tap **Import**, and choose it.
-2. Allow Location and Local Network, connect LocalDevVPN, and you're ready.
+2. Allow Location and Local Network, and connect LocalDevVPN. If GoFly GPS prompts to download device support (DDI), follow the on-screen prompt while online and you're ready.
 
 The pairing file must belong to this iPhone; a file for another phone is stopped at the first connection. The IPA does not need the Mac app; the Mac installer keeps its USB pairing flow. On 2026-11-02, import, teleport, background route movement, and positioning after an iPhone restart were verified on a device installed with SideStore; auto-wander in the background was fixed and device-tested (when a segment ends in the background it keeps running in place while the next road is planned, instead of pausing).
 
@@ -105,7 +128,9 @@ To build the unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-
 
 ## Let an AI install it for you
 
-Paste a GitHub link and this prompt into an AI assistant that can run shell commands (and, ideally, operate your Mac):
+Paste a GitHub link and one of the prompts below into an AI assistant that can run shell commands (and, ideally, operate your computer):
+
+**Install via the Mac app (DMG):**
 
 ```text
 Install GoFly GPS for me from https://github.com/nevenhsu/GoFly-GPS.
@@ -129,6 +154,30 @@ Install GoFly GPS for me from https://github.com/nevenhsu/GoFly-GPS.
    say that separately.
 ```
 
+**Install the `.ipa` via SideStore:**
+
+```text
+Help me install GoFly GPS on my iPhone via SideStore from https://github.com/nevenhsu/GoFly-GPS.
+
+1. Read README.md and docs/AI-INSTALL.md in that repository first.
+2. Do not build from source. Download the latest release's GoFly-GPS-<version>.ipa
+   and its .sha256 file into a new empty folder, run `shasum -a 256 -c`, and stop
+   if the result is not OK.
+3. Walk me step-by-step through transferring the IPA to my iPhone, using iloader
+   over USB to install SideStore onto my iPhone and export this iPhone's pairing
+   file, setting up SideStore with LocalDevVPN and Wi-Fi, installing the IPA via
+   SideStore (My Apps -> +), and importing the pairing file on first launch.
+4. If SideStore login fails, walk me through the Anisette / Reset adi.pb
+   workaround in docs/AI-INSTALL.md (including restarting the iPhone if error
+   80045 appears after login). Do not tell me to delete SideStore or reset the
+   pairing file.
+5. I will handle Apple ID sign-in, 2FA, iPhone trust, Developer Mode, and VPN
+   permissions myself. Never ask for passwords, pairing files, or tokens in chat.
+6. Report what is done, what I still need to do on the iPhone, and any
+   blocker. Installation success does not prove location simulation works;
+   say that separately.
+```
+
 The full runbook for AI assistants is in [docs/AI-INSTALL.md](docs/AI-INSTALL.md).
 
 ## Troubleshooting
@@ -140,8 +189,9 @@ The full runbook for AI assistants is in [docs/AI-INSTALL.md](docs/AI-INSTALL.md
 | `install.sh` seems stuck at the prompt | Type `y` **and press Enter**. |
 | No iPhone appears | Use a data cable, unlock the phone, tap Trust, enable Developer Mode (needs a restart). |
 | "The installation check failed" | Press **Check again**. If GoFly GPS is already on the phone, open the device in the sidebar and use **Renew Signing**. |
-| The iPhone app no longer opens | Signing expired. Renew from the Mac app; data is kept. |
+| The iPhone app no longer opens | Signing expired. Renew from the Mac app or SideStore / AltStore; data is kept. |
 | LocalDevVPN is on but GoFly GPS cannot continue | Check the VPN is actually connected and allowed, then retry in GoFly GPS. |
+| SideStore login fails or shows error `(80045)` | Turn off **On-Device Anisette**, select `SideStore (New)` (`https://new.ani.sidestore.io`), disable automatic server rotation, run **Reset adi.pb** (leave Keep Headers unchecked), then restart SideStore and sign in again. If `(80045)` still appears after login, restart your iPhone to see the signed-in state. See the SideStore login workaround above. |
 
 ## Build from source
 

@@ -84,20 +84,43 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
 
 - iPhone：iOS 26 以上，已開啟**開發者模式**。
 - 已安裝 [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044) 並允許新增 VPN；使用 GoFly GPS 時連上 Wi‑Fi。
-- 一台電腦，用 [iloader](https://github.com/nab138/iloader) 匯出這支 iPhone 的配對檔（`pairingFile.plist`）。
+- 一台電腦（與 USB 資料線），安裝 [iloader](https://github.com/nab138/iloader)（[官方下載頁](https://github.com/nab138/iloader/releases/latest)／[官網](https://iloader.app)），用來將 **SideStore 安裝到 iPhone**，並匯出這支 iPhone 的配對檔（`pairingFile.plist`）。
 
-**安裝**
+**安裝（SideStore `.ipa` 流程）**
 
-1. 從[最新版 Release](https://github.com/nevenhsu/GoFly-GPS/releases/latest)下載 `GoFly-GPS-<版本>.ipa`（可用同名 `.sha256` 核對），傳到 iPhone。
-2. 選一個側載工具安裝：
-   - **SideStore**：依[官方流程](https://docs.sidestore.io/docs/installation/install)完成設定，保持 Wi‑Fi 與 LocalDevVPN 連線，在 **My Apps → ＋** 選這個 IPA。
-   - **AltStore**：依 [AltStore 說明](https://faq.altstore.io/)在電腦安裝 AltServer、在 iPhone 安裝 AltStore，再在 **My Apps → ＋** 選這個 IPA。
-3. 免費 Apple ID 的簽名約 7 天，請讓 SideStore／AltStore 定期重新整理；重新整理會保留 App 內的資料。
+1. 從[最新版 Release](https://github.com/nevenhsu/GoFly-GPS/releases/latest)下載 `GoFly-GPS-<版本>.ipa` 與同名 `.sha256`，核對校驗碼（結果須為 `OK`）：
 
-**第一次開啟**
+   ```sh
+   shasum -a 256 -c GoFly-GPS-<版本>.ipa.sha256
+   ```
+
+   核對無誤後，把 `.ipa` 傳到 iPhone（AirDrop、iCloud 雲碟或「檔案」App）。
+2. 用 **iloader** 在 iPhone 安裝並設定 SideStore：
+   - 用 USB 將 iPhone 連接電腦，透過 [iloader](https://github.com/nab138/iloader) 將 **SideStore 安裝到手機**（詳見 [SideStore 官方流程](https://docs.sidestore.io/docs/installation/install)），並匯出這支 iPhone 的配對檔（`pairingFile.plist`）。
+   - 在 iPhone 信任開發者（設定 › 一般 › VPN 與裝置管理），並將配對檔匯入 SideStore。
+   - 保持 Wi‑Fi 與 **LocalDevVPN** 連線，開啟 SideStore 並登入你的 Apple ID。若登入失敗或出現錯誤代碼 `(80045)`，請見下方「SideStore 登入異常暫時解法」。
+3. 確認 Wi‑Fi 與 **LocalDevVPN** 仍保持連線，在 SideStore 的 **My Apps → ＋** 選擇剛剛傳入的 `GoFly-GPS-<版本>.ipa`，等待重新簽名與安裝完成（若系統要求，請到「設定 › 一般 › VPN 與裝置管理」信任開發者）。
+4. 免費 Apple ID 的簽名約 7 天，請保持 Wi‑Fi 與 LocalDevVPN 連線，定期在 SideStore 重新整理 SideStore 與 GoFly GPS；重新整理會保留 App 內的資料，請勿卸載。
+
+若改用 **AltStore**：依 [AltStore 說明](https://faq.altstore.io/)在電腦安裝 AltServer、在 iPhone 安裝 AltStore，同樣在 **My Apps → ＋** 選擇已核對的 `.ipa` 安裝，並定期重新整理。
+
+**SideStore 登入異常暫時解法（含錯誤代碼 `80045`）**
+
+SideStore 登入 Apple ID 時可能遇到登入 bug，可先試 SideStore 專案 issue 裡社群回報有效的暫時解法（效果依版本而異；**不用刪 App 或重設配對檔**）：
+
+1. 開啟 SideStore 的 **Settings → User Customizations**。
+2. 關閉 **On-Device Anisette**。
+3. 前往 **Settings → Anisette Servers**，選 **SideStore (New)**，確認網址是 `https://new.ani.sidestore.io`。
+4. 下方 **Anisette Servers** 關閉**自動伺服器輪替**。
+5. 回到 **Settings → User Customizations**。
+6. 選 **Reset adi.pb**；若有 **Keep Headers**，不要勾選。
+7. 完全關閉再開啟 SideStore，保持 **LocalDevVPN** 連線後重新登入。
+8. **登入後出現錯誤代碼 `(80045)`**：套用以上設定後，即使實際已成功登入，仍可能跳出錯誤代碼 `(80045)`。此時直接**重啟 iPhone**，重開機後打開 SideStore 即可看到已登入狀態。
+
+**第一次開啟 GoFly GPS**
 
 1. GoFly GPS 會顯示「匯入配對檔」。在電腦用 iloader 匯出這支 iPhone 的配對檔，傳到 iPhone（AirDrop 或「檔案」App），點**匯入配對檔**選取。
-2. 依序允許定位與區域網路，並連上 LocalDevVPN，就可以開始使用。
+2. 依序允許定位與區域網路，並連上 LocalDevVPN；若 App 提示下載裝置支援（DDI），保持網路連線依畫面指示完成即可開始使用。
 
 配對檔必須屬於這支 iPhone；其他手機的配對檔會在第一次連線時被擋下。IPA 版不需要 Mac App；Mac 安裝版仍使用原本的 USB 配對流程。2026-11-02 已用 SideStore 實機驗證匯入、瞬移、路線背景移動，以及手機重開機後的定位；已修正自動漫步在背景運行的問題（背景中一段走完時，原地等待下一條道路規劃完成，不再暫停），已實機測試成功。
 
@@ -105,7 +128,9 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
 
 ## 讓 AI 幫你安裝
 
-把 GitHub 網址連同下面的 prompt 貼給能執行 shell 指令（最好也能操作你的 Mac）的 AI 助理：
+把 GitHub 網址連同下面的 prompt 貼給能執行 shell 指令（最好也能操作你的電腦）的 AI 助理：
+
+**透過 Mac App（DMG）安裝：**
 
 ```text
 請幫我從 https://github.com/nevenhsu/GoFly-GPS 安裝 GoFly GPS。
@@ -125,6 +150,24 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
    一定可用，請另外說明。
 ```
 
+**透過 SideStore 安裝 `.ipa`：**
+
+```text
+請幫我透過 SideStore 從 https://github.com/nevenhsu/GoFly-GPS 安裝 GoFly GPS（IPA）。
+
+1. 先讀該專案的 README.zh-Hant.md 與 docs/AI-INSTALL.md。
+2. 不要從原始碼建置。把最新 Release 的 GoFly-GPS-<版本>.ipa 與 .sha256
+   下載到一個全新的空資料夾，執行 `shasum -a 256 -c`，結果不是 OK 就停止。
+3. 一步一步帶我把 IPA 傳到 iPhone、透過 USB 用 iloader 把 SideStore 安裝到手機並匯出
+   這支 iPhone 的配對檔、完成 SideStore 設定（保持 Wi-Fi 與 LocalDevVPN 連線）、在
+   SideStore（My Apps -> +）安裝 IPA，並在首次開啟 GoFly GPS 時匯入配對檔。
+4. 若 SideStore 登入失敗，請依 docs/AI-INSTALL.md 的 Anisette / Reset adi.pb 暫時解法
+   引導我處理（包含登入後出現錯誤代碼 80045 時重啟手機）；不要叫我刪 SideStore 或重設配對檔。
+5. Apple ID 登入、雙重認證、iPhone 信任、開發者模式與 VPN 權限由我自己處理；不要要求我
+   在聊天裡提供密碼、配對檔或 token。
+6. 回報已完成的項目、我還要在 iPhone 上做的事，以及阻礙。安裝成功與模擬定位可用請分開說明。
+```
+
 給 AI 助理的完整操作說明在 [docs/AI-INSTALL.md](docs/AI-INSTALL.md)。
 
 ## 疑難排解
@@ -136,8 +179,9 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
 | `install.sh` 停在提示不動 | 輸入 `y` **後要按 Enter**。 |
 | 找不到 iPhone | 使用資料線、解鎖手機、點「信任」、開啟開發者模式（需重新開機）。 |
 | 「無法完成安裝前檢查」 | 按**再檢查一次**。若手機上已有 GoFly GPS，點側欄的裝置，使用 **Renew Signing**。 |
-| iPhone 上的 App 打不開 | 簽名已過期。從 Mac App 延長簽名，資料會保留。 |
+| iPhone 上的 App 打不開 | 簽名已過期。從 Mac App 或 SideStore／AltStore 延長簽名，資料會保留。 |
 | LocalDevVPN 已開但 GoFly GPS 無法繼續 | 確認 VPN 實際已連線且已允許，再回 GoFly GPS 重試。 |
+| SideStore 登入失敗或出現錯誤代碼 `(80045)` | 關閉 **On-Device Anisette**、改用 `SideStore (New)`（`https://new.ani.sidestore.io`）並關閉自動伺服器輪替，再執行 **Reset adi.pb**（不勾 Keep Headers）後重開 SideStore 重新登入；若登入後仍顯示 `(80045)`，重啟手機即可看到已登入。詳見上方「SideStore 登入異常暫時解法」。 |
 
 ## 從原始碼建置
 

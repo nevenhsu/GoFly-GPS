@@ -25,22 +25,89 @@ The Mac app signs and installs GoFly GPS, delivers this iPhone's pairing and req
 
 For an existing app, use renewal without uninstalling. After an interruption, use **Start over**. Mac setup completion does not prove VPN connectivity or location simulation.
 
-## Sideload: AltStore or SideStore
+## Sideload: SideStore or AltStore (.ipa)
 
-Both tools use the same unsigned IPA and the user's Apple ID. This route does not require the GoFly Mac app; pairing is imported on the iPhone.
+Both tools use the same unsigned IPA and the user's own Apple ID. This route does not require the GoFly Mac app or Xcode; pairing is imported on the iPhone.
 
-1. Prepare an iPhone on iOS 26+ with Developer Mode enabled, LocalDevVPN installed, and Wi-Fi available. Use [iloader](https://github.com/nab138/iloader) on a computer to export **this iPhone's** `pairingFile.plist`.
-2. Download `GoFly-GPS-<version>.ipa` and its matching `.sha256` from the release. Verify the checksum before transferring the IPA to the phone:
+### Prerequisites
+
+- iPhone on iOS 26+ with **Developer Mode** enabled (**Settings → Privacy & Security → Developer Mode**, requires a restart).
+- [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044) installed from the App Store and allowed to add a VPN configuration; Wi-Fi available.
+- A computer with [iloader](https://github.com/nab138/iloader) ([official download](https://github.com/nab138/iloader/releases/latest) / [iloader.app](https://iloader.app)) and a USB data cable to **install SideStore onto the iPhone** and export **this iPhone's** pairing file (`pairingFile.plist`).
+
+### SideStore (.ipa) step-by-step
+
+1. **Download and verify the IPA** from the [latest GitHub Release](https://github.com/nevenhsu/GoFly-GPS/releases/latest) into an empty folder. Verify the checksum before transferring the file to the iPhone; stop unless it prints `OK`:
 
    ```sh
    shasum -a 256 -c GoFly-GPS-<version>.ipa.sha256
    ```
 
-3. Install with the chosen tool:
-   - **AltStore:** follow the [AltStore setup guide](https://faq.altstore.io/) to install AltServer on the computer and AltStore on the iPhone, then select the IPA in **My Apps → +**.
-   - **SideStore:** follow the [SideStore setup guide](https://docs.sidestore.io/docs/installation/install), keep Wi-Fi and LocalDevVPN connected, then select the IPA in **My Apps → +**.
-4. Open GoFly GPS, tap **Import pairing file**, and select the exported file. Allow Location and Local Network access, then connect LocalDevVPN. Another iPhone's pairing file will be rejected at connection.
-5. Keep GoFly refreshed through the chosen sideloading tool; free Apple ID signing normally lasts about seven days. Preserve the existing app and its data when refreshing.
+   Transfer the verified `GoFly-GPS-<version>.ipa` to the iPhone (AirDrop, iCloud Drive, or the Files app).
+
+2. **Install and set up SideStore on the iPhone using iloader:**
+   - Connect the iPhone to the computer over USB, open [iloader](https://github.com/nab138/iloader), install **SideStore** onto the iPhone (following the [SideStore official setup guide](https://docs.sidestore.io/docs/installation/install)), and export **this iPhone's** pairing file (`pairingFile.plist`).
+   - On the iPhone, trust the developer profile (**Settings → General → VPN & Device Management**) and import this iPhone's pairing file into SideStore.
+   - Keep Wi-Fi and **LocalDevVPN** connected, open SideStore, and sign in with the user's Apple ID. (The user enters Apple ID credentials and 2FA directly; never request them in chat.)
+   - If SideStore login fails or shows error `(80045)`, follow the **SideStore login bug workaround** below before continuing.
+
+3. **Install GoFly GPS in SideStore:**
+   - Confirm Wi-Fi and **LocalDevVPN** are connected.
+   - In SideStore, go to **My Apps → +** and select `GoFly-GPS-<version>.ipa`.
+   - Wait for SideStore to re-sign and install GoFly GPS. Trust the developer profile in iOS Settings if prompted.
+
+4. **First launch of GoFly GPS:**
+   - Export this iPhone's pairing file (`pairingFile.plist`) using [iloader](https://github.com/nab138/iloader) on the computer and transfer it to the iPhone (AirDrop or the Files app) if not already on the phone.
+   - Open GoFly GPS, tap **Import pairing file**, and select the exported file. Another iPhone's pairing file will be rejected at first connection.
+   - Allow **Location** and **Local Network** access, then ensure **LocalDevVPN** is connected.
+   - SideStore does not mount Developer Disk Image (DDI); if GoFly GPS prompts for device support (DDI), follow the in-app download prompt while online.
+
+5. **Keep signing refreshed:**
+   - Free Apple ID signing normally lasts about seven days. Keep Wi-Fi and LocalDevVPN connected and refresh SideStore and GoFly GPS in SideStore before expiry. Refreshing preserves existing app data (favorites, saved routes, preferences); do not uninstall.
+
+### SideStore login bug workaround (including error 80045)
+
+SideStore can hit a login bug during Apple ID sign-in. If login fails, guide the user through this community-reported temporary workaround from SideStore issues (effectiveness varies by SideStore version; **do not** delete the app or reset the pairing file):
+
+1. Open SideStore **Settings → User Customizations**.
+2. Turn off **On-Device Anisette**.
+3. Go to **Settings → Anisette Servers**, select **SideStore (New)**, and confirm the URL is `https://new.ani.sidestore.io`.
+4. Under **Anisette Servers** below, turn off **automatic server rotation**.
+5. Return to **Settings → User Customizations**.
+6. Select **Reset adi.pb**; if **Keep Headers** is shown, leave it **unchecked**.
+7. Force-close and reopen SideStore, keep **LocalDevVPN** connected, and sign in again.
+8. **Error `(80045)` after login:** Even when sign-in succeeds after the changes above, SideStore may still report error code `(80045)`. **Restart the iPhone**; after rebooting, SideStore will show that the account is signed in.
+
+### AltStore (.ipa)
+
+1. Download and verify `GoFly-GPS-<version>.ipa` with its `.sha256` file as above.
+2. Follow the [AltStore setup guide](https://faq.altstore.io/) to install AltServer on the computer and AltStore on the iPhone, then select the IPA in **My Apps → +**.
+3. Complete the same **First launch of GoFly GPS** and 7-day refresh steps as above.
+
+### SideStore IPA AI-install prompt
+
+A user can paste this prompt into an AI assistant to install the release IPA via SideStore:
+
+```text
+Help me install GoFly GPS on my iPhone via SideStore from https://github.com/nevenhsu/GoFly-GPS.
+
+1. Read README.md and docs/AI-INSTALL.md in that repository first.
+2. Do not build from source. Download the latest release's GoFly-GPS-<version>.ipa
+   and its .sha256 file into a new empty folder, run `shasum -a 256 -c`, and stop
+   if the result is not OK.
+3. Walk me step-by-step through transferring the IPA to my iPhone, using iloader
+   over USB to install SideStore onto my iPhone and export this iPhone's pairing
+   file, setting up SideStore with LocalDevVPN and Wi-Fi, installing the IPA via
+   SideStore (My Apps -> +), and importing the pairing file on first launch.
+4. If SideStore login fails, walk me through the Anisette / Reset adi.pb
+   workaround in docs/AI-INSTALL.md (including restarting the iPhone if error
+   80045 appears after login). Do not tell me to delete SideStore or reset the
+   pairing file.
+5. I will handle Apple ID sign-in, 2FA, iPhone trust, Developer Mode, and VPN
+   permissions myself. Never ask for passwords, pairing files, or tokens in chat.
+6. Report what is completed, what I still need to do on the iPhone, and any
+   blocker. Separate installation completion from location simulation verification.
+```
 
 Permissions and VPN access alone do not establish pairing or device support. Missing required data must continue to block native positioning. Do not use the Mac producer to prepare a sideloaded Bundle ID or claim AltStore device verification from SideStore results. See the [README](../README.md#install-the-ipa-with-sidestore-or-altstore) for recorded device results.
 
