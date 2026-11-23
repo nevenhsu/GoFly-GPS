@@ -78,6 +78,10 @@ SideStore can hit a login bug during Apple ID sign-in. If login fails, guide the
 7. Force-close and reopen SideStore, keep **LocalDevVPN** connected, and sign in again.
 8. **Error `(80045)` after login:** Even when sign-in succeeds after the changes above, SideStore may still report error code `(80045)`. **Restart the iPhone**; after rebooting, SideStore will show that the account is signed in.
 
+### SideStore cannot reach the device (DeviceEndpointNotInitialized)
+
+If installing or refreshing in SideStore shows "Operation Failed … SideStore is unable to reach the device endpoint … `DeviceEndpointNotInitialized`", LocalDevVPN is up but SideStore cannot reach the iPhone through it. **Restart the iPhone**, reconnect Wi‑Fi and **LocalDevVPN**, then retry in SideStore (confirmed on 2026-11-23). Do not delete SideStore or reset the pairing file.
+
 ### AltStore (.ipa)
 
 1. Download and verify `GoFly-GPS-<version>.ipa` with its `.sha256` file as above.

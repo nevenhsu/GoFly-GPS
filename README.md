@@ -192,6 +192,7 @@ The full runbook for AI assistants is in [docs/AI-INSTALL.md](docs/AI-INSTALL.md
 | The iPhone app no longer opens | Signing expired. Renew from the Mac app or SideStore / AltStore; data is kept. |
 | LocalDevVPN is on but GoFly GPS cannot continue | Check the VPN is actually connected and allowed, then retry in GoFly GPS. |
 | SideStore login fails or shows error `(80045)` | Turn off **On-Device Anisette**, select `SideStore (New)` (`https://new.ani.sidestore.io`), disable automatic server rotation, run **Reset adi.pb** (leave Keep Headers unchecked), then restart SideStore and sign in again. If `(80045)` still appears after login, restart your iPhone to see the signed-in state. See the SideStore login workaround above. |
+| SideStore shows “Operation Failed … unable to reach the device endpoint … `DeviceEndpointNotInitialized`” when installing or refreshing | LocalDevVPN shows connected but SideStore can't reach the iPhone through it. **Restart your iPhone**, reconnect Wi‑Fi and LocalDevVPN, then try again in SideStore. |
 
 ## Build from source
 

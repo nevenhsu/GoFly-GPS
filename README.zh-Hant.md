@@ -182,6 +182,7 @@ SideStore 登入 Apple ID 時可能遇到登入 bug，可先試 SideStore 專案
 | iPhone 上的 App 打不開 | 簽名已過期。從 Mac App 或 SideStore／AltStore 延長簽名，資料會保留。 |
 | LocalDevVPN 已開但 GoFly GPS 無法繼續 | 確認 VPN 實際已連線且已允許，再回 GoFly GPS 重試。 |
 | SideStore 登入失敗或出現錯誤代碼 `(80045)` | 關閉 **On-Device Anisette**、改用 `SideStore (New)`（`https://new.ani.sidestore.io`）並關閉自動伺服器輪替，再執行 **Reset adi.pb**（不勾 Keep Headers）後重開 SideStore 重新登入；若登入後仍顯示 `(80045)`，重啟手機即可看到已登入。詳見上方「SideStore 登入異常暫時解法」。 |
+| SideStore 安裝或刷新時出現「Operation Failed … unable to reach the device endpoint … `DeviceEndpointNotInitialized`」 | LocalDevVPN 顯示已連線，但 SideStore 透過它連不到這支 iPhone。**重啟 iPhone**，重新連上 Wi‑Fi 與 LocalDevVPN 後，再回 SideStore 重試。 |
 
 ## 從原始碼建置
 
