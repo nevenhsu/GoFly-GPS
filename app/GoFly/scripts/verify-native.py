@@ -19,6 +19,8 @@ patches = {
     "ffi/src/tunnel_provider.rs": "tunnel_create_rppairing_verify_only",
     "idevice/src/services/dvt/message.rs": "gofly_void_reply",
     "idevice/src/services/dvt/location_simulation.rs": "set_with_timeout",
+    "ffi/src/gofly_location_clear.rs": "gofly_coredevice_location_clear",
+    "idevice/src/services/core_device/location_service.rs": "clearsimulatedlocation",
 }
 for relative, marker in patches.items():
     path = source / relative
@@ -29,7 +31,7 @@ header = (bridge / "include/idevice.h").read_text()
 declarations = set(re.findall(
     r"\b([a-z][a-z0-9_]+)\s*\(", re.sub(r"//[^\n]*", "", header)
 ))
-if len(declarations) != 30:
+if len(declarations) != 31:
     fail(f"Swift shim declaration count changed: {len(declarations)}")
 
 project = (app / "GoFly.xcodeproj/project.pbxproj").read_text()
@@ -38,4 +40,4 @@ for excluded in ("JITEnableContext.swift", "IdeviceFFIBridge.swift",
     if excluded in project:
         fail("Forbidden prototype source in formal target: " + excluded)
 
-print("PASS: native patches applied and the 30-declaration Swift shim is unchanged.")
+print("PASS: native patches applied and the 31-declaration Swift shim is unchanged.")

@@ -38,7 +38,7 @@
    **Fly origin（2026-11-17）**：一個 session 的第一筆模擬寫入前，`ServiceController` 記下 `flyOrigin`：優先用 15 秒內的現時真實 GPS，
    否則用系統快取定位（`CLLocationManager.location`，非模擬、最多 10 分鐘舊）。沒有定位授權或兩者都沒有時不記錄。不等待新定位、不延後送點。
    同一 session 後續寫入不覆蓋；以 UserDefaults `GoFly.flyOrigin` 跨 App 重開保存。Stop、Restore GPS 與冷啟動 clear 若有 origin，
-   先送一點回 origin、停留約 1.5 秒，再 clear；回 origin 失敗不阻擋 clear。強制 Reset 不回 origin。clear 確認後清除 origin，並沿用既有流程請求真實 GPS。
+   先送一點回 origin、停留約 1.5 秒，再 clear；回 origin 失敗不阻擋 clear。強制 Reset 不回 origin。clear 確認後清除 origin，並沿用既有流程請求真實 GPS；之後的真實定位只把箭頭變藍，不移動鏡頭，鏡頭只在使用者按 Recenter 時移過去（2026-11-23）。
 5. watchdog 逾時只回報未知；`repairRequired` 時只允許冪等 Stop。
 6. 路線／搖桿／漫步共用一個 writer；路線與道路漫步每 1 秒送一點，手動搖桿（含漫步手動接管）每 0.5 秒（`MovementCadence`），
    步距為速度 × 該間隔，無另外的每步上限；地圖箭頭在路線／漫步前景執行中沿路徑依 ACK 量得的速度預測前進，最多超前一個間隔，新 ACK 於 0.3 秒內修正誤差、暫停或停止時退回最後 ACK；手動搖桿維持兩筆 ACK 之間等速補間（2026-11-17，取代 2026-10-25 的不超前 ACK；僅顯示層，送點不變）。
@@ -60,6 +60,14 @@
    GPS clear 確認或回到前景時重新嘗試（2026-10-26）。`observeRealLocation` 只在路線或搖桿起點的可用性改變
    （含過期定位被新定位取代）或該筆定位讓已派送的瞬移進入 sending 時，才送 `availabilityChanged`；
    只是更新已可用起點的定位不喚醒 route／joystick 的觀察者（2026-10-26）。
+   沒有已確認的模擬位置時，Recenter 先把鏡頭移到地圖上現有的位置箭頭（`positionMarker`），再等候真實定位；
+   等候期限（`realFixWaitSeconds`）內真實定位抵達後仍會再置中一次。Stop 清除模擬後 iOS 可能持續把定位標為軟體模擬，不能只靠等待真實定位（2026-11-23）。
+   定位權限為「大概位置」時，iOS 在模擬清除後仍可能數分鐘回報標為模擬的舊位置（實機 iOS 27.2.1 驗證：開啟精確位置即恢復）。
+   因此在 Stop／Recenter 後等候真實定位期間收到模擬定位時，每次啟動最多一次以 purpose key
+   `GoFlyRealLocationAfterSimulation` 請求暫時精確位置；同意後立即重新補取（2026-11-23）。
+   Stop 的清除以 CoreDevice `com.apple.coredevice.locationservice` 的 `clearsimulatedlocation` 為準
+   （與 `devicectl device simulate location clear` 相同）；iOS 27.2.1 上 DVT `stopLocationSimulation` 會回覆成功但不會恢復真實定位，
+   仍先送出但結果不決定清除是否成功（2026-11-23，見 `NativeBridge/location-clear.patch`）。
 8. 背景由 `GoFlyContinuedProcessingDriver` 管理：Info.plist 宣告 `processing` 背景模式；瞬移維持、路線及漫步共用一個
    `<Bundle ID>.movement` 任務（Bundle ID 依簽署 Team ID 產生）；採 `.queue` 等待系統可用的繼續執行名額。單程路線的目標一律是**整條路線距離**，
    進度＝從目前方向的出發端點（順向為起點、逆向為終點）到目前位置的距離，系統進度條與副標題「路線進度 N%」同值；

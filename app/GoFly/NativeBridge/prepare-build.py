@@ -112,6 +112,7 @@ def record():
             'Cargo.lock': sha256(source / 'Cargo.lock'),
             'verify-only.patch': sha256(BRIDGE / 'verify-only.patch'),
             'location-reply.patch': sha256(BRIDGE / 'location-reply.patch'),
+            'location-clear.patch': sha256(BRIDGE / 'location-clear.patch'),
             'upstream.json': sha256(BRIDGE / 'upstream.json'),
             'idevice-full.h': sha256(output / 'idevice-full.h'),
             'libidevice_ffi.a': sha256(output / 'libidevice_ffi.a'),

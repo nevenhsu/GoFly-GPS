@@ -19,6 +19,10 @@
         <string>App-Prefs</string>
         <string>prefs</string>
     </array>
+    <key>NSLocationTemporaryUsageDescriptionDictionary</key>
+    <dict>
+        <key>GoFlyRealLocationAfterSimulation</key><string>After simulation stops, approximate location can keep showing the simulated place for a while. Precise location for this session shows where you really are right away.</string>
+    </dict>
     <key>NSBonjourServices</key><array><string>_remotepairing._tcp</string><string>_gofly-probe._tcp</string></array>
     <key>UTImportedTypeDeclarations</key>
     <array>

@@ -1,0 +1,78 @@
+diff -ruN a/ffi/src/gofly_location_clear.rs b/ffi/src/gofly_location_clear.rs
+--- a/ffi/src/gofly_location_clear.rs	1970-01-01 08:00:00
++++ b/ffi/src/gofly_location_clear.rs	2026-11-23 15:50:06
+@@ -0,0 +1,40 @@
++//! GoFly: clear location simulation through the CoreDevice location service.
++
++use std::ptr::null_mut;
++use std::time::Duration;
++
++use idevice::core_device::LocationServiceClient;
++use idevice::{IdeviceError, RsdService as _};
++
++use crate::{IdeviceFfiError, core_device_proxy::AdapterHandle, ffi_err, rsd::RsdHandshakeHandle, run_sync_local};
++
++/// Clears any active location simulation through
++/// `com.apple.coredevice.locationservice`. One snapshot of the global timeout
++/// covers connecting and the reply.
++///
++/// # Safety
++/// `provider` and `handshake` must be valid handles from this library.
++#[unsafe(no_mangle)]
++pub unsafe extern "C" fn gofly_coredevice_location_clear(
++    provider: *mut AdapterHandle,
++    handshake: *mut RsdHandshakeHandle,
++) -> *mut IdeviceFfiError {
++    if provider.is_null() || handshake.is_null() {
++        return ffi_err!(IdeviceError::FfiInvalidArg);
++    }
++    let timeout = Duration::from_secs(crate::GLOBAL_TIMEOUT.load(std::sync::atomic::Ordering::Relaxed));
++    let res: Result<(), IdeviceError> = run_sync_local(async move {
++        let provider_ref = unsafe { &mut (*provider).0 };
++        let handshake_ref = unsafe { &mut (*handshake).0 };
++        tokio::time::timeout(timeout, async {
++            let mut client = LocationServiceClient::connect_rsd(provider_ref, handshake_ref).await?;
++            client.clear_simulated_location().await
++        })
++        .await
++        .unwrap_or(Err(IdeviceError::Timeout))
++    });
++    match res {
++        Ok(()) => null_mut(),
++        Err(e) => ffi_err!(e),
++    }
++}
+diff -ruN a/ffi/src/lib.rs b/ffi/src/lib.rs
+--- a/ffi/src/lib.rs	2026-11-23 15:49:53
++++ b/ffi/src/lib.rs	2026-11-23 15:50:06
+@@ -14,6 +14,8 @@
+ pub mod core_device;
+ #[cfg(feature = "core_device_proxy")]
+ pub mod core_device_proxy;
++#[cfg(all(feature = "core_device", feature = "core_device_proxy", feature = "rsd"))]
++pub mod gofly_location_clear;
+ #[cfg(feature = "crashreportcopymobile")]
+ pub mod crashreportcopymobile;
+ #[cfg(feature = "cryptexd")]
+diff -ruN a/idevice/src/services/core_device/location_service.rs b/idevice/src/services/core_device/location_service.rs
+--- a/idevice/src/services/core_device/location_service.rs	2026-11-23 15:49:53
++++ b/idevice/src/services/core_device/location_service.rs	2026-11-23 15:50:06
+@@ -59,4 +59,18 @@
+         plist::from_value(scenarios)
+             .map_err(|_| CoreDeviceError::MalformedField("scenarios").into())
+     }
++    /// Clears any active location simulation on the device, whichever client
++    /// started it. This is the CoreDevice action `devicectl device simulate
++    /// location clear` uses; the DVT `stopLocationSimulation` reply alone does
++    /// not restore real location on iOS 27.
++    pub async fn clear_simulated_location(&mut self) -> Result<(), IdeviceError> {
++        self.inner
++            .invoke_with_plist_action(
++                obf!("com.apple.coredevice.feature.simulatelocation"),
++                plist::Dictionary::new(),
++                obf!("com.apple.coredevice.action.clearsimulatedlocation"),
++            )
++            .await?;
++        Ok(())
++    }
+ }

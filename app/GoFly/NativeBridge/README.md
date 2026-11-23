@@ -46,6 +46,20 @@ by a host Swift 6 harness with session doubles and a timeout setter stub.
 That dedicated harness and its runner were removed on 2026-11-03 when the
 workflow was reduced to packaging only; those checks are not run by packaging.
 
+## CoreDevice location clear
+
+`location-clear.patch` adds `gofly_coredevice_location_clear`, which connects to
+`com.apple.coredevice.locationservice` over the same adapter/handshake and invokes
+feature `com.apple.coredevice.feature.simulatelocation` with action
+`com.apple.coredevice.action.clearsimulatedlocation` (empty input), the action
+`devicectl device simulate location clear` uses. One global-timeout snapshot covers
+connect and reply. On iOS 27.2.1 the DVT `stopLocationSimulation` reply succeeded
+while the device kept the simulated position, so Swift sends the DVT stop first and
+treats only the CoreDevice result as the clear outcome. Enabling it adds the
+`core_device` feature to `upstream.json`; the Swift shim grows to 31 declarations.
+The action identifiers come from Xcode's `CoreDeviceUtilities` (2026-11-23); device
+behavior of this patch is not yet verified.
+
 ## Build
 
 On Apple Silicon with Xcode at `/Applications/Xcode.app`, run from the project:

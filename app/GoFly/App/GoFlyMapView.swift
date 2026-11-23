@@ -745,17 +745,10 @@ struct GoFlyMapView: View {
                 if let origin { applyGPSRecenter(to: origin.coordinate) }
             }
             .onChange(of: service.clearConfirmedAt) { _, clearedAt in
-                guard let clearedAt else { return }
-                pendingGPSRecenterAt = Date()
-                // A post-clear fix may have arrived before SwiftUI delivered this change.
-                if let fix = service.realLocation, fix.observedAt >= clearedAt,
-                   Date().timeIntervalSince(fix.observedAt) <= 15, consumeGPSRecenter(for: fix) {
-                    applyGPSRecenter(to: fix.coordinate)
-                } else {
-                    // The camera already followed the origin return. The first real
-                    // fix turns the arrow blue and recenters through the pending request.
-                    location.refresh()
-                }
+                guard clearedAt != nil else { return }
+                // The camera already followed the origin return. The first real fix
+                // only turns the arrow blue; the camera moves to it only on Recenter.
+                location.refresh()
             }
             .onChange(of: route.picker?.id) { _, id in
                 if id != nil {
@@ -2292,6 +2285,10 @@ struct GoFlyMapView: View {
             pendingGPSRecenterAt = nil
             applyGPSRecenter(to: simulated)
         } else {
+            // Go to the arrow already on the map now; a real fix that arrives
+            // later still recenters through the pending request. After Stop iOS
+            // can keep flagging fixes as simulated, so waiting alone never moved.
+            if let marker = service.positionMarker { applyGPSRecenter(to: marker.coordinate) }
             pendingGPSRecenterAt = Date()
             location.requestRecenter()
         }

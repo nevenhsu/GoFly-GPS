@@ -16,6 +16,9 @@ final class GoFlyRealLocation: NSObject, ObservableObject, CLLocationManagerDele
     /// position. Ends at the first real fix, the deadline, or scene exit.
     private var streamDeadline: Task<Void, Never>?
     private lazy var refresher = RealLocationRefresher(source: self)
+    /// Asked at most once per launch; iOS keeps a granted answer until the app leaves use.
+    private var askedTemporaryFullAccuracy = false
+    private static let temporaryFullAccuracyPurposeKey = "GoFlyRealLocationAfterSimulation"
 
     override init() {
         manager = CLLocationManager()
@@ -146,6 +149,10 @@ final class GoFlyRealLocation: NSObject, ObservableObject, CLLocationManagerDele
                 self.requestRecenter()
             } else if currentManager.authorizationStatus == .authorizedWhenInUse || currentManager.authorizationStatus == .authorizedAlways {
                 self.start()
+                // Precise location granted while waiting: fetch a fresh real fix now.
+                if self.streamDeadline != nil, currentManager.accuracyAuthorization == .fullAccuracy {
+                    self.refresh()
+                }
             }
         }
     }
@@ -166,6 +173,23 @@ final class GoFlyRealLocation: NSObject, ObservableObject, CLLocationManagerDele
             self.publish(location)
             self.refresher.fixReceived(simulated: simulated)
             if !simulated { self.stopStreaming(reason: "realFix") }
+            if simulated, self.streamDeadline != nil { self.requestTemporaryFullAccuracyIfReduced() }
+        }
+    }
+
+    /// With approximate location iOS can keep serving the simulated place long
+    /// after the simulation is cleared; precise location updates at once.
+    /// Asked only while waiting for real GPS (after Stop or Recenter).
+    private func requestTemporaryFullAccuracyIfReduced() {
+        guard let manager, !askedTemporaryFullAccuracy,
+              manager.accuracyAuthorization == .reducedAccuracy else { return }
+        askedTemporaryFullAccuracy = true
+        Self.record("location.fullAccuracy", ["event": .text("request")])
+        manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: Self.temporaryFullAccuracyPurposeKey) { error in
+            let event = error == nil ? "answered" : "failed"
+            Task { @MainActor in
+                Self.record("location.fullAccuracy", ["event": .text(event)])
+            }
         }
     }
 

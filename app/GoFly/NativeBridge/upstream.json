@@ -15,7 +15,8 @@
     "dvt",
     "location_simulation",
     "mobile_image_mounter",
-    "cryptexd"
+    "cryptexd",
+    "core_device"
   ],
   "components": [
     {
@@ -45,6 +46,7 @@
   ],
   "patches": [
     "verify-only.patch",
-    "location-reply.patch"
+    "location-reply.patch",
+    "location-clear.patch"
   ]
 }

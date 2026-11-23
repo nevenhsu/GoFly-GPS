@@ -198,9 +198,17 @@ final class NativeDeviceSession: DeviceSession {
     }
 
     func clearLocation() throws {
-        try validateLocationService()
-        try check(try ffi("location.clear") { location_simulation_clear(location) },
-                  .serviceUnavailable, operation: "location_simulation_clear")
+        // On iOS 27 the DVT stop is acknowledged yet the device keeps the
+        // simulated position. The CoreDevice clear (what `devicectl device
+        // simulate location clear` sends) restores real location, so it alone
+        // decides success; a DVT failure is still recorded by `check`.
+        do {
+            try validateLocationService()
+            try check(try ffi("location.clear") { location_simulation_clear(location) },
+                      .serviceUnavailable, operation: "location_simulation_clear")
+        } catch {}
+        try check(try ffi("coredevice.clear") { gofly_coredevice_location_clear(adapter, handshake) },
+                  .serviceUnavailable, operation: "gofly_coredevice_location_clear")
     }
 
     private func mountMethod() throws -> SupportMountMethod {
