@@ -158,6 +158,29 @@ GoFly 維護者在內建 SideStore 登入時先遇到 HTTP 403，接著遇到 HT
 
 開發者執行 `bash app/GoFly/scripts/package-ipa.sh` 產生未簽名 IPA 與 SHA-256（需要 Mac、安裝在 `/Applications/Xcode.app` 的 Xcode 與網路）。首次執行（或原生程式庫固定版本變更後）會自動取得固定版本的 idevice、下載經 SHA-256 校驗的 Rust 工具鏈，並在 `work/gofly-ios/` 建置原生程式庫；之後會重複使用。輸出一律放在 `work/dist/ipa/`；同版本的舊 IPA 與校驗檔會先移到 `work/dist/ipa/archive/<UTC 時間>/`，不會被覆蓋或刪除。腳本不更動 Mac 建置。
 
+## 每天晚上自動刷新內建 SideStore
+
+### 1. 先按照官方說明手動建立 Refresh All Apps 捷徑
+
+在「捷徑」App 建立新捷徑，點 **搜尋動作**，搜尋 **LiveContainer**，加入 **Refresh All Apps**。若找不到這個動作，先從 LiveContainer 內開啟一次 SideStore 再搜尋。[LiveContainer 自動刷新說明](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+
+### 2. 用 prompt 建立自動化
+
+在「捷徑」App 開啟 **自動化**，建立新的自動化並貼上這段 prompt：
+
+```text
+建立一個名為「LiveContainer 自動重簽」的自動化捷徑。
+1. 每天晚上10點
+2. 取得目前連線的 Wi‑Fi 網路名稱（SSID）。如果沒有取得名稱，就結束捷徑。
+3. 使用 LocalDevVPN 的連線動作開啟 VPN，然後等待 5 秒。
+4. 執行「Refresh All Apps」動作，
+   讓 LiveContainer 內建的 SideStore 重新簽署並刷新 App。
+```
+
+Refresh All Apps 本身就會顯示通知，自動化不需要再加通知。
+
+建立好之後先手動執行一次，iOS 會跳出確認，詢問是否允許這個自動化捷徑執行其他捷徑（Refresh All Apps），請點允許，否則排程時無法呼叫。之後再在 iPhone 鎖定時測試排程執行。LiveContainer 有回報指出，若未開啟過內建 SideStore，刷新動作可能失敗。[LiveContainer issue #1572](https://github.com/LiveContainer/LiveContainer/issues/1572)
+
 ## 讓 AI 幫你安裝
 
 把 GitHub 網址連同下面的 prompt 貼給能執行 shell 指令（最好也能操作你的電腦）的 AI 助理：

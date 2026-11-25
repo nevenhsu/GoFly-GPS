@@ -156,6 +156,29 @@ GoFly 维护者在内置 SideStore 登录时先遇到 HTTP 403，接着遇到 HT
 
 开发者运行 `bash app/GoFly/scripts/package-ipa.sh` 生成未签名 IPA 与 SHA-256（需要 Mac、安装在 `/Applications/Xcode.app` 的 Xcode 与网络）。首次运行（或原生库版本固定值变更后）会自动获取固定版本的 idevice、下载经 SHA-256 校验的 Rust 工具链，并在 `work/gofly-ios/` 构建原生库；之后会重复使用。输出一律放在 `work/dist/ipa/`；同版本的旧 IPA 与校验文件会先移到 `work/dist/ipa/archive/<UTC 时间>/`，不会被覆盖或删除。脚本不修改 Mac 构建。
 
+## 每天晚上自动刷新内置 SideStore
+
+### 1. 先按照官方说明手动创建 Refresh All Apps 快捷指令
+
+在“快捷指令”App 创建新快捷指令，点 **搜索操作**，搜索 **LiveContainer**，添加 **Refresh All Apps**。如果找不到这个操作，先从 LiveContainer 内打开一次 SideStore 再搜索。[LiveContainer 自动刷新说明](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+
+### 2. 用 prompt 创建自动化
+
+在“快捷指令”App 打开 **自动化**，创建新的自动化并粘贴这段 prompt：
+
+```text
+创建一个名为“LiveContainer 自动重签”的自动化快捷指令。
+1. 每天晚上10点
+2. 获取当前连接的 Wi‑Fi 网络名称（SSID）。如果没有获取到名称，就结束快捷指令。
+3. 使用 LocalDevVPN 的连接操作开启 VPN，然后等待 5 秒。
+4. 执行“Refresh All Apps”操作，
+   让 LiveContainer 内置的 SideStore 重新签名并刷新 App。
+```
+
+Refresh All Apps 本身就会显示通知，自动化不需要再添加通知。
+
+创建好之后先手动运行一次，iOS 会弹出确认，询问是否允许这个自动化快捷指令运行其他快捷指令（Refresh All Apps），请点允许，否则定时运行时无法调用。之后再在 iPhone 锁定时测试定时运行。LiveContainer 有反馈指出，如果没有打开过内置 SideStore，刷新操作可能失败。[LiveContainer issue #1572](https://github.com/LiveContainer/LiveContainer/issues/1572)
+
 ## 让 AI 帮你安装
 
 把 GitHub 网址连同下面的 prompt 贴给能运行 shell 命令（最好也能操作你的电脑）的 AI 助手：

@@ -158,6 +158,40 @@ Fetch and save first, then check **Client Info** again after every fetch because
 3. Quit built-in SideStore. In LiveContainer, go to **Settings → Import Certificate from SideStore** and confirm. The button changes to **Remove Certificate** when the import succeeds.
 4. Open **JIT-Less Mode Diagnose** to confirm the setup status. [Official post-install setup](https://livecontainer.github.io/docs/installation/lc_sidestore#setup-after-installing)
 
+## Refresh built-in SideStore every evening
+
+### 1. Create the Refresh All Apps shortcut manually (official steps)
+
+In the Shortcuts app, create a new shortcut, tap **Search Actions**, search for **LiveContainer**, and add **Refresh All Apps**. If the action is missing, open SideStore from inside LiveContainer once and search again. [LiveContainer auto-refresh guide](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+
+### 2. Create the automation with a prompt
+
+In the Shortcuts app, open **Automation**, create a new automation and paste this prompt:
+
+```text
+建立一個名為「LiveContainer 自動重簽」的自動化捷徑。
+1. 每天晚上10點
+2. 取得目前連線的 Wi‑Fi 網路名稱（SSID）。如果沒有取得名稱，就結束捷徑。
+3. 使用 LocalDevVPN 的連線動作開啟 VPN，然後等待 5 秒。
+4. 執行「Refresh All Apps」動作，
+   讓 LiveContainer 內建的 SideStore 重新簽署並刷新 App。
+```
+
+English version of the same prompt:
+
+```text
+Create an automation shortcut named "LiveContainer Auto Re-sign".
+1. Every day at 10:00 PM.
+2. Get the name (SSID) of the connected Wi‑Fi network. If no name is returned, stop the shortcut.
+3. Turn on the VPN with the LocalDevVPN connect action, then wait 5 seconds.
+4. Run the "Refresh All Apps" action
+   so LiveContainer's built-in SideStore re-signs and refreshes the apps.
+```
+
+The Refresh All Apps action already shows its own notification, so the automation does not add one.
+
+After creating the automation, run it manually once. iOS asks you to confirm that the automation may run another shortcut (Refresh All Apps); allow it, or the scheduled run cannot call it. Then try a scheduled run with the iPhone locked. LiveContainer has a reported issue where the refresh action can fail if the built-in SideStore has not been opened. [LiveContainer issue #1572](https://github.com/LiveContainer/LiveContainer/issues/1572)
+
 ## Let an AI install it for you
 
 Paste a GitHub link and one of the prompts below into an AI assistant that can run shell commands (and, ideally, operate your computer):
