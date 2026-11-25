@@ -13,6 +13,12 @@ credential update. Output handles are nulled before fallible work and published
 only after complete success. Swift still verifies the expected UDID on this
 same adapter/handshake before DDI or location operations.
 
+The iOS pairing picker uses `gofly_pairing_device_udid` when an imported
+RPPairing plist has no UDID. It opens the same verify-only tunnel and reads
+`UniqueDeviceID` through trusted Lockdown. A ten-second deadline covers the
+tunnel and identity read. The operation runs independently of the location
+queue and returns a plist value owned by the Swift caller.
+
 ## Location reply boundary
 
 `location-reply.patch` makes the set and clear C exports share a checked void
@@ -113,11 +119,9 @@ messages, preserves credentials and leaves both output handles null. Rejection c
 pointer arguments and malformed address/hostname data also return errors with valid outputs cleared. These tests do
 not claim device or end-to-end tunnel acceptance.
 
-The build also compiles C type-compatibility assertions for all 30 shim
-declarations, the sizes/alignment/field offsets of both concrete C structs,
-and every plist enum value against the newly generated full header. It checks that every
-permitted symbol exists in the device archive. This C-only verification never
-adds the full header to the production Swift import path.
+The packaging verifier checks the patched sources and the 32 declarations in
+the narrow header. The iOS app links against the resulting device archive
+during IPA packaging.
 
 The device archive is built for `aarch64-apple-ios` with deployment target 26.0.
 Generated `work/gofly-ios/native/manifest.json` records the upstream commit,

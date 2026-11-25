@@ -104,7 +104,7 @@ def record():
         'features': PIN['features'],
         'deploymentTarget': '26.0',
         'cargoLocked': True,
-        'swiftShimABI': '30 declarations checked against generated C ABI and archive symbols',
+        'swiftShimABI': '32 declarations checked in the Swift shim',
         'nativeTests': 'not run (packaging-only build)',
         'xcodeVersion': subprocess.check_output(['xcodebuild', '-version'], text=True).strip(),
         'sdkVersion': subprocess.check_output(['xcrun', '--sdk', 'iphoneos', '--show-sdk-version'], text=True).strip(),

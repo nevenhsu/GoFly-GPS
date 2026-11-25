@@ -69,7 +69,9 @@ struct ServiceSettingsView: View {
                 isFloating: true
             )
         }
-        if let key = continuation.noticeKey, dismissedContinuationNotice != key {
+        if continuation.visibleNoticeKey == MovementContinuationController.rejectionNoticeKey {
+            GoFlyBackgroundRejectionToast(onDismiss: continuation.dismissBackgroundRejection)
+        } else if let key = continuation.visibleNoticeKey, dismissedContinuationNotice != key {
             GoFlyStatusBanner(
                 tone: .warning,
                 title: goFlyString(key),

@@ -396,7 +396,9 @@
 "background.expired" = "后台运行已结束，请打开 GoFly 查看。";
 "background.routePaused" = "路线已暂停";
 "background.routePaused.message" = "后台任务已停止，点“继续”接续路线。";
-"background.rejected" = "系统拒绝后台运行，请打开 GoFly 查看。";
+"background.rejected" = "后台运行被拒绝";
+"background.rejected.message" = "如果在 LiveContainer 内使用，请在 GoFly 的单独设置中开启“修复后台处理任务”。";
+"background.rejected.settingsFailed" = "请手动打开 iOS 的 App 设置。在 LiveContainer 内，长按 GoFly 并开启“修复后台处理任务”。";
 "background.registrationLimit" = "后台运行暂时不可用，请打开 GoFly 查看。";
 "background.unsupported" = "此系统不支持后台运行。";
 "background.activity.finiteRoute" = "GoFly 路线";
@@ -486,6 +488,7 @@
 "setup.pairingImport.notImported" = "尚未导入";
 "setup.pairingImport.action" = "导入配对文件";
 "setup.pairingImport.failed" = "请在电脑导出这台 iPhone 的配对文件后再试。";
+"setup.pairingImport.deviceVerificationFailed" = "请使用这台 iPhone 的远程配对文件。允许 GoFly 访问本地网络并连接 LocalDevVPN 后，再试一次。";
 "setup.completed.title" = "设置完成";
 "setup.completed.message" = "GoFly 已准备就绪。";
 "setup.blocked.title" = "需要完成设置";
@@ -794,6 +797,8 @@
 "onboarding.localNetwork.title" = "允许 GoFly 使用本地网络";
 "onboarding.localNetwork.message" = "GoFly 需通过 LocalDevVPN 连到本机的设备服务，这需要“本地网络”权限。";
 "onboarding.localNetwork.allow" = "允许本地网络";
+"onboarding.localNetwork.checkFailed.title" = "无法确认本地网络权限";
+"onboarding.localNetwork.checkFailed" = "请连接 Wi-Fi，再点一次允许。如果在 LiveContainer 内使用 GoFly，请到 iOS 设置中确认 LiveContainer 的本地网络权限。";
 "onboarding.localNetwork.status.unknown" = "尚未设置";
 "onboarding.localNetwork.status.granted" = "已允许";
 "onboarding.localNetwork.status.denied" = "未允许";

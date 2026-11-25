@@ -84,14 +84,8 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
     /// accepted the open request. Returning to the app triggers a fresh read.
     func openSystemSettings() {
         externalOpenFailed = false
-        guard let url = URL(string: UIApplication.openSettingsURLString) else {
-            externalOpenFailed = true
-            return
-        }
-        UIApplication.shared.open(url, options: [:]) { [weak self] opened in
-            Task { @MainActor in
-                if !opened { self?.externalOpenFailed = true }
-            }
+        GoFlyExternalLinks.openAppSettings { [weak self] opened in
+            self?.externalOpenFailed = !opened
         }
     }
 

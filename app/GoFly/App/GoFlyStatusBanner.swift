@@ -37,6 +37,26 @@ extension View {
     }
 }
 
+struct GoFlyBackgroundRejectionToast: View {
+    let onDismiss: () -> Void
+    @State private var settingsOpenFailed = false
+
+    var body: some View {
+        GoFlyStatusBanner(
+            tone: .warning,
+            title: goFlyString(MovementContinuationController.rejectionNoticeKey),
+            message: goFlyString(settingsOpenFailed ? "background.rejected.settingsFailed" : "background.rejected.message"),
+            actionTitle: goFlyString("operation.settings"),
+            onAction: {
+                GoFlyExternalLinks.openAppSettings { settingsOpenFailed = !$0 }
+            },
+            onDismiss: onDismiss,
+            identifier: "background.rejected",
+            actionIdentifier: "background.rejected.settings"
+        )
+    }
+}
+
 /// The single status presentation for the redesign (plan 4.11), Figma
 /// `Toast / 系統訊息 / danger｜warn｜success`.
 ///

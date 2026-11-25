@@ -6,7 +6,7 @@
 
 GoFly GPS 是一個讓你在自己的 iPhone 上選擇並移動模擬 GPS 位置的 App。**GoFly GPS for Mac** 使用你在 Xcode 登入的 Apple 帳號，透過 USB 安裝 iPhone App，並可更新簽名，讓 App 持續可用。
 
-[**下載最新版 GoFly GPS for Mac（DMG）**](https://github.com/nevenhsu/GoFly-GPS/releases/latest)
+[**下載最新版 GoFly GPS for Mac（DMG）**](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12)
 
 **開發狀態（2026-11-02）：GoFly GPS iOS App 已開發完成。** 可透過 GoFly GPS for Mac 安裝，或使用 SideStore／AltStore 安裝 IPA。已知限制與尚待驗證項目見下方說明。
 
@@ -58,7 +58,7 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
 
 ## 安裝（DMG）
 
-1. 到[最新版 Release](https://github.com/nevenhsu/GoFly-GPS/releases/latest)，把 `GoFly-GPS-<版本>-arm64.dmg` 與 `GoFly-GPS-<版本>-arm64.dmg.sha256` 下載到同一個資料夾。
+1. 到[最新版 Release](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12)，把 `GoFly-GPS-<版本>-arm64.dmg` 與 `GoFly-GPS-<版本>-arm64.dmg.sha256` 下載到同一個資料夾。
 2. 核對下載檔案，結果必須是 `OK`：
 
    ```sh
@@ -78,13 +78,13 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
 
 ## 用 SideStore 或 AltStore 安裝 IPA
 
-不想用 Mac App 時，可以用 [SideStore](https://sidestore.io) 或 [AltStore](https://altstore.io) 以你自己的 Apple ID 重新簽名並安裝 IPA。兩者使用同一份 IPA，第一次開啟時要匯入這支 iPhone 的配對檔。
+不想用 Mac App 時，可以用 [SideStore](https://sidestore.io) 或 [AltStore](https://altstore.io) 以你自己的 Apple ID 重新簽名並安裝 IPA。兩者使用同一份 IPA，第一次開啟時要匯入這支 iPhone 的配對檔。 也可以[在 LiveContainer 內執行 GoFly](#在-livecontainer-內執行-gofly-gps)。
 
 **準備**
 
 - iPhone：iOS 26 以上，已開啟**開發者模式**。
 - 已安裝 [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044) 並允許新增 VPN；使用 GoFly GPS 時連上 Wi‑Fi。
-- 一台電腦（與 USB 資料線），安裝 [iloader](https://github.com/nab138/iloader)（[官方下載頁](https://github.com/nab138/iloader/releases/latest)／[官網](https://iloader.app)），用來將 **SideStore 安裝到 iPhone**，並匯出這支 iPhone 的配對檔（`pairingFile.plist`）。
+- 一台有 USB 資料線的電腦，安裝 [iloader](https://github.com/nab138/iloader/releases/latest) 和 [idevice_pair](https://github.com/jkcoxson/idevice_pair/releases/latest)，用於安裝與配對。
 
 **安裝（SideStore `.ipa` 流程）**
 
@@ -95,34 +95,66 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
    ```
 
    核對無誤後，把 `.ipa` 傳到 iPhone（AirDrop、iCloud 雲碟或「檔案」App）。
-2. 用 **iloader** 在 iPhone 安裝並設定 SideStore：
-   - 用 USB 將 iPhone 連接電腦，透過 [iloader](https://github.com/nab138/iloader) 將 **SideStore 安裝到手機**（詳見 [SideStore 官方流程](https://docs.sidestore.io/docs/installation/install)），並匯出這支 iPhone 的配對檔（`pairingFile.plist`）。
-   - 在 iPhone 信任開發者（設定 › 一般 › VPN 與裝置管理），並將配對檔匯入 SideStore。
-   - 保持 Wi‑Fi 與 **LocalDevVPN** 連線，開啟 SideStore 並登入你的 Apple ID。若登入失敗或出現錯誤代碼 `(80045)`，請見下方「SideStore 登入異常暫時解法」。
+2. 依下方[流程設定 LiveContainer 與內建 SideStore Nightly](#livecontainer-與內建-sidestore-nightly-安裝設定)，或參考[獨立版 SideStore 的官方安裝說明](https://docs.sidestore.io/docs/installation/install)。
 3. 確認 Wi‑Fi 與 **LocalDevVPN** 仍保持連線，在 SideStore 的 **My Apps → ＋** 選擇剛剛傳入的 `GoFly-GPS-<版本>.ipa`，等待重新簽名與安裝完成（若系統要求，請到「設定 › 一般 › VPN 與裝置管理」信任開發者）。
 4. 免費 Apple ID 的簽名約 7 天，請保持 Wi‑Fi 與 LocalDevVPN 連線，定期在 SideStore 重新整理 SideStore 與 GoFly GPS；重新整理會保留 App 內的資料，請勿卸載。
 
 若改用 **AltStore**：依 [AltStore 說明](https://faq.altstore.io/)在電腦安裝 AltServer、在 iPhone 安裝 AltStore，同樣在 **My Apps → ＋** 選擇已核對的 `.ipa` 安裝，並定期重新整理。
 
-**SideStore 登入異常暫時解法（含錯誤代碼 `80045`）**
+### 在 LiveContainer 內執行 GoFly GPS
 
-SideStore 登入 Apple ID 時可能遇到登入 bug，可先試 SideStore 專案 issue 裡社群回報有效的暫時解法（效果依版本而異；**不用刪 App 或重設配對檔**）：
+1. 完成 [LiveContainer 與內建 SideStore Nightly 設定](#livecontainer-與內建-sidestore-nightly-安裝設定)並匯入簽署憑證。請使用包含 LiveContainer 區域網路修正的 GoFly IPA。
+2. 在 **LiveContainer → Apps → ＋** 選取已校驗的 GoFly IPA，完成後從 LiveContainer 的 Apps 清單開啟 GoFly。
+3. 先連上 **LocalDevVPN**，再依下方步驟匯入配對檔及完成引導。如果區域網路步驟跳到設定，請到 **設定 → 隱私權與安全性 → 區域網路 → LiveContainer** 開啟權限，回到 GoFly，必要時再點一次 **Allow**。若配對檔的選檔器打不開，在 LiveContainer 內的 GoFly 個別設定啟用 **Fix File Picker**。[LiveContainer 安裝與相容性說明](https://github.com/LiveContainer/LiveContainer#features--guides)
 
-1. 開啟 SideStore 的 **Settings → User Customizations**。
-2. 關閉 **On-Device Anisette**。
-3. 前往 **Settings → Anisette Servers**，選 **SideStore (New)**，確認網址是 `https://new.ani.sidestore.io`。
-4. 下方 **Anisette Servers** 關閉**自動伺服器輪替**。
-5. 回到 **Settings → User Customizations**。
-6. 選 **Reset adi.pb**；若有 **Keep Headers**，不要勾選。
-7. 完全關閉再開啟 SideStore，保持 **LocalDevVPN** 連線後重新登入。
-8. **登入後出現錯誤代碼 `(80045)`**：套用以上設定後，即使實際已成功登入，仍可能跳出錯誤代碼 `(80045)`。此時直接**重啟 iPhone**，重開機後打開 SideStore 即可看到已登入狀態。
+**背景路線與漫步。** 在 LiveContainer 的 **Apps** 長按 GoFly，開啟 **Settings** 並啟用 **Fix Background Processing Tasks**（修復后台處理任務）。重開 GoFly，再啟動一次路線或漫步。[LiveContainer 相容性修正](https://github.com/LiveContainer/LiveContainer/issues/1710)
 
-**第一次開啟 GoFly GPS**
+本版 IPA 包含 LiveContainer 區域網路修正，仍待本版完整實機驗收。
 
-1. GoFly GPS 會顯示「匯入配對檔」。在電腦用 iloader 匯出這支 iPhone 的配對檔，傳到 iPhone（AirDrop 或「檔案」App），點**匯入配對檔**選取。
+### 第一次開啟 GoFly GPS
+
+1. 在 idevice_pair 選取這支 iPhone，選 **Remote Pairing** 並儲存檔案。傳到 iPhone 後，先連上 **LocalDevVPN**，再到 GoFly GPS 點**匯入配對檔**，選取 `.plist` 或 `.pairfile`。若出現區域網路權限提示，請允許，首次檢查逾時可再試一次。下方內建 SideStore 步驟匯出的同一份 Remote Pairing 檔也可使用。
 2. 依序允許定位與區域網路，並連上 LocalDevVPN；若 App 提示下載裝置支援（DDI），保持網路連線依畫面指示完成即可開始使用。
 
-配對檔必須屬於這支 iPhone；其他手機的配對檔會在第一次連線時被擋下。IPA 版不需要 Mac App；Mac 安裝版仍使用原本的 USB 配對流程。2026-11-02 已用 SideStore 實機驗證匯入、瞬移、路線背景移動，以及手機重開機後的定位；已修正自動漫步在背景運行的問題（背景中一段走完時，原地等待下一條道路規劃完成，不再暫停），已實機測試成功。
+Remote Pairing 檔若未包含裝置 UDID，GoFly 會透過 LocalDevVPN 驗證這支 iPhone 後才儲存。本版的配對檔匯入流程尚待實機驗收。IPA 版不需要 Mac App；Mac 安裝版仍使用原本的 USB 配對流程。2026-11-02 已用 SideStore 實機驗證匯入、瞬移、路線背景移動，以及手機重開機後的定位；已修正自動漫步在背景運行的問題（背景中一段走完時，原地等待下一條道路規劃完成，不再暫停），已實機測試成功。
+
+### LiveContainer 與內建 SideStore Nightly 安裝設定
+
+在電腦下載最新版 [iloader](https://github.com/nab138/iloader/releases/latest) 和 [idevice_pair](https://github.com/jkcoxson/idevice_pair/releases/latest)，並在 iPhone 安裝 [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044)。Remote Pairing 需要 iOS 17.4 或更新版。GoFly GPS 仍需要 iOS 26 或更新版。
+
+#### 安裝 Nightly
+
+1. 若已有 LiveContainer 資料，先備份並保留原 App。
+2. 用 USB 將 iPhone 接到電腦，解鎖後依提示點「信任這部電腦」。
+3. 開啟 iloader，選取 iPhone，登入 Apple ID，安裝 **LiveContainer + SideStore（Nightly）**。[官方安裝說明](https://livecontainer.github.io/docs/installation/lc_sidestore#method-2-iloader)
+4. 在 iPhone 的「設定 → 一般 → VPN 與裝置管理」信任開發者，並依提示重新啟動。若尚未啟用開發者模式，到「設定 → 隱私權與安全性 → 開發者模式」啟用並依提示重新啟動。
+
+#### 使用 idevice_pair 建立並匯入 Remote Pairing 配對檔
+
+1. 完全關閉 LiveContainer。保持 USB 連線，讓 iPhone 解鎖並停在主畫面。
+2. 在 **idevice_pair** 選取 iPhone，選擇 **Remote Pairing／RPPairing**，點 **Create** 並依提示完成配對。點 **Validate** 確認成功，再點 **Save to file…** 儲存並將檔案傳到 iPhone。
+3. 開啟 LiveContainer 的內建 SideStore，在配對提示中選取新檔，或從 **Settings → Pairing File Management → Remote Pairing File** 匯入。
+4. 若顯示 **Set as Preferred**，將 Remote Pairing 設為偏好協定。完全關閉 LiveContainer，再重新開啟。
+
+匯入只包含 Remote Pairing 的配對檔，可避免混合格式引發的辨識問題，例如 `The pairing file format is ambiguous`。[SideStore 配對回報 #1611](https://github.com/SideStore/SideStore/issues/1611)
+
+#### 登入前設定 Anisette
+
+GoFly 維護者在內建 SideStore 登入時先遇到 HTTP 403，接著遇到 HTTP 503。依序完成以下兩段設定後成功登入。伺服器端變動仍可能影響登入。
+
+1. **HTTP 403｜關閉裝置端 Anisette 並同步遠端設定。** 在內建 SideStore 開啟 **Settings → User Customizations**，關閉 **On-Device Anisette**。若有重新啟動提示，完全關閉 LiveContainer 後重開。
+2. 前往 **Settings → Anisette Servers**，選擇可用的遠端伺服器。預設伺服器可用時也可保留。
+3. 前往 **Settings → User Customizations → Anisette Client Configuration → Remote Server Sync**，點 **Fetch**，成功後點 **Save as Overrides**。SideStore 社群也曾回報用這組設定處理 401。[401 回報 #1752](https://github.com/SideStore/SideStore/issues/1752)
+4. **HTTP 503｜檢查 Client Info。** 若有 `macOS;`，只把這段改成 `Mac OS X;`，保留原本的裝置型號、版本與括號內容。若已是 `Mac OS X;`，直接保留。點 **Save Overrides** 後完全關閉並重開 LiveContainer。[503 回報 #1749](https://github.com/SideStore/SideStore/issues/1749)
+
+**先 Fetch 並儲存，再檢查 Client Info。** 之後每次重新 Fetch 都要再檢查一次，同步可能覆寫設定。
+
+#### 登入、刷新並匯入憑證
+
+1. 在內建 SideStore 使用與 iloader 相同的 Apple ID 登入，完成雙重認證。
+2. 連上 **LocalDevVPN**，回到內建 SideStore，點 **My Apps → Refresh All** 並確認成功。
+3. 退出內建 SideStore，回到 LiveContainer，前往 **Settings → Import Certificate from SideStore** 並確認。按鈕變成 **Remove Certificate** 代表匯入成功。
+4. 開啟 **JIT-Less Mode Diagnose** 確認設定狀態。[官方安裝後設定](https://livecontainer.github.io/docs/installation/lc_sidestore#setup-after-installing)
 
 開發者執行 `bash app/GoFly/scripts/package-ipa.sh` 產生未簽名 IPA 與 SHA-256（需要 Mac、安裝在 `/Applications/Xcode.app` 的 Xcode 與網路）。首次執行（或原生程式庫固定版本變更後）會自動取得固定版本的 idevice、下載經 SHA-256 校驗的 Rust 工具鏈，並在 `work/gofly-ios/` 建置原生程式庫；之後會重複使用。輸出一律放在 `work/dist/ipa/`；同版本的舊 IPA 與校驗檔會先移到 `work/dist/ipa/archive/<UTC 時間>/`，不會被覆蓋或刪除。腳本不更動 Mac 建置。
 
@@ -158,11 +190,10 @@ SideStore 登入 Apple ID 時可能遇到登入 bug，可先試 SideStore 專案
 1. 先讀該專案的 README.zh-Hant.md 與 docs/AI-INSTALL.md。
 2. 不要從原始碼建置。把最新 Release 的 GoFly-GPS-<版本>.ipa 與 .sha256
    下載到一個全新的空資料夾，執行 `shasum -a 256 -c`，結果不是 OK 就停止。
-3. 一步一步帶我把 IPA 傳到 iPhone、透過 USB 用 iloader 把 SideStore 安裝到手機並匯出
-   這支 iPhone 的配對檔、完成 SideStore 設定（保持 Wi-Fi 與 LocalDevVPN 連線）、在
-   SideStore（My Apps -> +）安裝 IPA，並在首次開啟 GoFly GPS 時匯入配對檔。
-4. 若 SideStore 登入失敗，請依 docs/AI-INSTALL.md 的 Anisette / Reset adi.pb 暫時解法
-   引導我處理（包含登入後出現錯誤代碼 80045 時重啟手機）；不要叫我刪 SideStore 或重設配對檔。
+3. 依 README 的 LiveContainer + SideStore Nightly 流程引導我使用 idevice_pair 完成
+   Remote Pairing，並在登入前設定 Anisette。接著在 SideStore（My Apps -> +）
+   安裝 GoFly GPS IPA，並在首次開啟 GoFly GPS 時匯入這支 iPhone 的 Remote Pairing 配對檔。
+4. 若 Apple ID 登入失敗，依 README 中對應的疑難排解處理（電腦上的 iloader 或內建 SideStore）。
 5. Apple ID 登入、雙重認證、iPhone 信任、開發者模式與 VPN 權限由我自己處理；不要要求我
    在聊天裡提供密碼、配對檔或 token。
 6. 回報已完成的項目、我還要在 iPhone 上做的事，以及阻礙。安裝成功與模擬定位可用請分開說明。
@@ -181,7 +212,10 @@ SideStore 登入 Apple ID 時可能遇到登入 bug，可先試 SideStore 專案
 | 「無法完成安裝前檢查」 | 按**再檢查一次**。若手機上已有 GoFly GPS，點側欄的裝置，使用 **Renew Signing**。 |
 | iPhone 上的 App 打不開 | 簽名已過期。從 Mac App 或 SideStore／AltStore 延長簽名，資料會保留。 |
 | LocalDevVPN 已開但 GoFly GPS 無法繼續 | 確認 VPN 實際已連線且已允許，再回 GoFly GPS 重試。 |
-| SideStore 登入失敗或出現錯誤代碼 `(80045)` | 關閉 **On-Device Anisette**、改用 `SideStore (New)`（`https://new.ani.sidestore.io`）並關閉自動伺服器輪替，再執行 **Reset adi.pb**（不勾 Keep Headers）後重開 SideStore 重新登入；若登入後仍顯示 `(80045)`，重啟手機即可看到已登入。詳見上方「SideStore 登入異常暫時解法」。 |
+| 在 LiveContainer 內使用 GoFly 時出現「背景執行遭拒」 | 在 LiveContainer 的 **Apps** 長按 **GoFly GPS**，點 **Settings**，開啟 **Fix Background Processing Tasks**。重新開啟 GoFly，再啟動路線或漫步。若找不到開關，請更新 [LiveContainer Nightly](https://github.com/LiveContainer/LiveContainer/releases/tag/nightly)。 |
+| 內建 SideStore 登入出現 HTTP 403 | 關閉 **On-Device Anisette**，選擇可用的遠端伺服器，執行 **Fetch → Save as Overrides**。接著檢查 Client Info。[登入前設定 Anisette](#登入前設定-anisette) |
+| 內建 SideStore 登入出現 HTTP 503 | 先 Fetch 並儲存，再檢查 **Client Info**，只將 `macOS;` 改成 `Mac OS X;`。[登入前設定 Anisette](#登入前設定-anisette) |
+| 電腦上的 iloader 無法登入 Apple ID | iloader 2.4.1 可能回傳 HTTP 503，2.4.2 在部分帳號可能回傳 `-22410` 或 `-23782`。GoFly 維護者使用自行打包的 [iloader PR #1205](https://github.com/nab138/iloader/pull/1205) 版本。也可以等包含登入修正的 [iloader 官方新版](https://github.com/nab138/iloader/releases/latest)。 |
 | SideStore 安裝或刷新時出現「Operation Failed … unable to reach the device endpoint … `DeviceEndpointNotInitialized`」 | LocalDevVPN 顯示已連線，但 SideStore 透過它連不到這支 iPhone。**重啟 iPhone**，重新連上 Wi‑Fi 與 LocalDevVPN 後，再回 SideStore 重試。 |
 
 ## 從原始碼建置

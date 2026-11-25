@@ -42,6 +42,11 @@ struct IdeviceFfiError *tunnel_create_rppairing_verify_only(
     struct AdapterHandle **out_adapter,
     struct RsdHandshakeHandle **out_handshake);
 
+// Verification-only read of UniqueDeviceID with an end-to-end timeout.
+struct IdeviceFfiError *gofly_pairing_device_udid(
+    const struct sockaddr *addr, socklen_t addr_len,
+    struct RpPairingFileHandle *pairing_file, plist_t *out_udid);
+
 void idevice_set_global_timeout(uint64_t secs);
 void idevice_data_free(uint8_t *data, uintptr_t len);
 void idevice_error_free(struct IdeviceFfiError *err);

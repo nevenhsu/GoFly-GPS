@@ -1371,7 +1371,10 @@ struct GoFlyMapView: View {
     private var activeMovement: ActiveMovement? { movement.activeMovement }
 
     private var isResumeState: Bool {
-        if continuation.noticeKey != nil && !notices.isDismissed(.continuation) { return true }
+        if continuation.noticeKey == MovementContinuationController.rejectionNoticeKey {
+            return continuation.visibleNoticeKey != nil
+        }
+        if continuation.visibleNoticeKey != nil && !notices.isDismissed(.continuation) { return true }
         guard let active = activeMovement, active.isResumable else { return false }
         switch active.kind {
         case .route: return true

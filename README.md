@@ -6,7 +6,7 @@
 
 GoFly GPS is an iPhone app for choosing and moving a simulated GPS location on your own device. **GoFly GPS for Mac** installs the iPhone app over USB with your own Apple Account in Xcode and renews its signing so you can keep using it.
 
-[**Download the latest GoFly GPS for Mac (DMG)**](https://github.com/nevenhsu/GoFly-GPS/releases/latest)
+[**Download the latest GoFly GPS for Mac (DMG)**](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12)
 
 **Development status (2026-11-02): GoFly GPS iOS app development is complete.** It supports installation through GoFly GPS for Mac or as an IPA through SideStore / AltStore. Known limitations and remaining verification are listed below.
 
@@ -58,7 +58,7 @@ Free Personal Team signing normally expires after about seven days; keep the Mac
 
 ## Install (DMG)
 
-1. Download `GoFly-GPS-<version>-arm64.dmg` and `GoFly-GPS-<version>-arm64.dmg.sha256` from the [latest release](https://github.com/nevenhsu/GoFly-GPS/releases/latest) into the same folder.
+1. Download `GoFly-GPS-<version>-arm64.dmg` and `GoFly-GPS-<version>-arm64.dmg.sha256` from the [latest release](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12) into the same folder.
 2. Verify the download. The result must be `OK`:
 
    ```sh
@@ -78,13 +78,13 @@ The app is ad-hoc signed, **not notarized**, so macOS will not open it by double
 
 ## Install the IPA with SideStore or AltStore
 
-If you'd rather not use the Mac app, [SideStore](https://sidestore.io) or [AltStore](https://altstore.io) can re-sign and install the IPA with your own Apple ID. Both use the same IPA; on first launch you import this iPhone's pairing file.
+If you'd rather not use the Mac app, [SideStore](https://sidestore.io) or [AltStore](https://altstore.io) can re-sign and install the IPA with your own Apple ID. Both use the same IPA; on first launch you import this iPhone's pairing file. You can also [run GoFly inside LiveContainer](#run-gofly-gps-inside-livecontainer).
 
 **Before you start**
 
 - iPhone on iOS 26 or later with **Developer Mode** on.
 - [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044) installed and allowed to add a VPN; stay on Wi‑Fi while using GoFly GPS.
-- A computer (and USB data cable) with [iloader](https://github.com/nab138/iloader) ([official download](https://github.com/nab138/iloader/releases/latest) / [iloader.app](https://iloader.app)) to **install SideStore onto the iPhone** and export this iPhone's pairing file (`pairingFile.plist`).
+- A computer (and USB data cable) with [iloader](https://github.com/nab138/iloader/releases/latest) for installation and [idevice_pair](https://github.com/jkcoxson/idevice_pair/releases/latest) for pairing.
 
 **Install (SideStore `.ipa` flow)**
 
@@ -95,36 +95,68 @@ If you'd rather not use the Mac app, [SideStore](https://sidestore.io) or [AltSt
    ```
 
    Transfer the verified `.ipa` to your iPhone (AirDrop, iCloud Drive, or the Files app).
-2. Install and set up SideStore on your iPhone using **iloader**:
-   - Connect your iPhone to the computer over USB, use [iloader](https://github.com/nab138/iloader) to **install SideStore onto the iPhone** (see the [SideStore setup guide](https://docs.sidestore.io/docs/installation/install)), and export this iPhone's pairing file (`pairingFile.plist`).
-   - On the iPhone, trust the developer (Settings → General → VPN & Device Management) and import the pairing file into SideStore.
-   - Keep Wi‑Fi and **LocalDevVPN** connected, open SideStore, and sign in with your Apple ID. If login fails or shows error `(80045)`, see the SideStore login workaround below.
+2. Set up [LiveContainer with built-in SideStore (Nightly)](#set-up-livecontainer-with-built-in-sidestore-nightly), or use the [standalone SideStore setup guide](https://docs.sidestore.io/docs/installation/install).
 3. With Wi‑Fi and **LocalDevVPN** connected, open SideStore → **My Apps → +**, choose `GoFly-GPS-<version>.ipa`, and wait for re-signing and installation to finish (trust the developer profile in iOS Settings if prompted).
 4. A free Apple ID signature lasts about 7 days. Keep Wi‑Fi and LocalDevVPN connected and refresh SideStore and GoFly GPS regularly; refreshing keeps your GoFly GPS data (do not uninstall).
 
 If using **AltStore** instead: follow the [AltStore guide](https://faq.altstore.io/) to install AltServer on your computer and AltStore on your iPhone, then choose the verified `.ipa` under **My Apps → +** and keep it refreshed.
 
-**SideStore login bug workaround (including error `80045`)**
+### Run GoFly GPS inside LiveContainer
 
-If SideStore hits a login bug when signing in with your Apple ID, try this community-reported temporary workaround from SideStore issues (results may vary by version; **no need to delete the app or reset the pairing file**):
+1. Set up [LiveContainer + SideStore Nightly](#set-up-livecontainer-with-built-in-sidestore-nightly) and import the signing certificate. Use a GoFly IPA that includes the LiveContainer Local Network fix.
+2. In **LiveContainer → Apps → +**, select the verified GoFly IPA. Open GoFly from the LiveContainer Apps list.
+3. Connect **LocalDevVPN**, then follow the first-launch steps below. If iOS opens Settings at the Local Network step, enable **Settings → Privacy & Security → Local Network → LiveContainer**, return to GoFly, and tap **Allow** again if needed. If the pairing file picker does not open, enable **Fix File Picker** in GoFly’s settings inside LiveContainer. [LiveContainer install and compatibility guide](https://github.com/LiveContainer/LiveContainer#features--guides)
 
-1. Open SideStore **Settings → User Customizations**.
-2. Turn off **On-Device Anisette**.
-3. Go to **Settings → Anisette Servers**, select **SideStore (New)**, and confirm the URL is `https://new.ani.sidestore.io`.
-4. Under **Anisette Servers** below, turn off **automatic server rotation**.
-5. Return to **Settings → User Customizations**.
-6. Select **Reset adi.pb**; if **Keep Headers** appears, leave it unchecked.
-7. Force-close and reopen SideStore, keep **LocalDevVPN** connected, and sign in again.
-8. **Error `(80045)` after login**: Even when login succeeds after these changes, SideStore may still display error code `(80045)`. **Restart your iPhone** — after rebooting, SideStore will show that you are signed in.
+**Background routes and wandering.** In LiveContainer, hold GoFly in **Apps**, open **Settings**, and enable **Fix Background Processing Tasks**. Reopen GoFly and start a new run. [LiveContainer compatibility fix](https://github.com/LiveContainer/LiveContainer/issues/1710)
 
-**First launch of GoFly GPS**
+This IPA includes the LiveContainer Local Network fix. Full device validation for this release is pending.
 
-1. GoFly GPS shows **Import pairing file**. Export this iPhone's pairing file with iloader on your computer, move it to the iPhone (AirDrop or the Files app), tap **Import**, and choose it.
+### First launch of GoFly GPS
+
+1. In idevice_pair, select this iPhone, choose **Remote Pairing**, and save the file. Transfer it to the iPhone, connect **LocalDevVPN**, then select the `.plist` or `.pairfile` in GoFly GPS under **Import pairing file**. Allow Local Network access if prompted and retry if the first check times out. You can use the same Remote Pairing export from the built-in SideStore setup below.
 2. Allow Location and Local Network, and connect LocalDevVPN. If GoFly GPS prompts to download device support (DDI), follow the on-screen prompt while online and you're ready.
 
-The pairing file must belong to this iPhone; a file for another phone is stopped at the first connection. The IPA does not need the Mac app; the Mac installer keeps its USB pairing flow. On 2026-11-02, import, teleport, background route movement, and positioning after an iPhone restart were verified on a device installed with SideStore; auto-wander in the background was fixed and device-tested (when a segment ends in the background it keeps running in place while the next road is planned, instead of pausing).
+GoFly verifies a Remote Pairing export without a device UDID through LocalDevVPN before saving it. The import flow is pending device validation in this release. The IPA does not need the Mac app; the Mac installer keeps its USB pairing flow. On 2026-11-02, import, teleport, background route movement, and positioning after an iPhone restart were verified on a device installed with SideStore; auto-wander in the background was fixed and device-tested (when a segment ends in the background it keeps running in place while the next road is planned, instead of pausing).
 
 To build the unsigned IPA and SHA-256 file, run `bash app/GoFly/scripts/package-ipa.sh` on a Mac with Xcode in `/Applications/Xcode.app` and internet access. On the first run (or after the native pin changes) it fetches the pinned idevice commit, downloads the checksum-verified Rust toolchain, and builds the native library under `work/gofly-ios/`; later runs reuse it. Output always goes to `work/dist/ipa/`; an earlier IPA and checksum of the same version move to `work/dist/ipa/archive/<UTC time>/` instead of being overwritten or deleted. The Mac build is unchanged.
+
+### Set up LiveContainer with built-in SideStore (Nightly)
+
+Download the latest [iloader](https://github.com/nab138/iloader/releases/latest) and [idevice_pair](https://github.com/jkcoxson/idevice_pair/releases/latest) on your computer, and install [LocalDevVPN](https://apps.apple.com/us/app/localdevvpn/id6755608044) on your iPhone. Remote Pairing requires iOS 17.4 or later. GoFly GPS still requires iOS 26 or later.
+
+#### Install the Nightly
+
+1. Back up any existing LiveContainer data before updating. Keep the original app installed.
+2. Connect the iPhone over USB, unlock it, and tap **Trust** if prompted.
+3. Open iloader, select the iPhone, sign in with your Apple ID, and install **LiveContainer + SideStore (Nightly)**. See the [official installation guide](https://livecontainer.github.io/docs/installation/lc_sidestore#method-2-iloader).
+4. On the iPhone, trust the developer in **Settings → General → VPN & Device Management** and follow any restart prompt. If needed, enable **Developer Mode** in **Settings → Privacy & Security** and restart as prompted.
+
+#### Create and import a Remote Pairing file with idevice_pair
+
+1. Force-close LiveContainer. Keep the iPhone connected over USB, unlocked, and on the Home Screen.
+2. In **idevice_pair**, select the iPhone and choose **Remote Pairing** (**RPPairing**). Click **Create** and follow the prompts. Click **Validate** to confirm it works, then **Save to file…** and transfer the file to the iPhone.
+3. Open the built-in SideStore from LiveContainer. Select the new file in the pairing prompt or import it under **Settings → Pairing File Management → Remote Pairing File**.
+4. If **Set as Preferred** appears, select it for Remote Pairing. Force-close and reopen LiveContainer.
+
+Use a Remote Pairing-only file here to avoid format detection errors such as `The pairing file format is ambiguous`. [SideStore pairing report #1611](https://github.com/SideStore/SideStore/issues/1611)
+
+#### Configure Anisette before signing in
+
+The GoFly maintainer encountered HTTP 403 followed by HTTP 503 in built-in SideStore and signed in successfully after applying both fixes in this order. Server-side changes can still affect sign-in.
+
+1. For **HTTP 403**, switch to remote Anisette and sync its settings. In built-in SideStore, open **Settings → User Customizations** and turn off **On-Device Anisette**. Force-close and reopen LiveContainer if prompted.
+2. Open **Settings → Anisette Servers** and choose a working remote server. You can keep the default if it works.
+3. Go to **Settings → User Customizations → Anisette Client Configuration → Remote Server Sync**. Click **Fetch** and, once it succeeds, click **Save as Overrides**. The SideStore community also reported this workaround for HTTP 401. [401 report #1752](https://github.com/SideStore/SideStore/issues/1752)
+4. For **HTTP 503**, check **Client Info**. Change only `macOS;` to `Mac OS X;` if present, preserving the device model, version and parenthesized text. If it already says `Mac OS X;`, keep it. Click **Save Overrides**, then force-close and reopen LiveContainer. [503 report #1749](https://github.com/SideStore/SideStore/issues/1749)
+
+Fetch and save first, then check **Client Info** again after every fetch because syncing can overwrite it.
+
+#### Sign in, refresh and import the certificate
+
+1. Sign in to built-in SideStore with the same Apple ID you used in iloader and complete two-factor authentication.
+2. Connect **LocalDevVPN**, then open **My Apps → Refresh All** in built-in SideStore and confirm the refresh succeeds.
+3. Quit built-in SideStore. In LiveContainer, go to **Settings → Import Certificate from SideStore** and confirm. The button changes to **Remove Certificate** when the import succeeds.
+4. Open **JIT-Less Mode Diagnose** to confirm the setup status. [Official post-install setup](https://livecontainer.github.io/docs/installation/lc_sidestore#setup-after-installing)
 
 ## Let an AI install it for you
 
@@ -163,14 +195,12 @@ Help me install GoFly GPS on my iPhone via SideStore from https://github.com/nev
 2. Do not build from source. Download the latest release's GoFly-GPS-<version>.ipa
    and its .sha256 file into a new empty folder, run `shasum -a 256 -c`, and stop
    if the result is not OK.
-3. Walk me step-by-step through transferring the IPA to my iPhone, using iloader
-   over USB to install SideStore onto my iPhone and export this iPhone's pairing
-   file, setting up SideStore with LocalDevVPN and Wi-Fi, installing the IPA via
-   SideStore (My Apps -> +), and importing the pairing file on first launch.
-4. If SideStore login fails, walk me through the Anisette / Reset adi.pb
-   workaround in docs/AI-INSTALL.md (including restarting the iPhone if error
-   80045 appears after login). Do not tell me to delete SideStore or reset the
-   pairing file.
+3. Walk me through the README's LiveContainer + SideStore Nightly setup, using
+   idevice_pair for Remote Pairing and configuring Anisette before sign-in.
+   Then help me install the GoFly GPS IPA via SideStore (My Apps -> +) and import
+   this iPhone's Remote Pairing file on first launch of GoFly GPS.
+4. If Apple ID sign-in fails, use the README troubleshooting entry for the app
+   showing the error (desktop iloader or built-in SideStore).
 5. I will handle Apple ID sign-in, 2FA, iPhone trust, Developer Mode, and VPN
    permissions myself. Never ask for passwords, pairing files, or tokens in chat.
 6. Report what is done, what I still need to do on the iPhone, and any
@@ -191,7 +221,10 @@ The full runbook for AI assistants is in [docs/AI-INSTALL.md](docs/AI-INSTALL.md
 | "The installation check failed" | Press **Check again**. If GoFly GPS is already on the phone, open the device in the sidebar and use **Renew Signing**. |
 | The iPhone app no longer opens | Signing expired. Renew from the Mac app or SideStore / AltStore; data is kept. |
 | LocalDevVPN is on but GoFly GPS cannot continue | Check the VPN is actually connected and allowed, then retry in GoFly GPS. |
-| SideStore login fails or shows error `(80045)` | Turn off **On-Device Anisette**, select `SideStore (New)` (`https://new.ani.sidestore.io`), disable automatic server rotation, run **Reset adi.pb** (leave Keep Headers unchecked), then restart SideStore and sign in again. If `(80045)` still appears after login, restart your iPhone to see the signed-in state. See the SideStore login workaround above. |
+| GoFly in LiveContainer shows “Background mode declined” | In LiveContainer, hold **GoFly GPS** on the **Apps** tab, tap **Settings**, then turn on **Fix Background Processing Tasks**. Reopen GoFly and start the route or wander again. If the switch is missing, update [LiveContainer Nightly](https://github.com/LiveContainer/LiveContainer/releases/tag/nightly). |
+| Built-in SideStore sign-in shows HTTP 403 | Turn off **On-Device Anisette**, select a working remote server, then use **Fetch → Save as Overrides** before checking Client Info. [Anisette setup](#configure-anisette-before-signing-in) |
+| Built-in SideStore sign-in shows HTTP 503 | Fetch and save first, then check **Client Info** and change only `macOS;` to `Mac OS X;`. [Anisette setup](#configure-anisette-before-signing-in) |
+| Apple ID sign-in fails in desktop iloader | iloader 2.4.1 may return HTTP 503, and 2.4.2 may return `-22410` or `-23782` on some accounts. The GoFly maintainer used a self-built copy from [iloader PR #1205](https://github.com/nab138/iloader/pull/1205). You can also wait for an [official iloader release](https://github.com/nab138/iloader/releases/latest) with the sign-in fix. |
 | SideStore shows “Operation Failed … unable to reach the device endpoint … `DeviceEndpointNotInitialized`” when installing or refreshing | LocalDevVPN shows connected but SideStore can't reach the iPhone through it. **Restart your iPhone**, reconnect Wi‑Fi and LocalDevVPN, then try again in SideStore. |
 
 ## Build from source

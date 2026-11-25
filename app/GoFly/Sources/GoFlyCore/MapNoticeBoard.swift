@@ -17,6 +17,7 @@ public enum MapNotice: Equatable, Sendable, Identifiable {
     case connection(key: String, coldConfirmation: Bool)
     /// A lost connection, named by its first cause in `ConnectionIssue` order.
     case connectionIssue(ConnectionIssue)
+    case backgroundRejected
     case resume(ResumeNotice)
 
     /// At most one notice of each case shows at a time.
@@ -32,6 +33,7 @@ public enum MapNotice: Equatable, Sendable, Identifiable {
         case .routeError: "routeError"
         // Never both at once: they share the connection slot.
         case .connection, .connectionIssue: "connection"
+        case .backgroundRejected: "backgroundRejected"
         case .resume: "resume"
         }
     }
@@ -169,22 +171,24 @@ public enum MapNoticeBoard {
                 }
             }
         }
-        if let resume = resumeNotice(input, teleportFailureOwns: teleportFailureOwns) {
-            result.append(.resume(resume))
+        if let continuation = continuationNotice(input, teleportFailureOwns: teleportFailureOwns) {
+            result.append(continuation)
         }
         return result
     }
 
-    private static func resumeNotice(_ input: MapNoticeInputs, teleportFailureOwns: Bool) -> MapNotice.ResumeNotice? {
+    private static func continuationNotice(_ input: MapNoticeInputs, teleportFailureOwns: Bool) -> MapNotice? {
         let active = input.activeMovement
         // The person pressed Pause: the resume panel already says so.
         let pausedByUser = active?.isPausedByUser == true
             && ((input.mode == .route && active?.kind == .route) || (input.mode == .joystick && active?.kind == .wander))
         // ✕ puts the toast away; the resume panel still offers the action.
         let dismissed = input.notices.isDismissed(.continuation)
-        let continuationShown = input.continuationNoticeKey != nil && !dismissed
-        guard input.sceneSettled, !input.repairOwnsNotice, !teleportFailureOwns, !pausedByUser, !dismissed,
-              continuationShown || input.isResumeState else { return nil }
+        guard input.sceneSettled, !input.repairOwnsNotice, !teleportFailureOwns, !pausedByUser else { return nil }
+        if input.continuationNoticeKey == MovementContinuationController.rejectionNoticeKey {
+            return .backgroundRejected
+        }
+        guard !dismissed, input.continuationNoticeKey != nil || input.isResumeState else { return nil }
 
         let resumable = active?.resumeAction
         let routePaused = input.mode == .route && (resumable == .resumeRoute || resumable == .retryInterruptedRoute)
@@ -197,9 +201,8 @@ public enum MapNoticeBoard {
             : input.continuationNoticeKey ?? "background.positionPaused"
         let messageKey = routePaused ? "route.pausedToast.message"
             : holdPaused ? "background.positionPaused.message" : "status.repairGuidance"
-        return MapNotice.ResumeNotice(titleKey: titleKey, messageKey: messageKey,
-                                      actionTitleKey: routePaused || holdPaused ? "common.continue" : "common.retry",
-                                      action: action,
-                                      actionEnabled: action == nil || active?.canResume == true)
+        return .resume(MapNotice.ResumeNotice(titleKey: titleKey, messageKey: messageKey,
+            actionTitleKey: routePaused || holdPaused ? "common.continue" : "common.retry",
+            action: action, actionEnabled: action == nil || active?.canResume == true))
     }
 }

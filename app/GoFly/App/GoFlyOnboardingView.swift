@@ -183,13 +183,7 @@ struct GoFlyOnboardingView: View {
 
     private func openLocationSettings() {
         settingsOpenFailed = false
-        guard let url = URL(string: UIApplication.openSettingsURLString) else {
-            settingsOpenFailed = true
-            return
-        }
-        UIApplication.shared.open(url) { accepted in
-            settingsOpenFailed = !accepted
-        }
+        GoFlyExternalLinks.openAppSettings { settingsOpenFailed = !$0 }
     }
 
 }
@@ -309,11 +303,12 @@ private struct GoFlyOnboardingFeatureIcon: View {
 }
 
 /// R03.a: one primary button, no skip. A denied answer cannot be re-asked by
-/// iOS, so the next press opens GoFly's page in Settings instead.
+/// iOS, so the next press opens the app's permission page in Settings.
 private struct GoFlyLocalNetworkOnboardingView: View {
     @ObservedObject var controller: OnboardingController
     @Environment(\.scenePhase) private var scenePhase
     @State private var settingsOpenFailed = false
+    @State private var checkInconclusive = false
 
     var body: some View {
         ScrollView {
@@ -353,6 +348,9 @@ private struct GoFlyLocalNetworkOnboardingView: View {
         .goFlyToastOverlay(topInset: 64) {
             if settingsOpenFailed {
                 GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "settings.externalOpenFailed"), message: goFlyString("settings.externalOpenFailed"))
+            } else if checkInconclusive {
+                GoFlyStatusBanner(tone: .warning, title: goFlyString("onboarding.localNetwork.checkFailed.title"),
+                                  message: goFlyString("onboarding.localNetwork.checkFailed"))
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -400,21 +398,22 @@ private struct GoFlyLocalNetworkOnboardingView: View {
 
     private func allow() async {
         settingsOpenFailed = false
-        // Already refused: iOS will not prompt again, so go straight to Settings.
-        if controller.localNetworkAuthorization == .denied {
-            openSettings()
-            return
+        checkInconclusive = false
+        let alreadyDenied = controller.localNetworkAuthorization == .denied
+        switch await controller.allowLocalNetwork() {
+        case .denied:
+            // iOS can report a policy error while the first system prompt
+            // is pending. A subsequent tap on the denied screen can open Settings.
+            if alreadyDenied, UIApplication.shared.applicationState == .active { openSettings() }
+        case .unknown:
+            checkInconclusive = true
+        case .granted:
+            break
         }
-        // Any answer other than granted (refused, or no answer) sends the user to Settings.
-        if await controller.allowLocalNetwork() != .granted { openSettings() }
     }
 
     private func openSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else {
-            settingsOpenFailed = true
-            return
-        }
-        UIApplication.shared.open(url) { settingsOpenFailed = !$0 }
+        GoFlyExternalLinks.openAppSettings { settingsOpenFailed = !$0 }
     }
 }
 

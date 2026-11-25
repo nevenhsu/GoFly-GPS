@@ -4,7 +4,7 @@ GoFly GPS for Mac prepares a user's Xcode Team-scoped GoFly GPS iOS build and ma
 
 ## Obtain and install
 
-The DMG is published on the [GitHub Releases page](https://github.com/nevenhsu/GoFly-GPS/releases/latest) (ad-hoc signed, not notarized). A local Apple Silicon build can also be made from the repository root on a Mac with full Xcode:
+The DMG is published on the [GitHub Releases page](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12) (ad-hoc signed, not notarized). A local Apple Silicon build can also be made from the repository root on a Mac with full Xcode:
 
 ```sh
 bash app/GoFlyMac/make-dmg.sh <YOUR_XCODE_TEAM_ID>

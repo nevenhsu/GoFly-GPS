@@ -13,7 +13,7 @@
          .with_include_guard("IDEVICE_H")
 --- a/ffi/src/tunnel_provider.rs
 +++ b/ffi/src/tunnel_provider.rs
-@@ -346,6 +346,68 @@
+@@ -346,6 +346,120 @@
      }
  }
  
@@ -62,14 +62,7 @@
 +        Err(_) => return ffi_err!(IdeviceError::FfiInvalidString),
 +    };
 +    let rpf = unsafe { &mut (*pairing_file).0 };
-+    let res = run_sync_local(async {
-+        let stream = run_global_timeout(|| tokio::net::TcpStream::connect(socket_addr))
-+            .await
-+            .map_err(|e| IdeviceError::InternalError(format!("connect: {e}")))?;
-+        let mut rpc = RemotePairingClient::new(RpPairingSocket::new(stream), &host);
-+        verify_existing_pairing(&mut rpc, rpf).await?;
-+        finish_tunnel(&mut rpc, socket_addr).await
-+    });
++    let res = run_sync_local(open_verified_tunnel(socket_addr, &host, rpf));
 +    match res {
 +        Ok((adapter, handshake)) => {
 +            write_result(adapter, handshake, out_adapter, out_handshake);
@@ -79,10 +72,69 @@
 +    }
 +}
 +
++async fn open_verified_tunnel(
++    address: std::net::SocketAddr,
++    host: &str,
++    pairing: &mut idevice::remote_pairing::RpPairingFile,
++) -> Result<(idevice::tcp::handle::AdapterHandle, RsdHandshake), IdeviceError> {
++    let stream = run_global_timeout(|| tokio::net::TcpStream::connect(address))
++        .await
++        .map_err(|e| IdeviceError::InternalError(format!("connect: {e}")))?;
++    let mut rpc = RemotePairingClient::new(RpPairingSocket::new(stream), host);
++    verify_existing_pairing(&mut rpc, pairing).await?;
++    finish_tunnel(&mut rpc, address).await
++}
++
++/// Reads the authenticated device identity without creating a pairing or
++/// using developer services. One deadline covers all network operations.
++///
++/// # Safety
++/// The address and pairing must be valid borrowed pointers. The output
++/// pointer must be writable; on success its value is owned by the caller.
++#[unsafe(no_mangle)]
++pub unsafe extern "C" fn gofly_pairing_device_udid(
++    addr: *const idevice_sockaddr,
++    addr_len: idevice_socklen_t,
++    pairing_file: *mut RpPairingFileHandle,
++    out_udid: *mut plist_ffi::plist_t,
++) -> *mut IdeviceFfiError {
++    use idevice::{RsdService as _, lockdown::LockdownClient};
++
++    if out_udid.is_null() {
++        return ffi_err!(IdeviceError::FfiInvalidArg);
++    }
++    unsafe { *out_udid = null_mut() };
++    if addr.is_null() || pairing_file.is_null() {
++        return ffi_err!(IdeviceError::FfiInvalidArg);
++    }
++    let address = match crate::util::c_socket_to_rust(addr as *const SockAddr, addr_len) {
++        Ok(address) => address,
++        Err(e) => return ffi_err!(e),
++    };
++    let pairing = unsafe { &mut (*pairing_file).0 };
++    let result = run_sync_local(async {
++        tokio::time::timeout(std::time::Duration::from_secs(10), async {
++            let (mut adapter, mut handshake) =
++                open_verified_tunnel(address, "GoFlyService", pairing).await?;
++            let mut client = LockdownClient::connect_rsd(&mut adapter, &mut handshake).await?;
++            client.get_value(Some("UniqueDeviceID"), None).await
++        })
++        .await
++        .unwrap_or(Err(IdeviceError::Timeout))
++    });
++    match result {
++        Ok(udid) => {
++            unsafe { *out_udid = plist_ffi::PlistWrapper::new_node(udid).into_ptr() };
++            null_mut()
++        }
++        Err(e) => ffi_err!(e),
++    }
++}
++
  /// Pairs with a device over the network via raw RPPairing, without creating a tunnel.
  ///
  /// This is for tvOS.
-@@ -434,3 +496,7 @@
+@@ -434,3 +548,7 @@
      }
      "000000".to_string()
  }

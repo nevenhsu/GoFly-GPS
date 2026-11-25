@@ -38,13 +38,8 @@ func goFlyResolve(_ issue: ConnectionIssue, onOpenFailed: @escaping (String) -> 
     case .wifiNotConnected:
         GoFlyNetworkMonitor.shared.openWiFiSettings()
     case .localNetworkNotAllowed:
-        // iOS asks for Local Network only once; afterwards the switch lives in Settings.
-        guard let url = URL(string: UIApplication.openSettingsURLString) else {
-            onOpenFailed("settings.externalOpenFailed")
-            return
-        }
-        UIApplication.shared.open(url, options: [:]) { opened in
-            Task { @MainActor in if !opened { onOpenFailed("settings.externalOpenFailed") } }
+        GoFlyExternalLinks.openAppSettings { opened in
+            if !opened { onOpenFailed("settings.externalOpenFailed") }
         }
     case .vpnNotConnected:
         GoFlyExternalLinks.openLocalDevVPN { opened in

@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import GoFlyTransport
 import UniformTypeIdentifiers
 
 #if canImport(CryptoKit)
@@ -11,6 +12,7 @@ import CryptoKit
 #endif
 
 #if canImport(idevice)
+import Darwin
 import idevice
 #endif
 
@@ -19,12 +21,18 @@ enum PairingFileStore {
     static let supportedContentTypes: [UTType] = [
         UTType(filenameExtension: "mobiledevicepairing", conformingTo: .data)!,
         UTType(filenameExtension: "mobiledevicepair", conformingTo: .data)!,
+        UTType(filenameExtension: "pairfile") ?? UTType(filenameExtension: "pairfile", conformingTo: .data)!,
         .propertyList
     ]
 
     private static let envelopeFileName = "pairingFile.envelope.plist"
     private static let maximumPairingFileBytes = 1 * 1024 * 1024
     private static let maximumEnvelopeBytes = maximumPairingFileBytes + 64 * 1024
+    private static let storageLock = NSRecursiveLock()
+
+    enum PickerError: Error {
+        case deviceVerificationFailed
+    }
 
     private enum StoreError: Error, LocalizedError {
         case targetBindingRequired
@@ -74,11 +82,10 @@ enum PairingFileStore {
     /// The target binding stored with the validated pairing record. Invalid or
     /// incomplete records intentionally return nil.
     static var expectedDeviceUDID: String? {
-        _ = prepareURL()
-        guard let record = try? readVerifiedRecord(fileManager: .default, validateNative: true) else {
-            return nil
+        storageLock.withLock {
+            _ = prepareURL()
+            return (try? readVerifiedRecord(fileManager: .default, validateNative: true))?.expectedDeviceUDID
         }
-        return record.expectedDeviceUDID
     }
 
     /// Whether the active raw plist and its protected authoritative envelope
@@ -93,6 +100,8 @@ enum PairingFileStore {
     /// need an actionable result should use `isReady` or `verifyStoredRecord`.
     @discardableResult
     static func prepareURL(fileManager: FileManager = .default) -> URL {
+        storageLock.lock()
+        defer { storageLock.unlock() }
         do {
             try prepareStorage(fileManager: fileManager)
         } catch {
@@ -128,36 +137,81 @@ enum PairingFileStore {
         )
     }
 
-    /// R07.s: a sideloaded build has no Mac binding, so the target is the
-    /// file's own `UDID`. Every device operation still compares the device's
-    /// reported identifier with this binding (`VerifiedDeviceSession`), so a
-    /// file for another iPhone fails closed before any location is sent.
-    static func importSideloadedPairing(_ sourceURL: URL, fileManager: FileManager = .default) throws {
+    /// Initial and replacement imports share the same device binding check.
+    /// Raw RPPairing exports have no device UDID, so read it from the local
+    /// handset over a verify-only session before the file can become active.
+    static func importPickedPairing(_ sourceURL: URL, fileManager: FileManager = .default) async throws {
         let data = try readPickedFile(sourceURL, fileManager: fileManager)
-        guard let object = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
-              let dictionary = object as? [String: Any],
-              let udid = dictionary["UDID"] as? String else {
+        guard let dictionary = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] else {
             throw StoreError.invalidPairingFile
         }
-        try importPairingData(data, expectedDeviceUDID: udid, fileManager: fileManager)
+        let udid: String
+        if let declaredUDID = dictionary["UDID"] {
+            guard let value = declaredUDID as? String else { throw StoreError.invalidPairingFile }
+            udid = value
+        } else {
+            guard let identifier = dictionary["identifier"] as? String,
+                  !identifier.isEmpty, identifier.utf8.count <= 256 else {
+                throw StoreError.invalidPairingFile
+            }
+            udid = try await verifyDeviceForPairing(data, fileManager: fileManager)
+        }
+        try importPairingData(
+            data, expectedDeviceUDID: udid, matchStoredBinding: true, fileManager: fileManager
+        )
     }
 
-    /// Settings › 裝置與簽名 › 重新匯入配對檔 (F9.a), for both the sideload IPA
-    /// and Mac-installed builds. The file must name the iPhone already bound
-    /// to the stored record; with no stored record it binds like R07.s. A Mac
-    /// renew later replaces this pairing through its own handoff.
-    static func reimportPairing(_ sourceURL: URL, fileManager: FileManager = .default) throws {
-        let data = try readPickedFile(sourceURL, fileManager: fileManager)
-        guard let object = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
-              let dictionary = object as? [String: Any],
-              let udid = dictionary["UDID"] as? String else {
-            throw StoreError.invalidPairingFile
+    private static func verifyDeviceForPairing(_ data: Data, fileManager: FileManager) async throws -> String {
+        #if canImport(idevice) && !targetEnvironment(simulator)
+        // The candidate is a protected, app-private temporary file. Repairs
+        // of the active store cannot touch it during permission or VPN checks.
+        let directory = fileManager.temporaryDirectory.appendingPathComponent("gofly-pairing-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? fileManager.removeItem(at: directory) }
+        try protectDirectory(at: directory, fileManager: fileManager)
+        let candidate = directory.appendingPathComponent(fileName)
+        try writeProtected(data, to: candidate, fileManager: fileManager)
+        try validateNativePairingFile(at: candidate)
+        do {
+            try await NetworkTunnelProbe().check()
+            return try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    continuation.resume(with: Result { try readPairingDeviceUDID(at: candidate) })
+                }
+            }
+        } catch {
+            throw PickerError.deviceVerificationFailed
         }
-        if let bound = expectedDeviceUDID, normalizeTarget(bound) != normalizeTarget(udid) {
-            throw StoreError.invalidPairingFile
-        }
-        try importPairingData(data, expectedDeviceUDID: udid, fileManager: fileManager)
+        #else
+        throw StoreError.nativeValidationUnavailable
+        #endif
     }
+
+    #if canImport(idevice) && !targetEnvironment(simulator)
+    private static func readPairingDeviceUDID(at file: URL) throws -> String {
+        try withNativePairingFile(at: file) { pairingFile in
+            var address = try localTunnelAddress()
+            var value: plist_t?
+            defer { plist_free(value) }
+            let error = withUnsafePointer(to: &address) {
+                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    gofly_pairing_device_udid($0, socklen_t(MemoryLayout<sockaddr_in>.stride), pairingFile, &value)
+                }
+            }
+            if let error {
+                idevice_error_free(error)
+                throw StoreError.nativeValidationFailed
+            }
+            var count: UInt64 = 0
+            guard let value, plist_get_node_type(value) == PLIST_STRING,
+                  let bytes = plist_get_string_ptr(value, &count), count > 0, count <= 256,
+                  let udid = String(bytes: UnsafeRawBufferPointer(start: bytes, count: Int(count)), encoding: .utf8) else {
+                throw StoreError.invalidTargetBinding
+            }
+            return try normalizedTargetOrThrow(udid)
+        }
+    }
+    #endif
 
     private static func readPickedFile(_ sourceURL: URL, fileManager: FileManager) throws -> Data {
         let accessing = sourceURL.startAccessingSecurityScopedResource()
@@ -177,11 +231,16 @@ enum PairingFileStore {
             throw StoreError.pairingFileTooLarge
         }
 
+        let data: Data
         do {
-            return try Data(contentsOf: sourceURL, options: [.mappedIfSafe])
+            let handle = try FileHandle(forReadingFrom: sourceURL)
+            defer { try? handle.close() }
+            data = try handle.read(upToCount: maximumPairingFileBytes + 1) ?? Data()
         } catch {
             throw StoreError.invalidPairingFile
         }
+        guard data.count <= maximumPairingFileBytes else { throw StoreError.pairingFileTooLarge }
+        return data
     }
 
     /// Existing source-compatible overload. A first import through this API is
@@ -200,6 +259,8 @@ enum PairingFileStore {
         expectedDeviceUDID: String? = nil,
         fileManager: FileManager = .default
     ) -> Bool {
+        storageLock.lock()
+        defer { storageLock.unlock() }
         do {
             let record = try readVerifiedRecord(fileManager: fileManager, validateNative: true)
             if let expectedDeviceUDID {
@@ -217,6 +278,8 @@ enum PairingFileStore {
     /// No Documents, shared-container, defaults, or keychain location is
     /// consulted or modified.
     static func remove(fileManager: FileManager = .default) throws {
+        storageLock.lock()
+        defer { storageLock.unlock() }
         guard fileManager.fileExists(atPath: directoryURL.path) else {
             return
         }
@@ -241,13 +304,20 @@ enum PairingFileStore {
     private static func importPairingData(
         _ data: Data,
         expectedDeviceUDID: String,
+        matchStoredBinding: Bool = false,
         fileManager: FileManager
     ) throws {
+        storageLock.lock()
+        defer { storageLock.unlock() }
         guard data.count <= maximumPairingFileBytes else {
             throw StoreError.pairingFileTooLarge
         }
 
         let normalizedTarget = try normalizedTargetOrThrow(expectedDeviceUDID)
+        if matchStoredBinding, fileManager.fileExists(atPath: envelopeURL.path) {
+            let record = try readEnvelopeRecord(fileManager: fileManager)
+            guard record.expectedDeviceUDID == normalizedTarget else { throw StoreError.invalidPairingFile }
+        }
         try validatePropertyListDictionary(data)
         let digest = try sha256(data)
 
@@ -675,6 +745,10 @@ enum PairingFileStore {
     }
 
     private static func validateNativePairingFile(at file: URL) throws {
+        try withNativePairingFile(at: file) { _ in }
+    }
+
+    private static func withNativePairingFile<Result>(at file: URL, _ use: (OpaquePointer) throws -> Result) throws -> Result {
         #if canImport(idevice)
         var pairingFile: OpaquePointer?
         let ffiError = file.path.withCString { path in
@@ -687,7 +761,8 @@ enum PairingFileStore {
         guard let pairingFile else {
             throw StoreError.nativeValidationFailed
         }
-        rp_pairing_file_free(pairingFile)
+        defer { rp_pairing_file_free(pairingFile) }
+        return try use(pairingFile)
         #else
         throw StoreError.nativeValidationUnavailable
         #endif

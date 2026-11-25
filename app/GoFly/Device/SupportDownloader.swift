@@ -114,28 +114,10 @@ struct SupportDownloader: Sendable {
         let box = DownloadTaskBox()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
-                let task = URLSession.shared.downloadTask(with: request) { location, response, error in
-                    box.invalidate()
-                    guard error == nil, let location,
-                          let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                        continuation.resume(throwing: SupportDownloadFailure.network)
-                        return
-                    }
-                    guard let data = try? Data(contentsOf: location, options: .mappedIfSafe) else {
-                        continuation.resume(throwing: SupportDownloadFailure.storage)
-                        return
-                    }
-                    guard !data.isEmpty, Int64(data.count) <= maximum else {
-                        continuation.resume(throwing: SupportDownloadFailure.invalid)
-                        return
-                    }
-                    continuation.resume(returning: data)
-                }
-                box.observe(task) { received, expected in
-                    if expected > maximum { task.cancel() }
-                    progress(received, expected)
-                }
-                task.resume()
+                let delegate = SupportDownloadDelegate(maximum: maximum, progress: progress, continuation: continuation)
+                // A nil queue gives this session a serial delegate queue.
+                let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+                box.start(session.downloadTask(with: request))
             }
         } onCancel: {
             box.cancel()
@@ -193,32 +175,88 @@ struct SupportDownloader: Sendable {
     }
 }
 
-/// Keeps the KVO observation of one download task alive and lets the async
-/// caller cancel it.
+/// Bridges cancellation including a cancellation that arrives before the
+/// continuation creates the underlying download task.
 private final class DownloadTaskBox: @unchecked Sendable {
     private let lock = NSLock()
     private var task: URLSessionDownloadTask?
-    private var observation: NSKeyValueObservation?
+    private var isCancelled = false
 
-    func observe(_ task: URLSessionDownloadTask, _ report: @escaping @Sendable (Int64, Int64) -> Void) {
-        lock.withLock {
+    func start(_ task: URLSessionDownloadTask) {
+        let cancelled = lock.withLock {
             self.task = task
-            observation = task.progress.observe(\.completedUnitCount) { [weak task] _, _ in
-                guard let task else { return }
-                report(task.countOfBytesReceived, task.countOfBytesExpectedToReceive)
-            }
+            return isCancelled
         }
-    }
-
-    func invalidate() {
-        lock.withLock {
-            observation?.invalidate()
-            observation = nil
-        }
+        if cancelled { task.cancel() }
+        else { task.resume() }
     }
 
     func cancel() {
-        lock.withLock { task }?.cancel()
+        let task = lock.withLock {
+            isCancelled = true
+            return self.task
+        }
+        task?.cancel()
+    }
+}
+
+/// Reads the temporary download before URLSession removes it. All result
+/// changes and byte counts arrive on this session's serial delegate queue.
+private final class SupportDownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let maximum: Int64
+    private let progress: @Sendable (Int64, Int64) -> Void
+    private let continuation: CheckedContinuation<Data, Error>
+    private var result: Result<Data, SupportDownloadFailure>?
+
+    init(maximum: Int64, progress: @escaping @Sendable (Int64, Int64) -> Void,
+         continuation: CheckedContinuation<Data, Error>) {
+        self.maximum = maximum
+        self.progress = progress
+        self.continuation = continuation
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        guard result == nil else { return }
+        guard totalBytesWritten <= maximum, totalBytesExpectedToWrite <= maximum else {
+            result = .failure(.invalid)
+            downloadTask.cancel()
+            return
+        }
+        progress(totalBytesWritten, totalBytesExpectedToWrite)
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didFinishDownloadingTo location: URL) {
+        guard result == nil else { return }
+        guard (downloadTask.response as? HTTPURLResponse)?.statusCode == 200 else {
+            result = .failure(.network)
+            return
+        }
+        guard let fileSize = (try? location.resourceValues(forKeys: [.fileSizeKey]))?.fileSize else {
+            result = .failure(.storage)
+            return
+        }
+        guard fileSize > 0, Int64(fileSize) <= maximum else {
+            result = .failure(.invalid)
+            return
+        }
+        guard let data = try? Data(contentsOf: location, options: .mappedIfSafe) else {
+            result = .failure(.storage)
+            return
+        }
+        result = !data.isEmpty && Int64(data.count) <= maximum ? .success(data) : .failure(.invalid)
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        session.finishTasksAndInvalidate()
+        if case .failure(let failure) = result {
+            continuation.resume(throwing: failure)
+        } else if error == nil, case .success(let data) = result {
+            continuation.resume(returning: data)
+        } else {
+            continuation.resume(throwing: SupportDownloadFailure.network)
+        }
     }
 }
 
@@ -334,11 +372,11 @@ final class GoFlySupportPreparation: ObservableObject {
         phase = .downloading(received: 0, total: nil)
         downloadFraction = 0
         let downloader = SupportDownloader(documents: documents)
-        let download = Task.detached(priority: .userInitiated) { () -> Result<Void, SupportDownloadFailure> in
+        let download = Task.detached(priority: .userInitiated) { [self] () -> Result<Void, SupportDownloadFailure> in
             do {
                 try await downloader.update(method: method, force: force) { received, total in
-                    Task { @MainActor in
-                        GoFlySupportPreparation.shared.reportProgress(received: received, total: total)
+                    DispatchQueue.main.async {
+                        self.reportProgress(received: received, total: total)
                     }
                 }
                 return .success(())
@@ -372,7 +410,8 @@ final class GoFlySupportPreparation: ObservableObject {
     }
 
     private func reportProgress(received: Int64, total: Int64?) {
-        guard case .downloading = phase else { return }
+        guard case .downloading(let previous, let previousTotal) = phase, received >= previous else { return }
+        let total = total ?? previousTotal
         phase = .downloading(received: received, total: total)
         if let total, total > 0 { downloadFraction = min(1, Double(received) / Double(total)) }
     }

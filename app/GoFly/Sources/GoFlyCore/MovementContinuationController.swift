@@ -4,9 +4,25 @@ import Foundation
 /// App lifecycle boundary for real user consent, accepted movement, and system runtime.
 @MainActor
 public final class MovementContinuationController: ObservableObject {
+    public nonisolated static let rejectionNoticeKey = "background.rejected"
+
     public var state: ContinuedProcessingState { runtime?.state ?? .idle }
-    @Published public private(set) var noticeKey: String?
+    @Published public private(set) var noticeKey: String? {
+        didSet {
+            if oldValue != noticeKey, backgroundRejectionDismissed { backgroundRejectionDismissed = false }
+        }
+    }
+    @Published private var backgroundRejectionDismissed = false
     @Published public private(set) var receipts: [ContinuedProcessingReceipt] = []
+
+    public var visibleNoticeKey: String? {
+        noticeKey == Self.rejectionNoticeKey && backgroundRejectionDismissed ? nil : noticeKey
+    }
+
+    public func dismissBackgroundRejection() {
+        guard visibleNoticeKey == Self.rejectionNoticeKey else { return }
+        backgroundRejectionDismissed = true
+    }
 
     private struct Epoch {
         let demand: MovementContinuationDemand
@@ -334,7 +350,7 @@ public final class MovementContinuationController: ObservableObject {
         guard let request = ContinuedProcessingRequest(movementID: epoch.demand.movementID,
             lease: epoch.demand.lease, kind: epoch.demand.kind, goal: goal,
             title: text.title, subtitle: text.subtitle) else {
-            pending = nil; noticeKey = "background.rejected"; return
+            pending = nil; noticeKey = Self.rejectionNoticeKey; return
         }
         pending = nil; candidate = Candidate(request: request, epoch: epoch)
         submissionID = request.requestID
@@ -550,15 +566,15 @@ public final class MovementContinuationController: ObservableObject {
     }
     private func rejectInvalidProgress() {
         pending = nil
-        if let current = candidate { pauseForRuntimeLoss(current, notice: "background.rejected") }
+        if let current = candidate { pauseForRuntimeLoss(current, notice: Self.rejectionNoticeKey) }
         retireCurrent(reason: .ownerPausedOrEnded)
-        noticeKey = "background.rejected"; synchronize()
+        noticeKey = Self.rejectionNoticeKey; synchronize()
     }
     private func failureNotice(_ failure: ContinuedProcessingFailure?) -> String {
         switch failure {
         case .registrationLimitReached: "background.registrationLimit"
         case .unsupportedSystem: "background.unsupported"
-        default: "background.rejected"
+        default: Self.rejectionNoticeKey
         }
     }
     private func synchronize() {

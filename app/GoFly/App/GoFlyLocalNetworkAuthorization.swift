@@ -14,7 +14,10 @@ final class GoFlyLocalNetworkAuthorization: ObservableObject, LocalNetworkAuthor
     static let shared = GoFlyLocalNetworkAuthorization()
 
     private static let defaultsKey = "gofly.localNetwork.authorization"
-    private nonisolated static let probeService = "_gofly-probe._tcp"
+    // LiveContainer's process allowlist includes this type. Match only this
+    // probe's unique service name so other HTTP advertisements cannot grant it.
+    private nonisolated static let probeService = "_http._tcp"
+    private nonisolated static let noAuthorization: Int32 = -65555  // kDNSServiceErr_NoAuth
     private nonisolated static let policyDenied: Int32 = -65570  // kDNSServiceErr_PolicyDenied
 
     @Published private(set) var authorization: LocalNetworkAuthorization
@@ -80,34 +83,49 @@ final class GoFlyLocalNetworkAuthorization: ObservableObject, LocalNetworkAuthor
         // `.ready` fires before the user answers the system prompt, so it proves
         // nothing. GoFly advertises a private service of its own and browses for
         // it: the browse only reports that result once Local Network is allowed.
+        let name = "GoFly-\(UUID().uuidString)"
+        guard let listener = try? NWListener(using: .tcp) else { return .unknown }
         let browser = NWBrowser(for: .bonjour(type: probeService, domain: nil), using: NWParameters())
-        let listener = try? NWListener(using: .tcp)
-        listener?.service = NWListener.Service(name: UUID().uuidString, type: probeService)
-        listener?.newConnectionHandler = { $0.cancel() }
+        listener.service = NWListener.Service(name: name, type: probeService)
+        listener.newConnectionHandler = { $0.cancel() }
         let queue = DispatchQueue(label: "com.neven.gofly.localnetwork", qos: .userInitiated)
         return await withCheckedContinuation { (continuation: CheckedContinuation<LocalNetworkAuthorization, Never>) in
             let resolver = BrowseResolver(browser: browser, listener: listener, continuation: continuation)
             let finish = resolver.finish
-            let deniedIfPolicy: @Sendable (NWError) -> Void = { error in
-                if case .dns(let code) = error, code == policyDenied { finish(.denied) }
+            let handleError: @Sendable (NWError, Bool) -> Void = { error, terminal in
+                if case .dns(let code) = error {
+                    if code == policyDenied {
+                        finish(.denied)
+                        return
+                    }
+                    if code == noAuthorization {
+                        finish(.unknown)
+                        return
+                    }
+                }
+                if terminal { finish(.unknown) }
             }
             browser.stateUpdateHandler = { state in
                 switch state {
-                case .waiting(let error): deniedIfPolicy(error)
-                case .failed: finish(.denied)
+                case .waiting(let error): handleError(error, false)
+                case .failed(let error): handleError(error, true)
                 default: break
                 }
             }
-            listener?.stateUpdateHandler = { state in
+            listener.stateUpdateHandler = { state in
                 switch state {
-                case .waiting(let error), .failed(let error): deniedIfPolicy(error)
+                case .waiting(let error): handleError(error, false)
+                case .failed(let error): handleError(error, true)
                 default: break
                 }
             }
             browser.browseResultsChangedHandler = { results, _ in
-                if !results.isEmpty { finish(.granted) }
+                if results.contains(where: {
+                    if case .service(let found, _, _, _) = $0.endpoint { return found == name }
+                    return false
+                }) { finish(.granted) }
             }
-            listener?.start(queue: queue)
+            listener.start(queue: queue)
             browser.start(queue: queue)
             // The prompt may stay up for a long time; give up only well after that.
             queue.asyncAfter(deadline: .now() + 120) { finish(.unknown) }
@@ -120,11 +138,11 @@ final class GoFlyLocalNetworkAuthorization: ObservableObject, LocalNetworkAuthor
 /// browser's one serial queue, so `finished` needs no lock.
 private final class BrowseResolver: @unchecked Sendable {
     private let browser: NWBrowser
-    private let listener: NWListener?
+    private let listener: NWListener
     private let continuation: CheckedContinuation<LocalNetworkAuthorization, Never>
     private var finished = false
 
-    init(browser: NWBrowser, listener: NWListener?,
+    init(browser: NWBrowser, listener: NWListener,
          continuation: CheckedContinuation<LocalNetworkAuthorization, Never>) {
         self.browser = browser
         self.listener = listener
@@ -135,7 +153,7 @@ private final class BrowseResolver: @unchecked Sendable {
         guard !finished else { return }
         finished = true
         browser.cancel()
-        listener?.cancel()
+        listener.cancel()
         continuation.resume(returning: result)
     }
 }

@@ -396,7 +396,9 @@
 "background.expired" = "Background mode ended. Open GoFly to check.";
 "background.routePaused" = "Route paused";
 "background.routePaused.message" = "Background task ended. Resume the route.";
-"background.rejected" = "Background mode declined. Open GoFly to check.";
+"background.rejected" = "Background mode declined";
+"background.rejected.message" = "If you use GoFly in LiveContainer, enable Fix Background Processing Tasks in GoFly’s LiveContainer settings.";
+"background.rejected.settingsFailed" = "Open iOS Settings for this app. In LiveContainer, hold GoFly and enable Fix Background Processing Tasks.";
 "background.registrationLimit" = "Background mode busy. Open GoFly to check.";
 "background.unsupported" = "Background mode not supported on this system.";
 "background.activity.finiteRoute" = "GoFly route";
@@ -486,6 +488,7 @@
 "setup.pairingImport.notImported" = "Not imported";
 "setup.pairingImport.action" = "Import";
 "setup.pairingImport.failed" = "Export this iPhone’s pairing file on your computer and try again.";
+"setup.pairingImport.deviceVerificationFailed" = "Use a Remote Pairing file for this iPhone. Allow Local Network access for GoFly, connect LocalDevVPN, then try again.";
 "setup.completed.title" = "Setup complete";
 "setup.completed.message" = "GoFly is ready.";
 "setup.blocked.title" = "Setup is required";
@@ -794,6 +797,8 @@
 "onboarding.localNetwork.title" = "Allow GoFly to use the local network";
 "onboarding.localNetwork.message" = "GoFly reaches this iPhone’s device service through LocalDevVPN, which needs Local Network access.";
 "onboarding.localNetwork.allow" = "Allow";
+"onboarding.localNetwork.checkFailed.title" = "Couldn’t check Local Network";
+"onboarding.localNetwork.checkFailed" = "Connect to Wi-Fi and tap Allow again. In LiveContainer, check Local Network access for LiveContainer in iOS Settings.";
 "onboarding.localNetwork.status.unknown" = "Not set";
 "onboarding.localNetwork.status.granted" = "Allowed";
 "onboarding.localNetwork.status.denied" = "Not allowed";

@@ -49,7 +49,7 @@ struct GoFlyMapToastStack: View {
             repairOwnsNotice: recovery.isSilentRepairInProgress || recovery.canRetryAutomaticRepair,
             isWiFiConnected: network.isWiFiConnected,
             localNetworkDenied: localNetwork.authorization == .denied,
-            continuationNoticeKey: continuation.noticeKey)
+            continuationNoticeKey: continuation.visibleNoticeKey)
     }
 
     private static let supportKey = DeviceServiceFailure.devicePreparationRequired.rawValue
@@ -271,6 +271,8 @@ struct GoFlyMapToastStack: View {
             GoFlyConnectionIssueBanner(issue: issue, identifier: "recovery.connectionBanner",
                                        titleIdentifier: "recovery.notice",
                                        onDismiss: { notices.dismiss(.recovery) })
+        case .backgroundRejected:
+            GoFlyBackgroundRejectionToast(onDismiss: continuation.dismissBackgroundRejection)
         case .resume(let resume):
             GoFlyStatusBanner(
                 tone: .warning,

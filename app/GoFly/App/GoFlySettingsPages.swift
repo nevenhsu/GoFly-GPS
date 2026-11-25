@@ -130,8 +130,8 @@ struct GoFlyLocationSettingsPage: View {
     private var locationStatus: String { goFlyString(status.locationStatusKey) }
 }
 
-/// F1 → Network: Wi-Fi is a read-only status row; Local Network opens GoFly's
-/// page in the Settings app, the only place iOS lets the answer be changed.
+/// F1 → Network: Wi-Fi is read-only. Local Network opens the system settings
+/// for the app that owns the permission.
 struct GoFlyNetworkSettingsPage: View {
     @StateObject private var status = GoFlySystemStatus()
     @ObservedObject private var network = GoFlyNetworkMonitor.shared
@@ -265,7 +265,9 @@ struct GoFlyBackgroundSettingsPage: View {
                 GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "settings.externalOpenFailed"), message: goFlyString("settings.externalOpenFailed"),
                                   identifier: "settings.background.externalOpenFailed")
             }
-            if let key = continuation.noticeKey {
+            if continuation.visibleNoticeKey == MovementContinuationController.rejectionNoticeKey {
+                GoFlyBackgroundRejectionToast(onDismiss: continuation.dismissBackgroundRejection)
+            } else if let key = continuation.visibleNoticeKey {
                 GoFlyStatusBanner(tone: .warning, title: goFlyString(key),
                                   message: goFlyString("background.systemDecidesRuntime"),
                                   identifier: "background.notice")

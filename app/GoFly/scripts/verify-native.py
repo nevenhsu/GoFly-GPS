@@ -16,7 +16,7 @@ def fail(message: str) -> None:
 patches = {
     "ffi/src/lib.rs": "gofly_location_reply_tests",
     "ffi/src/dvt/location_simulation.rs": "set_with_timeout",
-    "ffi/src/tunnel_provider.rs": "tunnel_create_rppairing_verify_only",
+    "ffi/src/tunnel_provider.rs": ("tunnel_create_rppairing_verify_only", "gofly_pairing_device_udid"),
     "idevice/src/services/dvt/message.rs": "gofly_void_reply",
     "idevice/src/services/dvt/location_simulation.rs": "set_with_timeout",
     "ffi/src/gofly_location_clear.rs": "gofly_coredevice_location_clear",
@@ -24,14 +24,15 @@ patches = {
 }
 for relative, marker in patches.items():
     path = source / relative
-    if not path.is_file() or marker not in path.read_text():
+    markers = (marker,) if isinstance(marker, str) else marker
+    if not path.is_file() or not all(name in path.read_text() for name in markers):
         fail(f"Native patch not applied: {relative}")
 
 header = (bridge / "include/idevice.h").read_text()
 declarations = set(re.findall(
     r"\b([a-z][a-z0-9_]+)\s*\(", re.sub(r"//[^\n]*", "", header)
 ))
-if len(declarations) != 31:
+if len(declarations) != 32 or "gofly_pairing_device_udid" not in declarations:
     fail(f"Swift shim declaration count changed: {len(declarations)}")
 
 project = (app / "GoFly.xcodeproj/project.pbxproj").read_text()
@@ -40,4 +41,4 @@ for excluded in ("JITEnableContext.swift", "IdeviceFFIBridge.swift",
     if excluded in project:
         fail("Forbidden prototype source in formal target: " + excluded)
 
-print("PASS: native patches applied and the 31-declaration Swift shim is unchanged.")
+print("PASS: native patches applied and the 32-declaration Swift shim is present.")

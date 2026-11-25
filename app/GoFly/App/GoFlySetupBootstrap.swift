@@ -658,7 +658,7 @@ struct GoFlyPairingImportView: View {
     var onImported: () -> Void = {}
     @State private var showingImporter = false
     @State private var isImporting = false
-    @State private var importFailed = false
+    @State private var importFailureMessage: String?
     @State private var hasPairing = PairingFileStore.isReady
     @Environment(\.dismiss) private var dismiss
 
@@ -688,8 +688,8 @@ struct GoFlyPairingImportView: View {
                            statusTone: hasPairing ? .success : .neutral,
                            topPadding: topPadding)
         .goFlyToastOverlay(topInset: 64) {
-            if importFailed {
-                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "setup.pairingImport.failed"), message: goFlyString("setup.pairingImport.failed"),
+            if let importFailureMessage {
+                GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: "setup.pairingImport.failed"), message: goFlyString(importFailureMessage),
                                   identifier: "setup.pairingImport.failed")
             }
         }
@@ -699,7 +699,7 @@ struct GoFlyPairingImportView: View {
                     onImported()
                     return
                 }
-                importFailed = false
+                importFailureMessage = nil
                 showingImporter = true
             } label: {
                 HStack(spacing: 8) {
@@ -728,22 +728,24 @@ struct GoFlyPairingImportView: View {
     private func importPairing(from url: URL) {
         isImporting = true
         Task {
-            // Native validation reads the file through the FFI, off the main actor.
-            let context = context
-            let imported = await Task.detached(priority: .userInitiated) {
-                switch context {
-                case .onboarding: (try? PairingFileStore.importSideloadedPairing(url)) != nil
-                case .settings, .macSetup: (try? PairingFileStore.reimportPairing(url)) != nil
+            let failureMessage = await Task.detached(priority: .userInitiated) { () -> String? in
+                do {
+                    try await PairingFileStore.importPickedPairing(url)
+                    return nil
+                } catch PairingFileStore.PickerError.deviceVerificationFailed {
+                    return "setup.pairingImport.deviceVerificationFailed"
+                } catch {
+                    return "setup.pairingImport.failed"
                 }
             }.value
             isImporting = false
-            if imported {
-                hasPairing = true
-                onImported()
-                if context == .settings { dismiss() }
-            } else {
-                importFailed = true
+            if let failureMessage {
+                importFailureMessage = failureMessage
+                return
             }
+            hasPairing = true
+            onImported()
+            if context == .settings { dismiss() }
         }
     }
 }

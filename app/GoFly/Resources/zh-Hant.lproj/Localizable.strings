@@ -396,7 +396,9 @@
 "background.expired" = "背景執行已結束，請開啟 GoFly 查看。";
 "background.routePaused" = "路線已暫停";
 "background.routePaused.message" = "背景工作已停止，點「繼續」接續路線。";
-"background.rejected" = "系統拒絕背景執行，請開啟 GoFly 查看。";
+"background.rejected" = "背景執行遭拒";
+"background.rejected.message" = "若在 LiveContainer 使用，請到 GoFly 個別設定開啟「修復后台處理任務」。";
+"background.rejected.settingsFailed" = "請手動開啟 iOS 的 App 設定。在 LiveContainer 內，長按 GoFly 並開啟「修復后台處理任務」。";
 "background.registrationLimit" = "背景執行暫時不可用，請開啟 GoFly 查看。";
 "background.unsupported" = "此系統不支援背景執行。";
 "background.activity.finiteRoute" = "GoFly 路線";
@@ -486,6 +488,7 @@
 "setup.pairingImport.notImported" = "尚未匯入";
 "setup.pairingImport.action" = "匯入配對檔";
 "setup.pairingImport.failed" = "請在電腦匯出這支 iPhone 的配對檔後再試。";
+"setup.pairingImport.deviceVerificationFailed" = "請使用這支 iPhone 的遠端配對檔。允許 GoFly 存取區域網路並連上 LocalDevVPN 後，再試一次。";
 "setup.completed.title" = "設定完成";
 "setup.completed.message" = "GoFly 已準備就緒。";
 "setup.blocked.title" = "需要完成設定";
@@ -794,6 +797,8 @@
 "onboarding.localNetwork.title" = "允許 GoFly 使用區域網路";
 "onboarding.localNetwork.message" = "GoFly 需透過 LocalDevVPN 連到本機的裝置服務，這需要「區域網路」權限。";
 "onboarding.localNetwork.allow" = "允許區域網路";
+"onboarding.localNetwork.checkFailed.title" = "無法確認區域網路權限";
+"onboarding.localNetwork.checkFailed" = "請連上 Wi-Fi，再點一次允許。若在 LiveContainer 內使用 GoFly，請到 iOS 設定確認 LiveContainer 的區域網路權限。";
 "onboarding.localNetwork.status.unknown" = "尚未設定";
 "onboarding.localNetwork.status.granted" = "已允許";
 "onboarding.localNetwork.status.denied" = "未允許";

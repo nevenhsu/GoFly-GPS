@@ -16,7 +16,8 @@ enum GoFlyExternalLinks {
         }
     }
 
-    /// GoFly's own page in the Settings app, where Local Network is switched.
+    /// Opens the Settings page for the app identity iOS attributes this
+    /// request to. A hosted launch uses the container's system permissions.
     static func openAppSettings(completion: @escaping @MainActor (Bool) -> Void) {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return completion(false) }
         UIApplication.shared.open(url, options: [:]) { accepted in
