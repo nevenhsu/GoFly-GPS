@@ -169,17 +169,6 @@ In the Shortcuts app, create a new shortcut, tap **Search Actions**, search for 
 In the Shortcuts app, open **Automation**, create a new automation and paste this prompt:
 
 ```text
-建立一個名為「LiveContainer 自動重簽」的自動化捷徑。
-1. 每天晚上10點
-2. 取得目前連線的 Wi‑Fi 網路名稱（SSID）。如果沒有取得名稱，就結束捷徑。
-3. 使用 LocalDevVPN 的連線動作開啟 VPN，然後等待 5 秒。
-4. 執行「Refresh All Apps」動作，
-   讓 LiveContainer 內建的 SideStore 重新簽署並刷新 App。
-```
-
-English version of the same prompt:
-
-```text
 Create an automation shortcut named "LiveContainer Auto Re-sign".
 1. Every day at 10:00 PM.
 2. Get the name (SSID) of the connected Wi‑Fi network. If no name is returned, stop the shortcut.
