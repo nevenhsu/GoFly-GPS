@@ -160,7 +160,9 @@ GoFly 维护者在内置 SideStore 登录时先遇到 HTTP 403，接着遇到 HT
 
 ### 1. 先按照官方说明手动创建 Refresh All Apps 快捷指令
 
-在“快捷指令”App 创建新快捷指令，点 **搜索操作**，搜索 **LiveContainer**，添加 **Refresh All Apps**。如果找不到这个操作，先从 LiveContainer 内打开一次 SideStore 再搜索。[LiveContainer 自动刷新说明](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+1. 在“快捷指令”App 创建新快捷指令。
+2. 点 **搜索操作**，搜索 **LiveContainer**。
+3. 添加 **Refresh All Apps**。如果找不到这个操作，先从 LiveContainer 内打开一次 SideStore 再搜索。[LiveContainer 自动刷新说明](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
 
 ### 2. 用 prompt 创建自动化
 
@@ -178,6 +180,25 @@ GoFly 维护者在内置 SideStore 登录时先遇到 HTTP 403，接着遇到 HT
 Refresh All Apps 本身就会显示通知，自动化不需要再添加通知。
 
 创建好之后先手动运行一次，iOS 会弹出确认，询问是否允许这个自动化快捷指令运行其他快捷指令（Refresh All Apps），请点允许，否则定时运行时无法调用。之后再在 iPhone 锁定时测试定时运行。LiveContainer 有反馈指出，如果没有打开过内置 SideStore，刷新操作可能失败。[LiveContainer issue #1572](https://github.com/LiveContainer/LiveContainer/issues/1572)
+
+## 把 LiveContainer 内的 App 添加到主屏幕
+
+### 1. 准备
+
+- 在 LiveContainer 长按要添加的 App（例如 GoFly GPS），点 **Save App Icon**（保存 App 图标）存到 iCloud 云盘。
+- 再长按同一个 App，点 **Copy Launch URL**（拷贝启动网址）。
+
+### 2. 创建 iOS 快捷指令
+
+- 打开 iPhone 自带的“快捷指令”App，点右上角“+”新建快捷指令。
+- 在下方搜索栏查找并添加 **Launch App**（LiveContainer 专属操作，安装 LiveContainer 时需勾选启用 `LaunchAppExtension` 扩展）。
+- 点操作中的字段，粘贴刚才拷贝的启动网址。[LiveContainer 说明](https://livecontainer.github.io/zh-CN/docs/guides/add-to-home-screen)
+- 点上方的快捷指令名称，改成 App 名称（例如 GoFly GPS）。
+
+### 3. 添加到主屏幕并设置图标
+
+- 点快捷指令下方的分享按钮，选择“添加到主屏幕”。
+- 点默认图标并选择“选取文件”，挑选刚才保存的 App 图标，改成对应的名称后点“添加”即可完成。
 
 ## 让 AI 帮你安装
 

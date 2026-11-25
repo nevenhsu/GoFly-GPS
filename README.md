@@ -162,7 +162,9 @@ Fetch and save first, then check **Client Info** again after every fetch because
 
 ### 1. Create the Refresh All Apps shortcut manually (official steps)
 
-In the Shortcuts app, create a new shortcut, tap **Search Actions**, search for **LiveContainer**, and add **Refresh All Apps**. If the action is missing, open SideStore from inside LiveContainer once and search again. [LiveContainer auto-refresh guide](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+1. In the Shortcuts app, create a new shortcut.
+2. Tap **Search Actions** and search for **LiveContainer**.
+3. Add **Refresh All Apps**. If the action is missing, open SideStore from inside LiveContainer once and search again. [LiveContainer auto-refresh guide](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
 
 ### 2. Create the automation with a prompt
 
@@ -180,6 +182,25 @@ Create an automation shortcut named "LiveContainer Auto Re-sign".
 The Refresh All Apps action already shows its own notification, so the automation does not add one.
 
 After creating the automation, run it manually once. iOS asks you to confirm that the automation may run another shortcut (Refresh All Apps); allow it, or the scheduled run cannot call it. Then try a scheduled run with the iPhone locked. LiveContainer has a reported issue where the refresh action can fail if the built-in SideStore has not been opened. [LiveContainer issue #1572](https://github.com/LiveContainer/LiveContainer/issues/1572)
+
+## Add a LiveContainer app to the Home Screen
+
+### 1. Prepare
+
+- In LiveContainer, long-press the app (for example GoFly GPS), choose **Save App Icon** and save it to iCloud Drive.
+- Long-press the app again and choose **Copy Launch URL**.
+
+### 2. Create the iOS shortcut
+
+- Open the Shortcuts app and tap **+** in the top-right corner to create a shortcut.
+- Search for and add **Launch App**. This action is provided by LiveContainer and requires the `LaunchAppExtension` extension to be enabled when you install LiveContainer.
+- Tap the field in the action and paste the launch URL you copied. [LiveContainer guide](https://livecontainer.github.io/docs/guides/add-to-home-screen)
+- Tap the shortcut name at the top and rename it to the app name (for example GoFly GPS).
+
+### 3. Add it to the Home Screen and set the icon
+
+- Tap the share button at the bottom of the shortcut and choose **Add to Home Screen**.
+- Tap the default icon, choose **Choose File**, pick the app icon you saved, rename it to match the app, and tap **Add**.
 
 ## Let an AI install it for you
 

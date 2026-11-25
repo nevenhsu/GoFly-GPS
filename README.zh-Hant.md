@@ -162,7 +162,9 @@ GoFly 維護者在內建 SideStore 登入時先遇到 HTTP 403，接著遇到 HT
 
 ### 1. 先按照官方說明手動建立 Refresh All Apps 捷徑
 
-在「捷徑」App 建立新捷徑，點 **搜尋動作**，搜尋 **LiveContainer**，加入 **Refresh All Apps**。若找不到這個動作，先從 LiveContainer 內開啟一次 SideStore 再搜尋。[LiveContainer 自動刷新說明](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+1. 在「捷徑」App 建立新捷徑。
+2. 點 **搜尋動作**，搜尋 **LiveContainer**。
+3. 加入 **Refresh All Apps**。若找不到這個動作，先從 LiveContainer 內開啟一次 SideStore 再搜尋。[LiveContainer 自動刷新說明](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
 
 ### 2. 用 prompt 建立自動化
 
@@ -180,6 +182,25 @@ GoFly 維護者在內建 SideStore 登入時先遇到 HTTP 403，接著遇到 HT
 Refresh All Apps 本身就會顯示通知，自動化不需要再加通知。
 
 建立好之後先手動執行一次，iOS 會跳出確認，詢問是否允許這個自動化捷徑執行其他捷徑（Refresh All Apps），請點允許，否則排程時無法呼叫。之後再在 iPhone 鎖定時測試排程執行。LiveContainer 有回報指出，若未開啟過內建 SideStore，刷新動作可能失敗。[LiveContainer issue #1572](https://github.com/LiveContainer/LiveContainer/issues/1572)
+
+## 把 LiveContainer 內的 App 加到主畫面
+
+### 1. 準備
+
+- 在 LiveContainer 長按要加入的 App（例如 GoFly GPS），點 **Save App Icon**（儲存 App 圖示）存到 iCloud 雲碟。
+- 再長按同一個 App，點 **Copy Launch URL**（複製啟動網址）。
+
+### 2. 建立 iOS 捷徑
+
+- 開啟 iPhone 內建的「捷徑」App，點右上角「+」新增捷徑。
+- 在下方搜尋列尋找並加入 **Launch App**（LiveContainer 專屬動作，安裝 LiveContainer 時需勾選啟用 `LaunchAppExtension` 擴充功能）。
+- 點動作中的欄位，貼上剛剛複製的啟動網址。[LiveContainer 說明](https://livecontainer.github.io/zh-CN/docs/guides/add-to-home-screen)
+- 點上方的捷徑名稱，改成 App 名稱（例如 GoFly GPS）。
+
+### 3. 加入主畫面並設定圖示
+
+- 點捷徑下方的分享按鈕，選擇「加入主畫面」。
+- 點預設圖示並選擇「選擇檔案」，挑選剛才存好的 App 圖示，改成對應的名稱後按「加入」即可完成。
 
 ## 讓 AI 幫你安裝
 
