@@ -102,7 +102,8 @@ private struct FigmaEditor {
         var editors: [Self] = []
         var hasPrototype = false
         var homeIsSelected = false
-        let complete = walk(window, maxDepth: 4) { element, role in
+        // Electron's native window can wrap each renderer in several unnamed AX groups.
+        let complete = walk(window, maxDepth: 16) { element, role in
             guard role == "AXWebArea" else { return true }
             let value = element.value(kAXURLAttribute)
             guard let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)) else { return false }
@@ -127,7 +128,7 @@ private struct FigmaEditor {
     // A partial scan must not be mistaken for an editor without a plugin.
     func panel() -> Panel? {
         var panel = Panel.none
-        let complete = Self.walk(webArea, maxDepth: 6) { element, role in
+        let complete = Self.walk(webArea, maxDepth: 10) { element, role in
             if panel == .bridge { return false }
             if role == kAXGroupRole || role == kAXHeadingRole {
                 let names = [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute]
@@ -157,7 +158,7 @@ private struct FigmaEditor {
 
     private static func selectedHome(in shell: AXUIElement) -> Bool {
         var selected = false
-        _ = walk(shell, maxDepth: 6) { element, role in
+        _ = walk(shell, maxDepth: 10) { element, role in
             if selected { return false }
             if [kAXRadioButtonRole, "AXTab"].contains(role) {
                 let name = element.title ?? element.value(kAXDescriptionAttribute) as? String
