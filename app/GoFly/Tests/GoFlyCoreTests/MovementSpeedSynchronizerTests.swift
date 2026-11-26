@@ -5,8 +5,8 @@ import Testing
 @Suite @MainActor
 struct MovementSpeedSynchronizerTests {
     @Test func presetsAndDefaultMatchTheSharedSpeedSpec() {
-        #expect(RouteSpeed.presets.map(\.kilometersPerHour) == [5, 25, 50, 100])
-        #expect(RouteSpeed.standard.kilometersPerHour == 25)
+        #expect(RouteSpeed.presets.map(\.kilometersPerHour) == [5, 20, 50, 100])
+        #expect(RouteSpeed.standard.kilometersPerHour == 20)
         #expect(RouteSpeed(kilometersPerHour: 0) == nil)
         #expect(RouteSpeed(kilometersPerHour: 121) == nil)
     }

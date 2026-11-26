@@ -107,7 +107,7 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
 2. 在 **LiveContainer → Apps → ＋** 選取已校驗的 GoFly IPA，完成後從 LiveContainer 的 Apps 清單開啟 GoFly。
 3. 先連上 **LocalDevVPN**，再依下方步驟匯入配對檔及完成引導。如果區域網路步驟跳到設定，請到 **設定 → 隱私權與安全性 → 區域網路 → LiveContainer** 開啟權限，回到 GoFly，必要時再點一次 **Allow**。若配對檔的選檔器打不開，在 LiveContainer 內的 GoFly 個別設定啟用 **Fix File Picker**。[LiveContainer 安裝與相容性說明](https://github.com/LiveContainer/LiveContainer#features--guides)
 
-**背景路線與漫步。** 在 LiveContainer 的 **Apps** 長按 GoFly，開啟 **Settings** 並啟用 **Fix Background Processing Tasks**（修復后台處理任務）。重開 GoFly，再啟動一次路線或漫步。[LiveContainer 相容性修正](https://github.com/LiveContainer/LiveContainer/issues/1710)
+**LiveContainer 必要的 App 設定。** 在 LiveContainer 的 **Apps** 長按 GoFly，開啟 **Settings**，同時啟用 **Fix Background Processing Tasks**（修復背景處理任務，用於背景路線與漫步）與 **Fix File Picker**（修復檔案選取器，用於匯入配對檔）。重開 GoFly，再啟動一次路線或漫步。[LiveContainer 相容性修正](https://github.com/LiveContainer/LiveContainer/issues/1710)
 
 本版 IPA 包含 LiveContainer 區域網路修正，仍待本版完整實機驗收。
 

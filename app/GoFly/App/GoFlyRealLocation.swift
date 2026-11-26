@@ -170,9 +170,11 @@ final class GoFlyRealLocation: NSObject, ObservableObject, CLLocationManagerDele
                 "acc_m": .number(location.horizontalAccuracy, digits: 0),
                 "streaming": .flag(self.streamDeadline != nil)
             ])
-            self.publish(location)
+            guard self.publish(location) else { return }
             self.refresher.fixReceived(simulated: simulated)
-            if !simulated { self.stopStreaming(reason: "realFix") }
+            if !simulated, self.currentObservation != nil {
+                self.stopStreaming(reason: "realFix")
+            }
             if simulated, self.streamDeadline != nil { self.requestTemporaryFullAccuracyIfReduced() }
         }
     }
@@ -193,8 +195,21 @@ final class GoFlyRealLocation: NSObject, ObservableObject, CLLocationManagerDele
         }
     }
 
-    private func publish(_ location: CLLocation) {
+    @discardableResult
+    private func publish(_ location: CLLocation) -> Bool {
+        if location.sourceInformation?.isSimulatedBySoftware == true,
+           let currentObservation, location.timestamp < currentObservation.observedAt {
+            // A delayed cached simulation cannot invalidate a newer real fix.
+            Self.record("location.ignoredOlderSimulation", ["age_s": .number(-location.timestamp.timeIntervalSinceNow, digits: 1)])
+            return false
+        }
         observation = Self.observation(from: location)
+        return true
+    }
+
+    private var currentObservation: RealLocationObservation? {
+        guard let observation, (0...15).contains(Date().timeIntervalSince(observation.observedAt)) else { return nil }
+        return observation
     }
 
     private static func observation(from location: CLLocation) -> RealLocationObservation? {

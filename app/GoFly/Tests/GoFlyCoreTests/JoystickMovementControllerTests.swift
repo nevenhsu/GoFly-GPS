@@ -191,7 +191,7 @@ struct JoystickMovementControllerTests {
         clock.advance(by: .milliseconds(1)); await wait { commands.stepWaiting }
         #expect(commands.steps.count == 2 && commands.steps.last?.sequence == 1)
         #expect(commands.steps.last?.displacement.bearingDegrees == 180)
-        #expect(abs((commands.steps.last?.displacement.distanceMeters ?? 0) - (25.0 / 3.6 * 0.5 * 0.5)) < 1e-14)
+        #expect(abs((commands.steps.last?.displacement.distanceMeters ?? 0) - (20.0 / 3.6 * 0.5 * 0.5)) < 1e-14)
         commands.finishStep(.acknowledged(GeoCoordinate(latitude: 25, longitude: 121)!))
         await wait { clock.sleepingCount == 1 }
         clock.advance(by: .milliseconds(500)); await wait { commands.stepWaiting }

@@ -15,6 +15,10 @@ struct GoFlyJoystickPanel: View {
     var onNeedsOrigin: () -> Void = { }
     var canStartWander: Bool?
     var isStartingWander = false
+    /// Presents the running wander (E2) even while it is stopped underneath, e.g. relocating (E6.b).
+    var presentsWander: Bool? = nil
+    /// Background wander work runs; changing the place waits for it.
+    var isWanderBusy = false
     var onStopWander: () -> Void = { }
     var onSettings: () -> Void = { }
     /// Figma E1/E2 km chip; nil hides the chip (component gallery).
@@ -35,6 +39,8 @@ struct GoFlyJoystickPanel: View {
                 } else {
                     GoFlyManualJoystickPad(controller: controller, cameraHeadingDegrees: cameraHeadingDegrees,
                                            onNeedsOrigin: onNeedsOrigin)
+                        // Relocating (E6.b) keeps the pad on screen; a drag would start manual movement.
+                        .allowsHitTesting(!isWanderBusy)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 24)
                     wanderActions
@@ -73,7 +79,7 @@ struct GoFlyJoystickPanel: View {
 
     private var wanderRow: some View {
         HStack(spacing: 12) {
-            if controller.wanderEnabled {
+            if isWandering {
                 GoFlyIcon(.shuffle)
                     .goFlyIconSize(size: 18)
                     .foregroundStyle(GoFlyTextColor.primary)
@@ -113,21 +119,37 @@ struct GoFlyJoystickPanel: View {
         .frame(height: 44)
     }
 
+    private var isWandering: Bool { presentsWander ?? controller.wanderEnabled }
+
     private var rowTitle: String {
-        if controller.wanderEnabled { return goFlyString("joystick.wanderActive") }
+        if isWandering { return goFlyString("joystick.wanderActive") }
         return goFlyString("mode.joystick")
     }
 
     @ViewBuilder
     private var wanderActions: some View {
-        if controller.wanderEnabled && controller.phase != .preparing {
+        if isWandering && (isWanderBusy || controller.phase != .preparing) {
             HStack(spacing: 12) {
                 // Figma E2: Neutral Large 120 pt, Primary Large fills the rest.
                 GoFlyButton(title: goFlyString("joystick.stopWander"), variant: .neutral, action: onStopWander)
                     .frame(width: 120)
                     .accessibilityIdentifier("joystick.stopWander")
-                GoFlyButton(title: goFlyString("joystick.changePlace"), icon: .shuffle, action: onRandomDestination)
-                    .accessibilityIdentifier("joystick.randomDestination")
+                // Relocating (E6.b): the primary button spins and stays disabled until the wander restarts.
+                Button(action: onRandomDestination) {
+                    HStack(spacing: 8) {
+                        if isWanderBusy {
+                            ProgressView().accessibilityHidden(true)
+                        } else {
+                            GoFlyIcon(.shuffle, size: 18).accessibilityHidden(true)
+                        }
+                        Text(goFlyString("joystick.changePlace"))
+                    }
+                    .lineLimit(1)
+                }
+                .buttonStyle(GoFlyButtonStyle(variant: .primary))
+                .disabled(isWanderBusy)
+                .accessibilityValue(isWanderBusy ? goFlyString("wander.planning") : "")
+                .accessibilityIdentifier("joystick.randomDestination")
             }
         } else {
             let starting = isStartingWander || controller.wanderEnabled

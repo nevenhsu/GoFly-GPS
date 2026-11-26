@@ -55,13 +55,14 @@
    所有原生命令仍共用同一 FIFO，遲到 ACK 不得復活舊 lease。
 7. `MovementTaskAuthority` 以 lease／snapshot 同步比較健康與執行狀態；背景 dispatch 需有效 grant。
    真實定位不需高精度：`GoFlyRealLocation` 以百公尺精度（`kCLLocationAccuracyHundredMeters`）單次 `requestLocation()`
-   取得，不持續 `startUpdatingLocation()`。`RealLocationRefresher` 只在前景每 8 秒補取一次，使搖桿與路線起點所需的
+   取得，等待清除後或 Recenter 所需的真實定位時才使用最多 30 秒的 `startUpdatingLocation()`。`RealLocationRefresher` 只在前景每 8 秒補取一次，使搖桿與路線起點所需的
    「15 秒內真實定位」維持有效；收到軟體模擬的定位（裝置正被模擬）即停止補取，直到 Recenter、建立搖桿起點、
    GPS clear 確認或回到前景時重新嘗試（2026-10-26）。`observeRealLocation` 只在路線或搖桿起點的可用性改變
    （含過期定位被新定位取代）或該筆定位讓已派送的瞬移進入 sending 時，才送 `availabilityChanged`；
    只是更新已可用起點的定位不喚醒 route／joystick 的觀察者（2026-10-26）。
    沒有已確認的模擬位置時，Recenter 先把鏡頭移到地圖上現有的位置箭頭（`positionMarker`），再等候真實定位；
    等候期限（`realFixWaitSeconds`）內真實定位抵達後仍會再置中一次。Stop 清除模擬後 iOS 可能持續把定位標為軟體模擬，不能只靠等待真實定位（2026-11-23）。
+   連續定位只在收到有效且在 15 秒內的真實定位時提前結束。已接收真實定位後，時間戳更舊的模擬回報會丟棄並記錄（2026-11-26，實機待驗）。
    定位權限為「大概位置」時，iOS 在模擬清除後仍可能數分鐘回報標為模擬的舊位置（實機 iOS 27.2.1 驗證：開啟精確位置即恢復）。
    因此在 Stop／Recenter 後等候真實定位期間收到模擬定位時，每次啟動最多一次以 purpose key
    `GoFlyRealLocationAfterSimulation` 請求暫時精確位置；同意後立即重新補取（2026-11-23）。
@@ -135,7 +136,7 @@
 
 ## UI 呈現邊界
 
-- 地圖 view 的最近搜尋僅記憶體保存最多 8 筆，隨 view 生命週期結束而消失；不改 SessionRecovery 或偏好格式。
+- 最近搜尋由 GoFly runtime 共用，透過 `AtomicFile` 儲存在 Application Support 的 `RecentPlaces/places.json`，最多 8 筆。選取及清空當下寫入，重開時讀回。此檔案獨立於 SessionRecovery 與偏好。
 - 全螢幕搜尋的路線結果點選只回填原節點；點圖最小避讓及跟隨方向只操作 camera，不建立送點命令。
 - 「目前的移動」（`ActiveMovement`，GoFlyCore）是唯一判斷「裝置上正在跑或停在哪一件移動、為何暫停、能否繼續」的地方：依序看路線、搖桿／漫步、瞬移維持，與目前分頁無關。狀態 pill、恢復提示、`isResumeState` 與背景阻擋診斷都讀它；分頁只由 view 用 `kind` 再過濾。瞬移維持暫停時記錄原因（連線或背景），不再一律視為使用者暫停（2026-11-01）。
 - 前景生命週期（`SceneLifecycle`，GoFlyCore）是前景狀態進入 Core 的唯一入口：地圖畫面只回報 scenePhase，真實定位、繼續執行與 keepalive 在活動狀態改變時各收到一次（重複回報不重跑）。檢查點擷取、連線前景檢查與 1 秒 UI 穩定計時仍在 view；繼續執行對 recovery／瞬移維持的轉發依其 lease 判斷，留在 `MovementContinuationController`（2026-11-01）。

@@ -88,6 +88,10 @@ final class GoFlySetupBootstrap: ObservableObject {
         // iloader pairing file instead (R07.s).
         let requiresPairingImport = !requiresMacSetup
         #endif
+        // First-run onboarding imports the pairing file after its VPN page (R07.s),
+        // once Local Network and LocalDevVPN can verify a UDID-less Remote Pairing
+        // file. Only an already onboarded install without pairing stops here.
+        let onboarded = UserDefaults.standard.bool(forKey: "gofly.onboarding.complete")
 
         startupTask = Task { [weak self] in
             let result = await Task.detached(priority: .utility) {
@@ -105,7 +109,7 @@ final class GoFlySetupBootstrap: ObservableObject {
                     if requiresMacSetup, case .ordinaryStartup = setup {
                         return GoFlyBootstrapOutcome.awaitingMacInstall
                     }
-                    if requiresPairingImport, case .ordinaryStartup = setup, !PairingFileStore.isReady {
+                    if requiresPairingImport, onboarded, case .ordinaryStartup = setup, !PairingFileStore.isReady {
                         return GoFlyBootstrapOutcome.awaitingPairingImport
                     }
                     switch setup {
@@ -694,6 +698,9 @@ struct GoFlyPairingImportView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 8) {
+            // A Mac-installed build only continues; the others open the file picker.
+            if context != .macSetup { GoFlyLiveContainerPickerHint() }
             Button {
                 if context == .macSetup {
                     onImported()
@@ -710,6 +717,7 @@ struct GoFlyPairingImportView: View {
             .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .disabled(isImporting)
             .accessibilityIdentifier("setup.pairingImport.action")
+            }
             .padding(.horizontal, 16)
             .padding(.top, 16)
             .goFlyBottomActionPadding()

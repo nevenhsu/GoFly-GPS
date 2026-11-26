@@ -10,10 +10,10 @@ struct JoystickModelTests {
         let normal = try #require(full.displacement(speed: .standard))
         let fastest = try #require(full.displacement(speed: RouteSpeed(kilometersPerHour: 120)!))
         #expect(abs(slow.distanceMeters - (1.0 / 3.6 * 0.5)) < 1e-15)
-        #expect(abs(normal.distanceMeters - (25.0 / 3.6 * 0.5)) < 1e-15)
+        #expect(abs(normal.distanceMeters - (20.0 / 3.6 * 0.5)) < 1e-15)
         #expect(abs(fastest.distanceMeters - (120.0 / 3.6 * 0.5)) < 1e-12, "no step cap")
         let pathStep = try #require(full.displacement(speed: .standard, seconds: MovementCadence.pathSeconds))
-        #expect(abs(pathStep.distanceMeters - 25.0 / 3.6) < 1e-12)
+        #expect(abs(pathStep.distanceMeters - 20.0 / 3.6) < 1e-12)
         #expect(JoystickInput(bearingDegrees: 360, strength: -1)?.displacement(speed: .standard) == nil)
     }
     @Test func screenVectorsProduceEightWorldDirectionsAndRotateWithTheCamera() throws {

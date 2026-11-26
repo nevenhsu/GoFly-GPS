@@ -2,16 +2,16 @@ import XCTest
 
 /// R1 shared speed preference, driven through the joystick chip and D7 sheet.
 final class GoFlySpeedUITests: GoFlyRouteModeTestCase {
-    func testSpeedDefaultsToTwentyFiveAndPersistsAcrossRelaunch() throws {
+    func testSpeedDefaultsToTwentyAndPersistsAcrossRelaunch() throws {
         let store = UUID().uuidString
         var app = launch(preferencesStore: store)
         app.selectGoFlyMode("joystick")
         var chip = element(app, "joystick.speed")
-        XCTAssertTrue(chip.label.contains("25"), "first install shows 25, got \(chip.label)")
+        XCTAssertTrue(chip.label.contains("20"), "first install shows 20, got \(chip.label)")
         chip.tap()
-        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "route.speed.value").firstMatch.label, "25")
-        for preset in [5, 25, 50, 100] { XCTAssertTrue(app.buttons["route.speed.preset.\(preset)"].exists) }
-        XCTAssertFalse(app.buttons["route.speed.preset.20"].exists)
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "route.speed.value").firstMatch.label, "20")
+        for preset in [5, 20, 50, 100] { XCTAssertTrue(app.buttons["route.speed.preset.\(preset)"].exists) }
+        XCTAssertFalse(app.buttons["route.speed.preset.25"].exists)
         evidence(app, task: "R1", name: "speed-sheet-light")
         app.buttons["route.speed.preset.50"].tap()
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "route.speed.value").firstMatch.label, "50")
@@ -30,7 +30,7 @@ final class GoFlySpeedUITests: GoFlyRouteModeTestCase {
         let app = launch(appearance: "dark")
         app.selectGoFlyMode("joystick")
         let chip = element(app, "joystick.speed")
-        XCTAssertTrue(chip.label.contains("25"), "fresh store must show 25, got \(chip.label)")
+        XCTAssertTrue(chip.label.contains("20"), "fresh store must show 20, got \(chip.label)")
         chip.tap()
         _ = element(app, "route.speed.confirm")
         Thread.sleep(forTimeInterval: 0.8)

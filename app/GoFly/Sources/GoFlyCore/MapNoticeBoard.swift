@@ -172,6 +172,15 @@ public enum MapNoticeBoard {
             }
         }
         if let continuation = continuationNotice(input, teleportFailureOwns: teleportFailureOwns) {
+            if input.mode == .joystick, input.activeMovement?.kind == .wander, case .resume = continuation,
+               let error = result.first(where: { notice in
+                   switch notice {
+                   case .wanderSelectionError, .backgroundRejected, .resume: false
+                   default: true
+                   }
+               }) {
+                return [error]
+            }
             result.append(continuation)
         }
         return result

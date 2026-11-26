@@ -10,6 +10,7 @@ final class GoFlyRuntimeAssembly: ObservableObject {
     let service: ServiceController
     let sessionRecovery: SessionRecoveryStore
     let movement: GoFlyMovementModel
+    let recentPlaces: GoFlyRecentPlaces
     let favorites: FavoritePlacesStore
     let importedRoutes: ImportedRoutesStore
     let favoriteRoutes: FavoriteRoutesStore
@@ -62,6 +63,7 @@ final class GoFlyRuntimeAssembly: ObservableObject {
             directory: support.appendingPathComponent("RouteLegCache", isDirectory: true),
             filename: "legs.json", maximumBytes: RouteLegCache.maximumBytes))
         self.movement = GoFlyMovementModel(service: service, recoveryStore: recovery, routeLegs: routeLegs)
+        self.recentPlaces = GoFlyRecentPlaces(supportDirectory: isUITestFixture ? nil : support)
         self.favorites = Self.favoritePlacesStore(
             directory: support.appendingPathComponent("FavoritePlaces", isDirectory: true),
             allowUITestNamespace: true)

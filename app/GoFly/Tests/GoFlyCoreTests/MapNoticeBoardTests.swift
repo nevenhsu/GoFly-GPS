@@ -100,6 +100,21 @@ struct MapNoticeBoardTests {
         #expect(ids(MapNoticeInputs(mode: .teleport, activeMovement: hold, isResumeState: true)) == ["resume"])
     }
 
+    @Test func aPausedWanderShowsTheErrorInsteadOfTheResumeNotice() {
+        let wander = ActiveMovement(kind: .wander, runState: .paused, pauseCause: .background,
+                                    resumeAction: .resumeWander, canResume: false)
+        var input = MapNoticeInputs(mode: .joystick, activeMovement: wander, isResumeState: true,
+                                    wanderError: .planningFailed, continuationNoticeKey: "background.expired")
+        #expect(MapNoticeBoard.notices(for: input) == [.wanderPlanningFailed])
+
+        input.recoveryNoticeKey = "recovery.connectionLost"
+        #expect(MapNoticeBoard.notices(for: input) == [.connectionIssue(.vpnNotConnected)])
+
+        input.recoveryNoticeKey = nil
+        input.wanderError = nil
+        #expect(ids(input) == ["resume"])
+    }
+
     @Test func aContinuationNoticeWithoutAMovementOpensSettings() {
         let notices = MapNoticeBoard.notices(for: MapNoticeInputs(mode: .joystick, continuationNoticeKey: "background.unavailable"))
         #expect(notices == [.resume(.init(titleKey: "background.unavailable", messageKey: "status.repairGuidance",

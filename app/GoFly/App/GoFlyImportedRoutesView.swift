@@ -55,7 +55,10 @@ struct GoFlyImportedRoutesView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("imports.content")
         .safeAreaInset(edge: .bottom) {
-            importButton
+            VStack(spacing: 8) {
+                GoFlyLiveContainerPickerHint()
+                importButton
+            }
                 .opacity(showingActions ? 0 : 1)
                 .accessibilityHidden(showingActions)
                 .allowsHitTesting(!showingActions)
@@ -63,6 +66,8 @@ struct GoFlyImportedRoutesView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 6)
                 .background(GoFlyStyle.canvas)
+                // Same bottom bar as the pairing import page (R07.s): divider, small print, button.
+                .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
         }
         .goFlySnackbar($snackbar, bottomPadding: 83)
         .background(GoFlyStyle.canvas.ignoresSafeArea())
@@ -314,81 +319,22 @@ private struct GoFlyImportedRouteActionSheet: View {
     let onCancel: () -> Void
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            GoFlyThemeColor.commonBlack.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture(perform: onCancel)
-                .accessibilityHidden(true)
-
-            VStack(spacing: 8) {
-                VStack(spacing: 0) {
-                    VStack(spacing: 4) {
-                        Text(title)
-                            .goFlyFont(GoFlyFont.subheadlineEmphasis)
-                            .foregroundStyle(GoFlyTextColor.primary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(detail)
-                            .goFlyFont(GoFlyFont.footnote)
-                            .foregroundStyle(GoFlyTextColor.secondary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 64)
-                    .padding(.horizontal, 16)
-
-                    action("imports.action.loadRoute", identifier: "imports.load", enabled: canLoad,
-                           foreground: GoFlyTextColor.primary, perform: onLoad)
-                    separator
-                    action("imports.action.viewAllPoints", identifier: "imports.points.showAll", enabled: true,
-                           foreground: GoFlyTextColor.primary, perform: onViewAllPoints)
-                    separator
-                    action("imports.action.exportRoute", identifier: "imports.export", enabled: canExport,
-                           foreground: GoFlyTextColor.primary, perform: onExport)
-                    separator
-                    action("imports.action.deleteRoute", identifier: "imports.delete", enabled: canDelete,
-                           foreground: GoFlyTextColor.danger, perform: onDelete)
-                }
-                .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(GoFlyStyle.border, lineWidth: 0.5)
-                        .allowsHitTesting(false)
-                }
-
-                Button(goFlyString("common.cancel"), action: onCancel)
-                    .buttonStyle(GoFlyButtonStyle(variant: .neutral, size: .medium))
-                    .accessibilityIdentifier("imports.actions.cancel")
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("imports.actions")
-        .zIndex(60)
-    }
-
-    private func action(_ key: String, identifier: String, enabled: Bool,
-                        foreground: Color, perform: @escaping () -> Void) -> some View {
-        Button(action: perform) {
-            Text(goFlyString(key))
-                .goFlyFont(GoFlyFont.body)
-                .foregroundStyle(enabled ? foreground : GoFlyTextColor.disabled)
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .accessibilityIdentifier(identifier)
-    }
-
-    private var separator: some View {
-        Rectangle()
-            .fill(GoFlyThemeColor.lineSeparator)
-            .frame(height: 0.5)
-            .padding(.horizontal, 12)
-            .accessibilityHidden(true)
+        GoFlyActionSheet(
+            title: title, detail: detail,
+            items: [
+                GoFlyActionSheetItem(title: goFlyString("imports.action.loadRoute"), icon: .playOutline,
+                                     identifier: "imports.load", enabled: canLoad, perform: onLoad),
+                GoFlyActionSheetItem(title: goFlyString("imports.action.viewAllPoints"), icon: .asset(.routeList),
+                                     identifier: "imports.points.showAll", perform: onViewAllPoints),
+                GoFlyActionSheetItem(title: goFlyString("imports.action.exportRoute"), icon: .asset(.externalLink),
+                                     identifier: "imports.export", enabled: canExport, perform: onExport),
+                GoFlyActionSheetItem(title: goFlyString("imports.action.deleteRoute"), icon: .asset(.trash),
+                                     identifier: "imports.delete", enabled: canDelete, isDestructive: true,
+                                     perform: onDelete)
+            ],
+            cancelIdentifier: "imports.actions.cancel",
+            identifier: "imports.actions",
+            onCancel: onCancel)
     }
 }
 

@@ -15,9 +15,11 @@ public struct RouteNode: Identifiable, Equatable, Sendable {
 public struct RouteSpeed: Equatable, Sendable {
     public let kilometersPerHour: Int
     public var metersPerSecond: Double { Double(kilometersPerHour) / 3.6 }
+    public static let bicycle = RouteSpeed(kilometersPerHour: 20)!
     /// One speed preference for route, joystick and wander (Figma D7 presets).
-    public static let standard = RouteSpeed(kilometersPerHour: 25)!
-    public static let presets: [RouteSpeed] = [5, 25, 50, 100].compactMap { RouteSpeed(kilometersPerHour: $0) }
+    public static let standard = bicycle
+    public static let presets: [RouteSpeed] = [5, bicycle.kilometersPerHour, 50, 100]
+        .compactMap { RouteSpeed(kilometersPerHour: $0) }
     public init?(kilometersPerHour: Int) {
         guard (1...120).contains(kilometersPerHour) else { return nil }
         self.kilometersPerHour = kilometersPerHour

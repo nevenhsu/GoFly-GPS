@@ -874,3 +874,9 @@
 "support.modal.message.macSetup" = "Mac App 已为这台 iPhone 安装设备支持。";
 "settings.support.readyTitle" = "设备支持已就绪";
 "settings.support.readyMessage" = "已重新下载并启用这台 iPhone 的设备支持。";
+
+"wander.search.title" = "搜索地点";
+"wander.search.teleport" = "瞬移";
+"wander.search.destination" = "指定地点";
+"wander.search.relocated" = "已瞬移至 %@，漫步范围已更新";
+"import.liveContainerHint" = "LiveContainer 请开启“Fix File Picker”";

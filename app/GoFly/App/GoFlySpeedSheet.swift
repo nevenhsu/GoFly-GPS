@@ -16,7 +16,7 @@ struct GoFlySpeedSheet: View {
     private func presetIcon(for preset: Int) -> GoFlyIconAsset? {
         switch preset {
         case 5: return .speedWalk
-        case 25: return .speedBicycle
+        case RouteSpeed.bicycle.kilometersPerHour: return .speedBicycle
         case 50: return .speedScooter
         case 100: return .speedCar
         default: return nil

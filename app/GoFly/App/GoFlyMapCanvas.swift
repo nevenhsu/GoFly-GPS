@@ -12,6 +12,7 @@ struct GoFlyCameraIntent: Equatable {
     /// Return to the default distance (about 500 m across the visible map).
     /// Otherwise a point intent only pans and keeps the person's zoom.
     var resetsZoom = false
+    var recenterReason: String? = nil
     /// Pan only, placing the coordinate at this fraction of the map height
     /// from the top (e.g. 1/3 keeps it clear of a tall bottom panel).
     var verticalFraction: CGFloat? = nil
@@ -674,6 +675,7 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                   intent.id != appliedIntent || ((parent.adjustsFocusForViewportChanges || intent.ensureVisibleOnly)
                     && (visible != appliedViewport || map.bounds != appliedBounds
                         || map.safeAreaInsets != appliedSafeArea)) else { return }
+            let isNewIntent = intent.id != appliedIntent
             appliedIntent = intent.id
             appliedViewport = visible
             appliedBounds = map.bounds
@@ -765,6 +767,18 @@ struct GoFlyMapCanvas: UIViewRepresentable {
                 let camera = map.camera
                 camera.heading = heading
                 map.setCamera(camera, animated: false)
+            }
+            if isNewIntent, let reason = intent.recenterReason {
+                let target = map.convert(intent.coordinate.clLocationCoordinate, toPointTo: map)
+                let marker = positionAnnotation.map { map.convert($0.coordinate, toPointTo: map) }
+                Diagnostics.shared.record("map.recenter.applied", category: .device, level: .notice, [
+                    "intent": .text(intent.id.uuidString), "reason": .text(reason),
+                    "target_visible": .flag(visible.contains(target)),
+                    "marker_present": .flag(marker != nil),
+                    "marker_gps": .flag(parent.marker?.source == .gps),
+                    "marker_fresh": .flag(parent.marker?.freshness == .fresh),
+                    "marker_visible": .flag(marker.map { visible.contains($0) } ?? false)
+                ])
             }
         }
 

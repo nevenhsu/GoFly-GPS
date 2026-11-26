@@ -107,7 +107,7 @@ If using **AltStore** instead: follow the [AltStore guide](https://faq.altstore.
 2. In **LiveContainer → Apps → +**, select the verified GoFly IPA. Open GoFly from the LiveContainer Apps list.
 3. Connect **LocalDevVPN**, then follow the first-launch steps below. If iOS opens Settings at the Local Network step, enable **Settings → Privacy & Security → Local Network → LiveContainer**, return to GoFly, and tap **Allow** again if needed. If the pairing file picker does not open, enable **Fix File Picker** in GoFly’s settings inside LiveContainer. [LiveContainer install and compatibility guide](https://github.com/LiveContainer/LiveContainer#features--guides)
 
-**Background routes and wandering.** In LiveContainer, hold GoFly in **Apps**, open **Settings**, and enable **Fix Background Processing Tasks**. Reopen GoFly and start a new run. [LiveContainer compatibility fix](https://github.com/LiveContainer/LiveContainer/issues/1710)
+**Required LiveContainer app settings.** In LiveContainer, hold GoFly in **Apps** and open **Settings**. Turn on both **Fix Background Processing Tasks** (background routes and wandering) and **Fix File Picker** (pairing file import). Reopen GoFly and start a new run. [LiveContainer compatibility fix](https://github.com/LiveContainer/LiveContainer/issues/1710)
 
 This IPA includes the LiveContainer Local Network fix. Full device validation for this release is pending.
 

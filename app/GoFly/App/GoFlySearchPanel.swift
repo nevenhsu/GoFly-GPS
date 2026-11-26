@@ -31,20 +31,9 @@ struct GoFlySearchPanel: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            if let roleTitle { roleChip(roleTitle) }
+            actionBar
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if search.isSearching {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                            Text(goFlyString("search.searching"))
-                                .goFlyFont(GoFlyFont.subheadline)
-                                .foregroundStyle(GoFlyTextColor.secondary)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .accessibilityIdentifier("search.searching")
-                    }
                     content
                 }
             }
@@ -114,18 +103,20 @@ struct GoFlySearchPanel: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func roleChip(_ title: String) -> some View {
+    private var actionBar: some View {
         HStack {
-            HStack(spacing: 8) {
-                GoFlyIcon(GoFlySymbols.flag)
-                    .goFlyIconSize(size: 12, maximum: 14)
-                Text(title)
-                    .goFlyFont(GoFlyFont.footnote)
+            if let roleTitle {
+                HStack(spacing: 8) {
+                    GoFlyIcon(GoFlySymbols.flag)
+                        .goFlyIconSize(size: 12, maximum: 14)
+                    Text(roleTitle)
+                        .goFlyFont(GoFlyFont.footnote)
+                }
+                .foregroundStyle(GoFlyTextColor.primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .background(GoFlyStyle.secondarySurface, in: Capsule())
             }
-            .foregroundStyle(GoFlyTextColor.primary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
-            .background(GoFlyStyle.secondarySurface, in: Capsule())
             Spacer()
             Button(action: onFavorites) {
                 GoFlyIconLabel(title: goFlyString("favorites.shortTitle"), icon: .star,
@@ -180,24 +171,38 @@ struct GoFlySearchPanel: View {
 
     @ViewBuilder
     private var resultsContent: some View {
+        let hasCoordinate = fixtureCoordinateResult != nil || (search.queryKind == .coordinate && search.results.first != nil)
         if let fixtureCoordinateResult {
             coordinateCard(fixtureCoordinateResult)
         } else if search.queryKind == .coordinate, let coordinate = search.results.first {
             coordinateCard(coordinate)
         }
-        if !matchingFavorites.isEmpty {
-            sectionHeader("favorites.title")
-            ForEach(matchingFavorites) { favorite in
-                row(favorite.place, title: favorite.displayTitle,
-                    symbol: GoFlySymbols.favoriteSelected, identifier: favorite.place)
+        let displayedFavorites = Array(matchingFavorites.prefix(3))
+        if !displayedFavorites.isEmpty {
+            sectionHeader("favorites.title", topPadding: hasCoordinate ? 16 : 0)
+            VStack(spacing: 0) {
+                ForEach(Array(displayedFavorites.enumerated()), id: \.element.id) { index, favorite in
+                    placeRow(favorite.place, title: favorite.displayTitle,
+                             symbol: GoFlySymbols.favoriteSelected, identifier: favorite.place,
+                             showsSeparator: index < displayedFavorites.count - 1)
+                }
             }
+            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, 16)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("search.favorites.card")
         }
+        let hasSectionAboveSearching = hasCoordinate || !displayedFavorites.isEmpty
         // A coordinate query already owns the first row; never render it twice.
         let places = fixtureNearbyResults ?? (search.queryKind == .coordinate ? [] : search.results.filter { place in
-            !matchingFavorites.contains { $0.place.coordinate == place.coordinate }
+            !displayedFavorites.contains { $0.place.coordinate == place.coordinate }
         })
+        if search.isSearching {
+            searchingIndicator(topPadding: hasSectionAboveSearching ? 16 : 0,
+                               bottomPadding: places.isEmpty ? 16 : 0)
+        }
         if !places.isEmpty {
-            sectionHeader("search.nearby")
+            sectionHeader("search.nearby", topPadding: (hasSectionAboveSearching || search.isSearching) ? 16 : 0)
             VStack(spacing: 0) {
                 ForEach(Array(places.enumerated()), id: \.element.id) { index, place in
                     placeRow(place, identifier: place, showsSeparator: index < places.count - 1)
@@ -208,13 +213,26 @@ struct GoFlySearchPanel: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("search.nearby.card")
         }
-        if places.isEmpty, matchingFavorites.isEmpty, search.queryKind != .coordinate,
+        if places.isEmpty, displayedFavorites.isEmpty, search.queryKind != .coordinate,
            !search.isSearching, search.inputError == nil {
             GoFlyEmptyState(symbol: GoFlySymbols.search,
                             message: goFlyString(search.searchFailed ? "search.failed" : "search.noResults"))
                 .padding(.top, 12)
                 .accessibilityIdentifier("search.emptyResults")
         }
+    }
+
+    private func searchingIndicator(topPadding: CGFloat, bottomPadding: CGFloat) -> some View {
+        HStack(spacing: 8) {
+            ProgressView()
+            Text(goFlyString("search.searching"))
+                .goFlyFont(GoFlyFont.subheadline)
+                .foregroundStyle(GoFlyTextColor.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, topPadding)
+        .padding(.bottom, bottomPadding)
+        .accessibilityIdentifier("search.searching")
     }
 
     private var matchingFavorites: [FavoritePlace] {
@@ -230,7 +248,8 @@ struct GoFlySearchPanel: View {
 
     // MARK: - Rows
 
-    private func sectionHeader(_ key: String, actionTitle: String? = nil,
+    private func sectionHeader(_ key: String, topPadding: CGFloat? = nil,
+                               actionTitle: String? = nil,
                                actionIdentifier: String? = nil,
                                action: (() -> Void)? = nil) -> some View {
         HStack(alignment: .firstTextBaseline) {
@@ -254,8 +273,8 @@ struct GoFlySearchPanel: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.top, key == "search.recent" ? 0 : (key == "search.nearby" ? 16 : 8))
-        .padding(.bottom, key == "search.recent" || key == "search.nearby" ? 8 : 4)
+        .padding(.top, topPadding ?? (key == "search.recent" || key == "favorites.title" ? 0 : (key == "search.nearby" ? 16 : 8)))
+        .padding(.bottom, key == "search.recent" || key == "search.nearby" || key == "favorites.title" ? 8 : 4)
         .accessibilityIdentifier("search.section.\(key)")
     }
 
@@ -299,20 +318,22 @@ struct GoFlySearchPanel: View {
         }
     }
 
-    private func placeRow(_ place: MapPlace, identifier: MapPlace,
+    private func placeRow(_ place: MapPlace, title: String? = nil,
+                          symbol: GoFlyIconAsset = GoFlySymbols.place,
+                          identifier: MapPlace,
                           showsSeparator: Bool = true) -> some View {
         GoFlyListRow(minimumHeight: 64, separatorLeadingInset: showsSeparator ? 60 : nil) {
             Button {
                 select(place)
             } label: {
                 HStack(spacing: 20) {
-                    GoFlyIcon(GoFlySymbols.place)
+                    GoFlyIcon(symbol)
                         .goFlyIconSize(size: 16)
                         .foregroundStyle(GoFlyTextColor.primary)
                         .frame(width: 20, height: 20)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(place.title)
+                        Text(title?.isEmpty == false ? title! : place.title)
                             .goFlyFont(GoFlyFont.body)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -359,35 +380,6 @@ struct GoFlySearchPanel: View {
         }
     }
 
-    private func row(_ place: MapPlace, title: String? = nil, symbol: GoFlyIconAsset,
-                     identifier: MapPlace) -> some View {
-        GoFlyListRow(minimumHeight: 64, separatorLeadingInset: 68) {
-            Button {
-                select(place)
-            } label: {
-                HStack(spacing: 12) {
-                    iconTile(symbol)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title?.isEmpty == false ? title! : place.title)
-                            .goFlyFont(GoFlyFont.body)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(place.address ?? place.coordinate.displayText)
-                            .goFlyFont(GoFlyFont.footnote)
-                            .foregroundStyle(GoFlyTextColor.secondary)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(.vertical, 8)
-                .frame(minHeight: 64)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("search.result.\(identifier.coordinate.displayText)")
-        }
-    }
-
     private func actionRow(_ title: String, symbol: GoFlyIconAsset, identifier: String,
                            action: @escaping () -> Void) -> some View {
         GoFlyListRow(minimumHeight: 52) {
@@ -415,17 +407,6 @@ struct GoFlySearchPanel: View {
         }
         .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .padding(.horizontal, 16)
-    }
-
-    /// A calm gray icon tile keeps titles aligned across sections, matching the
-    /// Figma list instead of a bare glyph.
-    private func iconTile(_ symbol: GoFlyIconAsset, filled: Bool = false) -> some View {
-        GoFlyIcon(symbol)
-            .goFlyIconSize(size: 14)
-            .foregroundStyle(filled ? GoFlyTextColor.inverse : GoFlyTextColor.primary)
-            .frame(width: 36, height: 36)
-            .background(filled ? GoFlyStyle.primary : GoFlyStyle.secondarySurface, in: Circle())
-            .accessibilityHidden(true)
     }
 
     private func select(_ place: MapPlace) {

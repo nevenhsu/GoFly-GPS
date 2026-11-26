@@ -135,7 +135,7 @@ enum GoFlyUITestOverrides {
     static func routeDraft(for frame: String?) -> RouteDraft? {
         guard let frame, frame.first == "D" else { return nil }
         let places = fixturePlaces
-        let speed = RouteSpeed(kilometersPerHour: 25)!
+        let speed = RouteSpeed.standard
         if frame == "D11" || frame == "D15" {
             let count = frame == "D15" ? 1_248 : 8
             let points = (0..<count).compactMap { index in
@@ -273,7 +273,7 @@ enum GoFlyUITestOverrides {
                 "appearance": value("-gofly-ui-appearance")
                     ?? value("-gofly-ui-preferences-appearance") ?? "system",
                 "backgroundRunSeconds": Int(value("-gofly-ui-background-seconds") ?? "43200") ?? 43200,
-                "movementSpeed": Int(value("-gofly-ui-speed") ?? "25") ?? 25
+                "movementSpeed": value("-gofly-ui-speed").flatMap { Int($0) } ?? RouteSpeed.standard.kilometersPerHour
             ], forKey: "gofly.preferences.v1")
         }
         return store

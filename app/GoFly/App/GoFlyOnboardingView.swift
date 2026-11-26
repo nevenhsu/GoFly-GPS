@@ -47,8 +47,8 @@ struct GoFlyOnboardingView: View {
     }
 
     /// Mac-installed builds open with R07.s.a (pairing already imported by the
-    /// Mac App, button 「下一步」); the sideload IPA imported on R07.s before
-    /// onboarding and keeps the welcome page.
+    /// Mac App, button 「下一步」); the sideload IPA keeps the welcome page and
+    /// imports on R07.s after the VPN page.
     @ViewBuilder private var welcome: some View {
         if Self.isMacInstall {
             GoFlyPairingImportView(context: .macSetup, onImported: controller.advanceWelcome)
@@ -429,6 +429,7 @@ private struct GoFlyVPNOnboardingView: View {
     @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
     @ObservedObject private var support = GoFlySupportPreparation.shared
     @State private var showingSupport = false
+    @State private var showingPairingImport = false
 
     var body: some View {
         ScrollView {
@@ -552,15 +553,32 @@ private struct GoFlyVPNOnboardingView: View {
         .navigationDestination(isPresented: $showingHelp) {
             GoFlyVPNHelpPage(onReturn: recheckAfterHelp)
         }
-        .sheet(isPresented: $showingSupport) {
-            if support.appliesToThisInstall {
-                GoFlySupportModal(context: .onboarding, preparation: support, onRetry: prepareSupport)
-            } else {
-                GoFlySupportModal(context: .macSetup, preparation: support, onRetry: {
-                    showingSupport = false
-                    onComplete()
-                })
-            }
+        // R07.s follows the VPN page: a Remote Pairing file without a UDID is verified
+        // over Local Network and LocalDevVPN, which the steps before it set up.
+        .navigationDestination(isPresented: $showingPairingImport) {
+            // The device-support download opens over this page; it stays on the
+            // pairing step until the download finishes, never back to the VPN page.
+            GoFlyPairingImportView(context: .onboarding, onImported: beginSupport)
+                .toolbar(.hidden, for: .navigationBar)
+                .sheet(isPresented: supportBinding(onPairingPage: true)) { supportModal }
+        }
+        .sheet(isPresented: supportBinding(onPairingPage: false)) { supportModal }
+    }
+
+    /// One modal, presented by whichever page is on top.
+    private func supportBinding(onPairingPage: Bool) -> Binding<Bool> {
+        Binding(get: { showingSupport && showingPairingImport == onPairingPage },
+                set: { if !$0 { showingSupport = false } })
+    }
+
+    @ViewBuilder private var supportModal: some View {
+        if support.appliesToThisInstall {
+            GoFlySupportModal(context: .onboarding, preparation: support, onRetry: prepareSupport)
+        } else {
+            GoFlySupportModal(context: .macSetup, preparation: support, onRetry: {
+                showingSupport = false
+                onComplete()
+            })
         }
     }
 
@@ -568,9 +586,28 @@ private struct GoFlyVPNOnboardingView: View {
     /// cannot be dismissed or skipped. DDI.4: Mac-provisioned installs show the
     /// same modal already ready; 「下一步」 finishes onboarding.
     private func finishVPN() {
+        if Self.needsPairingImport {
+            showingPairingImport = true
+            return
+        }
+        beginSupport()
+    }
+
+    private func beginSupport() {
         showingSupport = true
         guard support.appliesToThisInstall else { return }
         prepareSupport()
+    }
+
+    /// The sideload IPA imports its pairing file after the VPN page; device support
+    /// (DDI) needs that pairing, so it waits for the import.
+    private static var needsPairingImport: Bool {
+        #if targetEnvironment(simulator)
+        false
+        #else
+        (Bundle.main.object(forInfoDictionaryKey: "GoFlyRequiresMacSetup") as? Bool) != true
+            && !PairingFileStore.isReady
+        #endif
     }
 
     private func prepareSupport() {

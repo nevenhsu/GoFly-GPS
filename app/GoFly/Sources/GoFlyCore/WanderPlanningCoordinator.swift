@@ -13,6 +13,8 @@ public struct WanderPlanningHost {
     public var wanderStarted: @MainActor (PlannedRoute) -> Void
     public var segmentReplaced: @MainActor (PlannedRoute) -> Void
     public var destinationCleared: @MainActor () -> Void
+    /// A running wander's relocation teleport was acknowledged at the place.
+    public var relocated: @MainActor (MapPlace) -> Void
 
     public init(isJoystickMode: @escaping @MainActor () -> Bool,
                 isSceneActive: @escaping @MainActor () -> Bool,
@@ -20,11 +22,13 @@ public struct WanderPlanningHost {
                 mapOriginCandidates: @escaping @MainActor () -> [GeoCoordinate],
                 wanderStarted: @escaping @MainActor (PlannedRoute) -> Void = { _ in },
                 segmentReplaced: @escaping @MainActor (PlannedRoute) -> Void = { _ in },
-                destinationCleared: @escaping @MainActor () -> Void = {}) {
+                destinationCleared: @escaping @MainActor () -> Void = {},
+                relocated: @escaping @MainActor (MapPlace) -> Void = { _ in }) {
         self.isJoystickMode = isJoystickMode; self.isSceneActive = isSceneActive
         self.isRecoveryChecking = isRecoveryChecking; self.mapOriginCandidates = mapOriginCandidates
         self.wanderStarted = wanderStarted; self.segmentReplaced = segmentReplaced
         self.destinationCleared = destinationCleared
+        self.relocated = relocated
     }
 
     static let detached = WanderPlanningHost(
@@ -291,6 +295,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
             return false
         }
         joystick.clearWanderError()
+        if isRelocating { endRelocation() }
         host.wanderStarted(planned)
         planningID = nil
         activeCheckpoint = nil
@@ -311,6 +316,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
         planningTask = nil
         activeCheckpoint = nil
         interruptedCheckpoint = nil
+        if isRelocating { endRelocation() }
         joystick.setWanderPlanningFailed()
     }
 
@@ -319,6 +325,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
     /// The origin teleport `intentID` was acknowledged. The host clears its own
     /// origin request first, so a deferred Start sees the settled origin.
     public func originAcknowledged(_ intentID: UUID) {
+        if relocationAcknowledged(intentID) { return }
         let startDeferred = deferredStart.consumeAcknowledgement(for: intentID)
         if let pending = pendingStart, pending.teleportIntentID == intentID,
            pending.plannerID == planningID {
@@ -338,6 +345,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
     }
 
     public func originNotSent(_ intentID: UUID) {
+        if relocationIntentID == intentID { endRelocation(); return }
         let startDeferred = deferredStart.consumeFailure(for: intentID)
         if pendingStart?.teleportIntentID == intentID {
             let plannerID = pendingStart?.plannerID
@@ -349,6 +357,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
     }
 
     public func originUnconfirmed(_ intentID: UUID) {
+        if relocationIntentID == intentID { endRelocation(); return }
         let failedDeferredOrigin = deferredStart.consumeFailure(for: intentID)
         if pendingStart?.teleportIntentID == intentID || failedDeferredOrigin {
             pendingStart = nil
@@ -541,6 +550,90 @@ public final class WanderPlanningCoordinator: ObservableObject {
         }
     }
 
+    // MARK: Relocation (Figma E6.b)
+
+    /// A running wander is teleporting to a searched place and restarting there.
+    /// The screen keeps presenting it as wandering (E2) until the restart runs or fails.
+    @Published public private(set) var isRelocating = false
+    private var relocationTask: Task<Void, Never>?
+    private var relocationIntentID: UUID?
+    private var relocationTarget: WanderTarget?
+    private var relocationPlace: MapPlace?
+
+    /// The current destination survives a relocation only while it lies inside
+    /// the range re-centred on the new place; otherwise a new one is picked there.
+    static func retainedTarget(_ target: WanderTarget?, newAnchor: GeoCoordinate,
+                               radiusMeters: Double) -> WanderTarget? {
+        guard let target,
+              WanderRange(anchor: newAnchor, radiusMeters: radiusMeters).contains(target.coordinate)
+        else { return nil }
+        return target
+    }
+
+    /// Stops the running wander, teleports to `place` and restarts the wander
+    /// there. The host re-centres the range on the acknowledged teleport (no
+    /// wander runs by then) before `originAcknowledged` restarts it.
+    public func relocate(to place: MapPlace, radiusMeters: Double) {
+        guard joystick.wanderEnabled, !isRelocating else { return }
+        let retained = Self.retainedTarget(joystick.wanderTarget, newAnchor: place.coordinate,
+                                           radiusMeters: radiusMeters)
+        stop()
+        isRelocating = true
+        relocationTarget = retained
+        relocationPlace = place
+        relocationTask = Task { @MainActor in
+            defer { relocationTask = nil }
+            // Stopping settles the joystick lease first; teleport waits for it.
+            guard await waitUntil({ [service] in service.canTeleport }),
+                  !Task.isCancelled, isRelocating,
+                  service.teleport(to: TeleportCandidate(place: place)),
+                  case .preparing(let intent) = service.pointState else {
+                Diagnostics.shared.record("wander.relocateRefused", category: .movement, level: .notice)
+                endRelocation()
+                return
+            }
+            relocationIntentID = intent.id
+        }
+    }
+
+    private func endRelocation() {
+        relocationTask?.cancel()
+        relocationTask = nil
+        relocationIntentID = nil
+        relocationTarget = nil
+        relocationPlace = nil
+        isRelocating = false
+    }
+
+    /// Restarts the wander after its relocation teleport `intentID` was acknowledged.
+    private func relocationAcknowledged(_ intentID: UUID) -> Bool {
+        guard relocationIntentID == intentID else { return false }
+        let target = relocationTarget
+        relocationIntentID = nil
+        if let place = relocationPlace { host.relocated(place) }
+        relocationTask = Task { @MainActor in
+            defer { relocationTask = nil }
+            guard await waitUntil({ [weak self] in self?.canRequestStart ?? false }),
+                  !Task.isCancelled, isRelocating else { endRelocation(); return }
+            relocationTarget = nil
+            relocationPlace = nil
+            // The screen keeps presenting the wander until the restart runs or fails.
+            start(preselectedTarget: target)
+            if !isStarting && !joystick.wanderEnabled { endRelocation() }
+        }
+        return true
+    }
+
+    private func waitUntil(_ condition: @escaping @MainActor () -> Bool,
+                           timeout: Duration = .seconds(5)) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while !condition() {
+            guard !Task.isCancelled, ContinuousClock.now < deadline else { return false }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return true
+    }
+
     /// Resumes the paused wander on a straight walk from the arrow to the
     /// nearest point of its current route not yet passed, then the rest of it.
     private func rejoinCurrentRoute(_ planningID: UUID) -> Bool {
@@ -582,6 +675,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
     }
 
     public func stop() {
+        endRelocation()
         cancelStartup()
         replanningTask?.cancel()
         replanningTask = nil
@@ -603,6 +697,8 @@ public final class WanderPlanningCoordinator: ObservableObject {
     /// The scene left the foreground or the connection dropped: drop planning
     /// that has not committed and remember it for `resumePending()`.
     public func cancelUncommitted(keepingInPlace: Bool = false) {
+        // A relocation already restarting would otherwise keep presenting a wander that waits on resume.
+        if isRelocating, relocationIntentID == nil, relocationTask == nil { endRelocation() }
         if pendingStart == nil {
             planningTask?.cancel()
             planningTask = nil
@@ -618,6 +714,7 @@ public final class WanderPlanningCoordinator: ObservableObject {
 
     /// Leaving the joystick tab or the map drops every planning state.
     public func cancelAll() {
+        endRelocation()
         planningTask?.cancel()
         planningID = nil
         replanningTask?.cancel()

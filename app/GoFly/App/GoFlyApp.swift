@@ -126,6 +126,7 @@ private struct GoFlySceneContent: View {
                     service: runtime.service,
                     recoveryStore: runtime.sessionRecovery,
                     movement: runtime.movement,
+                    searchHistory: runtime.recentPlaces,
                     setupMetadata: bootstrap.metadata,
                     initialSheetDetent: shouldCollapseMapAfterFirstOnboarding ? .collapsed : nil
                 )

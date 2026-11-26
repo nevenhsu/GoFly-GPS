@@ -874,3 +874,9 @@
 "support.modal.message.macSetup" = "The Mac App installed device support on this iPhone.";
 "settings.support.readyTitle" = "Device support is ready";
 "settings.support.readyMessage" = "Device support was redownloaded and activated on this iPhone.";
+
+"wander.search.title" = "Search a Place";
+"wander.search.teleport" = "Teleport";
+"wander.search.destination" = "Set Destination";
+"wander.search.relocated" = "Moved to %@. Wander range updated.";
+"import.liveContainerHint" = "LiveContainer: turn on “Fix File Picker”";

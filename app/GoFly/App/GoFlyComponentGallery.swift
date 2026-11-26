@@ -54,7 +54,7 @@ struct GoFlyComponentGallery: View {
         .goFlyTracksSystemPresentation(showingSystemDimPreview, id: "gallery.systemDim")
         .sheet(isPresented: $showingSystemDimPreview) {
             GoFlySpeedSheet(
-                speed: RouteSpeed(kilometersPerHour: 25)!,
+                speed: .standard,
                 canEdit: false,
                 onSpeedChanged: { _ in },
                 onDismiss: { showingSystemDimPreview = false }
@@ -404,7 +404,7 @@ struct GoFlyComponentGallery: View {
             sectionTitle("RouteRunning")
             GoFlyRouteRunningControls(
                 title: GoFlyRouteRunningControls.remainingTitle(.seconds(4_500)), fraction: 0.26,
-                isRoundTrip: false, isReversed: false, speed: 25,
+                isRoundTrip: false, isReversed: false, speed: RouteSpeed.standard.kilometersPerHour,
                 onPlayback: { endResult = "playback" },
                 onEnd: { endResult = "ended" })
                 .padding(.horizontal, 20)

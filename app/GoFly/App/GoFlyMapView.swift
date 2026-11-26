@@ -300,7 +300,8 @@ struct GoFlyMapView: View {
     @State private var showingAllImportedPoints = false
     /// GPX start (0) / destination (1) picked in the point list; drawn like a selected planning node.
     @State private var gpxSelectedEnd: Int?
-    @State private var recentPlaces: [MapPlace] = []
+    @ObservedObject private var searchHistory: GoFlyRecentPlaces
+    private var recentPlaces: [MapPlace] { searchHistory.places }
     @State private var snackbar: GoFlySnackbarMessage?
     @State private var searchPasteWarning: GoFlySearchPasteWarning?
     @State private var searchPasteConfirmationTask: Task<Void, Never>?
@@ -319,6 +320,9 @@ struct GoFlyMapView: View {
     @ObservedObject private var wander: WanderPlanningCoordinator
     @ObservedObject private var wanderRange: WanderRangeController
     @State private var selectedWanderPlace: MapPlace? = nil
+    /// Figma E6: the running wander's search menu and the action its search result performs.
+    @State private var showingWanderSearchMenu = false
+    @State private var wanderSearchAction: GoFlyWanderSearchAction?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
 
@@ -326,11 +330,13 @@ struct GoFlyMapView: View {
         service: ServiceController,
         recoveryStore: SessionRecoveryStore,
         movement: GoFlyMovementModel,
+        searchHistory: GoFlyRecentPlaces,
         setupMetadata: GoFlySetupMetadata? = nil,
         uiTestFixtureFrame: String? = nil,
         initialSheetDetent: GoFlySheetDetent? = nil
     ) {
         self.movement = movement
+        _searchHistory = ObservedObject(wrappedValue: searchHistory)
         _service = ObservedObject(wrappedValue: service)
         self.recoveryStore = recoveryStore
         self.setupMetadata = setupMetadata
@@ -351,7 +357,9 @@ struct GoFlyMapView: View {
             store: recoveryStore, backgroundTasks: UIKitBackgroundSaveTasks()))
     }
 
-    private var isWanderMap: Bool { mode == .joystick && joystick.wanderEnabled && route.picker == nil }
+    /// A relocating wander (E6.b) is stopped underneath but still presented as wandering.
+    private var isWanderPresented: Bool { joystick.wanderEnabled || wander.isRelocating }
+    private var isWanderMap: Bool { mode == .joystick && isWanderPresented && route.picker == nil }
     private var activeSearch: CandidateController {
         route.picker?.candidates ?? (isWanderMap ? wanderSearch : search)
     }
@@ -450,6 +458,7 @@ struct GoFlyMapView: View {
                 set: { shown in
                     if !shown {
                         showingSearch = false
+                        wanderSearchAction = nil
                         if isMapPicking { isMapPicking = false }
                     }
                 }
@@ -555,7 +564,7 @@ struct GoFlyMapView: View {
         case "C1", "C2", "C3", "C4":
             presentedSheet = GoFlyMapSheet(content: .favorites)
         case "D5":
-            recentPlaces = [places[0]]
+            recordRecentPlace(places[0])
             if let nodeID = route.draft.destination?.id { _ = route.openPicker(for: nodeID) }
         case "D4":
             search.select(places[2])
@@ -569,6 +578,9 @@ struct GoFlyMapView: View {
             showingFavoriteRoutes = true
         case "D23":
             showingRouteList = true
+        case "D11":
+            mode = .route
+            showingImportedRoutes = true
         case "E2", "E2.a":
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(350))
@@ -591,6 +603,10 @@ struct GoFlyMapView: View {
                 for _ in 0..<1_000 {
                     if joystick.wanderEnabled && [.paused, .suspended, .interrupted].contains(joystick.phase) { break }
                     try? await Task.sleep(for: .milliseconds(20))
+                }
+                if joystick.wanderEnabled, GoFlyUITestOverrides.contains("-gofly-ui-wander-resume-error") {
+                    joystick.connectionDidBecomeUnavailable()
+                    joystick.setWanderPlanningFailed()
                 }
             }
         case "F1", "F1.a", "F1.b", "F4", "F5", "F6", "F6.a", "F7", "F8", "F9":
@@ -742,7 +758,7 @@ struct GoFlyMapView: View {
             .onReceive(location.$observation) { handleRealLocationObservation($0) }
             // Stop moved the device to the fly origin: the camera follows before the clear.
             .onChange(of: service.flyOriginReturn) { _, origin in
-                if let origin { applyGPSRecenter(to: origin.coordinate) }
+                if let origin { applyGPSRecenter(to: origin.coordinate, reason: "flyOrigin") }
             }
             .onChange(of: service.clearConfirmedAt) { _, clearedAt in
                 guard clearedAt != nil else { return }
@@ -931,7 +947,7 @@ struct GoFlyMapView: View {
                     search: activeSearch,
                     focusRequest: searchFocusRequest,
                     placeholderOverride: "",
-                    onBack: { showingSearch = false },
+                    onBack: { showingSearch = false; wanderSearchAction = nil },
                     onFavorites: { searchFavorites = true },
                     recentPlaces: recentPlaces,
                     fixtureCoordinateResult: uiTestFixtureFrame == "B4" ? GoFlyUITestOverrides.searchCoordinateResult : nil,
@@ -985,6 +1001,31 @@ struct GoFlyMapView: View {
         }
         .overlay(alignment: .top) {
             toastStack(topInset: (topFrame.maxY > 0 ? topFrame.maxY : 116) + 8)
+        }
+        .overlay(alignment: .bottom) {
+            // Figma E6: the same GoFly action sheet as D12, not the system dialog.
+            if showingWanderSearchMenu, isWanderMap {
+                GoFlyActionSheet(
+                    title: goFlyString("wander.search.title"),
+                    items: [
+                        GoFlyActionSheetItem(title: goFlyString("wander.search.teleport"), icon: .asset(.pin),
+                                             identifier: "wander.search.teleport") {
+                            showingWanderSearchMenu = false
+                            beginWanderSearch(.teleport)
+                        },
+                        GoFlyActionSheetItem(title: goFlyString("wander.search.destination"), icon: .asset(.flag),
+                                             identifier: "wander.search.destination") {
+                            showingWanderSearchMenu = false
+                            beginWanderSearch(.destination)
+                        }
+                    ],
+                    cancelIdentifier: "wander.search.cancel",
+                    identifier: "wander.search.actions",
+                    onCancel: { showingWanderSearchMenu = false })
+            }
+        }
+        .onChange(of: isWanderMap) { _, shown in
+            if !shown { showingWanderSearchMenu = false }
         }
         .goFlySnackbar(
             $snackbar,
@@ -1284,7 +1325,7 @@ struct GoFlyMapView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(10)
             }
-            if (mode == .teleport || (mode == .joystick && !joystick.wanderEnabled)), let candidate = activeCandidate {
+            if (mode == .teleport || (mode == .joystick && !isWanderPresented)), let candidate = activeCandidate {
                 GoFlyLocationCard(
                     place: candidate.place,
                     titleLabel: locationCardTitleLabel(for: candidate.place),
@@ -1399,12 +1440,14 @@ struct GoFlyMapView: View {
     private func modePanel(in geometry: GeometryProxy) -> some View {
         Group {
             if mode == .joystick, route.canEdit, route.picker == nil {
-                if isResumeState && !isWanderReplanning && [.paused, .suspended, .interrupted].contains(joystick.phase) {
+                if joystick.wanderEnabled, isResumeState, !isWanderReplanning,
+                   [.paused, .suspended, .interrupted].contains(joystick.phase) {
                     GoFlyResumePanel(
                         title: goFlyString("joystick.wanderPaused"),
                         ctaTitle: goFlyString("wander.resumeShort"),
                         onResume: { _ = joystick.resume() },
                         isEnabled: joystick.canResume,
+                        onStop: { wander.stop() },
                         contentHeight: 64,
                         identifier: "joystick.resumePanel"
                     )
@@ -1422,6 +1465,8 @@ struct GoFlyMapView: View {
                             onNeedsOrigin: { joystickOrigin.establishFromMap() },
                             canStartWander: canRequestWanderStart,
                             isStartingWander: wander.isStarting,
+                            presentsWander: isWanderPresented,
+                            isWanderBusy: wander.isRelocating,
                             onStopWander: { wander.stop() },
                             onSettings: { showingSettings = true },
                             wanderRadius: wanderRange.radius,
@@ -1467,7 +1512,7 @@ struct GoFlyMapView: View {
     private var isExecutionMode: Bool { !route.canEdit }
 
     private var executionTitle: String {
-        if joystick.wanderEnabled { return joystick.wanderTarget?.place.title ?? goFlyString("joystick.wander") }
+        if isWanderPresented { return joystick.wanderTarget?.place.title ?? goFlyString("joystick.wander") }
         // D10 / D10.a: the paused title matches the running one so the header never changes height;
         // the pause icon, status pill, and 繼續 button carry the paused state.
         if case .place(let place) = route.draft.destination?.value {
@@ -1477,6 +1522,7 @@ struct GoFlyMapView: View {
     }
 
     private var executionSymbol: GoFlyIconAsset {
+        if wander.isRelocating { return GoFlySymbols.heading }
         if joystick.wanderEnabled {
             return [.paused, .suspended, .interrupted].contains(joystick.phase) ? GoFlySymbols.pause : GoFlySymbols.heading
         }
@@ -1485,6 +1531,7 @@ struct GoFlyMapView: View {
 
     // Route and wander speed live in the bottom panel's speed chip, so the header detail omits it.
     private var executionDetail: String {
+        if wander.isRelocating { return goFlyString("wander.planning") }
         if joystick.wanderEnabled {
             if isWanderReplanning { return goFlyString("wander.planning") }
             guard let planned = joystick.wanderRoute else {
@@ -1507,6 +1554,10 @@ struct GoFlyMapView: View {
     }
 
     private func selectSearchPlace(_ place: MapPlace) {
+        if let action = wanderSearchAction {
+            performWanderSearchAction(action, place: place)
+            return
+        }
         activeSearch.select(place)
         recordRecentPlace(place)
         cameraIntent = GoFlyCameraIntent(coordinate: place.coordinate)
@@ -1519,14 +1570,12 @@ struct GoFlyMapView: View {
     }
 
     private func recordRecentPlace(_ place: MapPlace) {
-        recentPlaces.removeAll { $0.coordinate == place.coordinate }
-        recentPlaces.insert(place, at: 0)
-        recentPlaces = Array(recentPlaces.prefix(8))
+        searchHistory.record(place)
     }
 
     private func clearRecentPlaces() {
         withAnimation(.easeInOut(duration: 0.2)) {
-            recentPlaces.removeAll()
+            searchHistory.clear()
         }
     }
 
@@ -1546,6 +1595,29 @@ struct GoFlyMapView: View {
         guard isWanderMap, joystick.canApplyWanderTarget else { return }
         dismissKeyboard()
         wander.confirmDestination(place)
+    }
+
+    /// Figma E6.a: the shared search page, whose selection performs `action` instead of placing a Pin.
+    private func beginWanderSearch(_ action: GoFlyWanderSearchAction) {
+        guard isWanderMap else { return }
+        wanderSearch.resetSelection()
+        wanderSearchAction = action
+        showingSearch = true
+    }
+
+    /// Figma E6.b teleports and re-centres the range; E6.c only replaces the destination.
+    private func performWanderSearchAction(_ action: GoFlyWanderSearchAction, place: MapPlace) {
+        recordRecentPlace(place)
+        wanderSearchAction = nil
+        showingSearch = false
+        searchFavorites = false
+        wanderSearch.resetSelection()
+        dismissKeyboard()
+        guard isWanderMap else { return }
+        switch action {
+        case .teleport: wander.relocate(to: place, radiusMeters: wanderRange.radius.meters)
+        case .destination: confirmWanderDestination(place)
+        }
     }
 
     /// D4 "確認": the Pin or Location Card fills the selected field and returns to D1.
@@ -1865,6 +1937,17 @@ struct GoFlyMapView: View {
     /// so there is no separate compass or follow-heading button.
     private func mapControls(in geometry: GeometryProxy) -> some View {
         VStack(spacing: 12) {
+            // Figma E6: a running wander searches a place to teleport to or head for.
+            if isWanderMap {
+                Button { showingWanderSearchMenu = true } label: {
+                    GoFlyIcon(GoFlySymbols.search)
+                        .goFlyIconSize(size: 22, maximum: 33)
+                }
+                .buttonStyle(GoFlyIconStyle(variant: .mapControls))
+                .disabled(wander.isRelocating)
+                .accessibilityLabel(goFlyString("wander.search.title"))
+                .accessibilityIdentifier("map.wanderSearch")
+            }
             // Route mode always shows it: frames the whole planned route, disabled
             // until there is one (Figma has no variant yet).
             if mode == .route {
@@ -1949,7 +2032,7 @@ struct GoFlyMapView: View {
     /// Route and wander simulation hide the tab bar; a paused wander keeps it for the resume row (E5).
     private var isWanderRunning: Bool {
         // Changing the place pauses the joystick while planning; keep the running layout (no tab bar).
-        isWanderMap && (isWanderReplanning || joystick.isAwaitingNextTarget
+        isWanderMap && (wander.isRelocating || isWanderReplanning || joystick.isAwaitingNextTarget
             || ![.paused, .suspended, .interrupted].contains(joystick.phase))
     }
 
@@ -2056,14 +2139,19 @@ struct GoFlyMapView: View {
         // GPS fixes move the camera only for Recenter or the first
         // camera of the session; later fixes never pan or zoom it.
         if consumeGPSRecenter(for: accepted) {
-            applyGPSRecenter(to: accepted.coordinate)
+            applyGPSRecenter(to: accepted.coordinate, reason: "freshGPS")
         } else if cameraIntent == nil, service.confirmedSimulatedLocation == nil {
             cameraIntent = GoFlyCameraIntent(coordinate: accepted.coordinate)
         }
     }
 
-    private func applyGPSRecenter(to coordinate: GeoCoordinate) {
-        cameraIntent = GoFlyCameraIntent(coordinate: coordinate, headingDegrees: 0, resetsZoom: true)
+    private func applyGPSRecenter(to coordinate: GeoCoordinate, reason: String) {
+        var intent = GoFlyCameraIntent(coordinate: coordinate, headingDegrees: 0, resetsZoom: true)
+        intent.recenterReason = reason
+        Diagnostics.shared.record("map.recenter.requested", category: .device, level: .notice, [
+            "intent": .text(intent.id.uuidString), "reason": .text(reason)
+        ])
+        cameraIntent = intent
     }
 
     /// A pending Recenter waits for a current real fix. A software-simulated
@@ -2286,12 +2374,16 @@ struct GoFlyMapView: View {
     private func recenter() {
         if let simulated = service.confirmedSimulatedLocation {
             pendingGPSRecenterAt = nil
-            applyGPSRecenter(to: simulated)
+            applyGPSRecenter(to: simulated, reason: "simulation")
         } else {
             // Go to the arrow already on the map now; a real fix that arrives
             // later still recenters through the pending request. After Stop iOS
             // can keep flagging fixes as simulated, so waiting alone never moved.
-            if let marker = service.positionMarker { applyGPSRecenter(to: marker.coordinate) }
+            if let marker = service.positionMarker {
+                applyGPSRecenter(to: marker.coordinate, reason: "displayedMarker")
+            } else {
+                Diagnostics.shared.record("map.recenter.waitingForMarker", category: .device, level: .notice)
+            }
             pendingGPSRecenterAt = Date()
             location.requestRecenter()
         }
@@ -2409,3 +2501,8 @@ private struct GoFlyMapSheetsModifier<Details: View, Places: View, Routes: View>
     }
 }
 
+
+/// Figma E6: what a search result does for the running wander.
+enum GoFlyWanderSearchAction {
+    case teleport, destination
+}

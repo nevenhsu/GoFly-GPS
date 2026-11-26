@@ -5,6 +5,17 @@ import Testing
 struct WanderRangeTests {
     private let anchor = GeoCoordinate(latitude: 25, longitude: 121)!
 
+    @Test func relocationKeepsOnlyADestinationInsideTheNewRange() {
+        func target(_ east: Double) -> WanderTarget {
+            let c = JoystickGeodesy.destination(from: anchor, bearingDegrees: 90, distanceMeters: east)
+            return WanderTarget(place: MapPlace(id: .coordinate(c), title: "t", coordinate: c))
+        }
+        let inside = target(4_000), outside = target(6_000)
+        #expect(WanderPlanningCoordinator.retainedTarget(inside, newAnchor: anchor, radiusMeters: 5_000) == inside)
+        #expect(WanderPlanningCoordinator.retainedTarget(outside, newAnchor: anchor, radiusMeters: 5_000) == nil)
+        #expect(WanderPlanningCoordinator.retainedTarget(nil, newAnchor: anchor, radiusMeters: 5_000) == nil)
+    }
+
     @Test func radiusClampsToSupportedRangeAndDefaultsTo5() {
         #expect(WanderRadius.default.kilometers == 5)
         #expect(WanderRadius(kilometers: 0.01).kilometers == 0.1)

@@ -91,6 +91,7 @@ struct GoFlyFigmaFrameFixture: View {
             service: runtime.service,
             recoveryStore: runtime.sessionRecovery,
             movement: runtime.movement,
+            searchHistory: runtime.recentPlaces,
             setupMetadata: nil,
             uiTestFixtureFrame: frame
         )
