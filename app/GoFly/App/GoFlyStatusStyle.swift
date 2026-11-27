@@ -15,7 +15,7 @@ enum GoFlyStatusTone: String, CaseIterable, Equatable, Sendable {
 
     var tint: Color {
         switch self {
-        case .neutral: GoFlyStyle.secondary
+        case .neutral: GoFlyThemeColor.textSecondary
         case .active: GoFlyStyle.primary
         case .danger: GoFlyStyle.danger
         case .warning: GoFlyStyle.warning
@@ -26,9 +26,9 @@ enum GoFlyStatusTone: String, CaseIterable, Equatable, Sendable {
     var foreground: Color {
         switch self {
         case .neutral, .active: GoFlyStyle.primary
-        case .danger: GoFlyStyle.dangerForeground
-        case .warning: GoFlyStyle.warningForeground
-        case .success: GoFlyStyle.successForeground
+        case .danger: GoFlyThemeColor.textDanger
+        case .warning: GoFlyThemeColor.textWarning
+        case .success: GoFlyThemeColor.textSuccess
         }
     }
 
@@ -61,10 +61,10 @@ enum GoFlyStatusTone: String, CaseIterable, Equatable, Sendable {
     /// Figma `StatusPill` dot uses the matching neutral, warning, danger, or success icon token.
     var pillDot: Color {
         switch self {
-        case .neutral, .active: GoFlyStyle.pillDotNeutral
-        case .warning: GoFlyStyle.pillDotWarning
+        case .neutral, .active: GoFlyThemeColor.iconSecondary
+        case .warning: GoFlyThemeColor.iconWarning
         case .danger: GoFlyThemeColor.iconDanger
-        case .success: GoFlyStyle.success
+        case .success: GoFlyThemeColor.iconSuccess
         }
     }
 
@@ -111,9 +111,9 @@ enum GoFlyStatusTone: String, CaseIterable, Equatable, Sendable {
     /// Toast fill from the Figma `Toast / 系統訊息` variants.
     var toastSurface: Color {
         switch self {
-        case .danger: GoFlyStyle.toastDangerSurface
-        case .warning: GoFlyStyle.toastWarningSurface
-        case .success: GoFlyStyle.toastSuccessSurface
+        case .danger: GoFlyThemeColor.surfaceStatusDanger
+        case .warning: GoFlyThemeColor.surfaceStatusWarning
+        case .success: GoFlyThemeColor.surfaceStatusSuccess
         case .neutral, .active: GoFlyStyle.cardSurface
         }
     }

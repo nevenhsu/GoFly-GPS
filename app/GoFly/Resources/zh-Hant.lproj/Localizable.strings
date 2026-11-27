@@ -10,6 +10,8 @@
 "map.startServiceHint" = "準備裝置服務，不會移動裝置位置。";
 "map.recenter" = "回到目前位置";
 "map.recenterHint" = "只移動地圖鏡頭，不改變裝置位置；手機定位為選用。";
+"map.compass" = "指北針，重置地圖朝北";
+"map.compassHint" = "只將地圖旋轉回正北，不改變目前位置與縮放。";
 "map.fitRoute" = "縮放至整條路線";
 "service.title" = "裝置服務";
 "service.start" = "啟動模擬";

@@ -88,7 +88,7 @@ struct GoFlyFavoriteEditorSheet: View {
         // 347 pt with the 11 pt button inset leaves 40 pt below Save (measured: 367 pt with 40 pt left 89 pt).
         .presentationDetents([.height(347), .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(GoFlyStyle.surface)
+        .presentationBackground(GoFlyStyle.cardSurface)
         .onAppear {
             if draft.isEmpty, let fav = favorites.favorite(for: place), let l = fav.label {
                 draft = l
@@ -106,7 +106,7 @@ struct GoFlyFavoriteEditorSheet: View {
     }
 
     private var header: some View {
-        GoFlySheetHeader(title: nil) {
+        GoFlySheetNavBar(title: nil) {
             Button {
                 favorites.clearError()
                 onDismiss()

@@ -133,7 +133,7 @@ struct GoFlyOnboardingView: View {
             .padding(.top, 12)
             .goFlyBottomActionPadding()
             .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
-            .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
+            .goFlyTopHairline()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { controller.refreshLocationAuthorization() }
@@ -266,7 +266,7 @@ private struct GoFlyOnboardingPage<Content: View, Actions: View>: View {
                 .padding(.top, 16)
                 .goFlyBottomActionPadding()
                 .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
-                .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
+                .goFlyTopHairline()
         }
     }
 }
@@ -373,7 +373,7 @@ private struct GoFlyLocalNetworkOnboardingView: View {
             .padding(.top, 12)
             .goFlyBottomActionPadding()
             .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
-            .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
+            .goFlyTopHairline()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await controller.refreshLocalNetworkAuthorization() } }
@@ -519,7 +519,7 @@ private struct GoFlyVPNOnboardingView: View {
             .padding(.top, 16)
             .goFlyBottomActionPadding()
             .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
-            .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
+            .goFlyTopHairline()
         }
         .onAppear {
             isVisible = true

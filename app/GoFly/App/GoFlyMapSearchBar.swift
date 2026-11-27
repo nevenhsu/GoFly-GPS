@@ -62,12 +62,12 @@ struct GoFlyMapSearchBar: View {
             // The shadow belongs to the card only: on the whole row SwiftUI also
             // shadows each child, ringing the system paste capsule in light mode.
             .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(GoFlyThemeColor.surfaceInput)
+                RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous)
+                    .fill(GoFlyStyle.fieldSurface)
                     .goFlyShadow(.floating)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous)
                     .strokeBorder(GoFlyStyle.fieldBorder, lineWidth: 1)
             }
 
@@ -81,10 +81,10 @@ struct GoFlyMapSearchBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(goFlyString("settings.title"))
             .accessibilityIdentifier("map.settings")
-            .background(GoFlyStyle.iconButtonSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(GoFlyStyle.floatingControlSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(GoFlyStyle.iconButtonBorder, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous)
+                    .strokeBorder(GoFlyStyle.separator, lineWidth: 0.5)
             }
             .goFlyShadow(.floating)
         }

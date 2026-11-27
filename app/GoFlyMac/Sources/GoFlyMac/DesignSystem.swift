@@ -2,28 +2,63 @@ import SwiftUI
 import AppKit
 
 enum GoFlyStyle {
+    // MARK: - Text
     static let ink = MacColorSystem.primaryText
     static let muted = MacColorSystem.secondaryText
     static let disabled = MacColorSystem.disabledText
-    static let line = MacColorSystem.separator
-    static let divider = MacColorSystem.separator
-    static let border = MacColorSystem.border
+
+    // MARK: - Surfaces
     static let sidebar = MacColorSystem.sidebar
     static let canvas = MacColorSystem.canvas
     static let surface = MacColorSystem.surface
     static let secondarySurface = MacColorSystem.controlSurface
     static let disabledSurface = MacColorSystem.disabledSurface
     static let inputSurface = MacColorSystem.inputSurface
+
+    // MARK: - Borders & Separators
+    static let line = MacColorSystem.separator
+    static let border = MacColorSystem.border
     static let inputBorder = MacColorSystem.inputBorder
+
+    // MARK: - Status
     static let success = MacColorSystem.success
     static let warning = MacColorSystem.warning
     static let error = MacColorSystem.error
-    static let cornerRadius: CGFloat = 16
+
+    // MARK: - Radius, Spacing & Typography
+    enum Radius {
+        static let control: CGFloat = 10
+        static let inset: CGFloat = 12
+        static let card: CGFloat = 16
+    }
+
+    enum Spacing {
+        static let xs: CGFloat = 4
+        static let sm: CGFloat = 8
+        static let md: CGFloat = 12
+        static let lg: CGFloat = 16
+        static let xl: CGFloat = 20
+        static let xxl: CGFloat = 24
+    }
+
+    static let cornerRadius: CGFloat = Radius.card
+
+    enum Typography {
+        static let display = font(28, bold: true)
+        static let title = font(17, bold: true)
+        static let headline = font(14, bold: true)
+        static let body = font(13)
+        static let bodyEmphasis = font(13, bold: true)
+        static let footnote = font(12)
+        static let footnoteEmphasis = font(12, bold: true)
+        static let caption = font(11)
+        static let captionEmphasis = font(11, bold: true)
+        static let micro = font(10, bold: true)
+    }
 
     static func font(_ size: CGFloat, bold: Bool = false) -> Font {
         .system(size: size, weight: bold ? .semibold : .regular)
     }
-
 }
 
 enum GoFlyMacSymbols {
@@ -42,10 +77,10 @@ enum GoFlyMacSymbols {
 
 private struct GoFlyInset: ViewModifier {
     func body(content: Content) -> some View {
-        content.padding(16)
+        content.padding(GoFlyStyle.Spacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(GoFlyStyle.secondarySurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(GoFlyStyle.line, lineWidth: 0.5) }
+            .background(GoFlyStyle.secondarySurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.inset, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: GoFlyStyle.Radius.inset, style: .continuous).strokeBorder(GoFlyStyle.line, lineWidth: 0.5) }
     }
 }
 
@@ -55,11 +90,11 @@ private struct GoFlyInput: ViewModifier {
 
     func body(content: Content) -> some View {
         content.textFieldStyle(.plain)
-            .font(GoFlyStyle.font(13))
-            .padding(.horizontal, 12).padding(.vertical, 10)
-            .background(GoFlyStyle.inputSurface, in: RoundedRectangle(cornerRadius: 10))
+            .font(GoFlyStyle.Typography.body)
+            .padding(.horizontal, GoFlyStyle.Spacing.md).padding(.vertical, 10)
+            .background(GoFlyStyle.inputSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous)
                     .strokeBorder(focused ? GoFlyStyle.ink : GoFlyStyle.inputBorder, lineWidth: focused ? 1.5 : 0.75)
                     .allowsHitTesting(false)
             }
@@ -74,7 +109,7 @@ extension View {
     /// Draws the hover/focus ring in the control's own shape, so it follows a
     /// capsule button or a row's corner radius instead of a fixed rectangle.
     func goFlyRowFocus<S: InsettableShape>(_ shape: S) -> some View { modifier(GoFlyRowFocus(shape: shape)) }
-    func goFlyRowFocus() -> some View { goFlyRowFocus(RoundedRectangle(cornerRadius: 12, style: .continuous)) }
+    func goFlyRowFocus() -> some View { goFlyRowFocus(RoundedRectangle(cornerRadius: GoFlyStyle.Radius.inset, style: .continuous)) }
 }
 
 private struct GoFlyRowFocus<S: InsettableShape>: ViewModifier {
@@ -143,9 +178,9 @@ private struct GoFlyMacButtonStyle: ButtonStyle {
         configuration.label
             .foregroundStyle(isEnabled ? (primary ? MacColorSystem.primaryActionText : GoFlyStyle.ink) : GoFlyStyle.disabled)
             .background(isEnabled && primary ? MacColorSystem.primaryActionSurface : GoFlyStyle.secondarySurface,
-                        in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous)
                     .strokeBorder(focused ? GoFlyStyle.ink : GoFlyStyle.line, lineWidth: focused ? 2 : 0.75)
                     .padding(focused ? -3 : 0)
                     .allowsHitTesting(false)
@@ -203,4 +238,4 @@ struct StatusCard<Content: View>: View {
     }
 }
 
-struct Rule: View { var body: some View { Rectangle().fill(GoFlyStyle.divider).frame(height: 1) } }
+struct Rule: View { var body: some View { Rectangle().fill(GoFlyStyle.line).frame(height: 1) } }

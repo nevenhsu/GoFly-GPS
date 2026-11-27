@@ -109,20 +109,20 @@ struct GoFlyLocationCard: View {
                 GoFlyCopyIconButton(coordinate: place.coordinate, identifier: "\(identifier).copy", onCopy: onCopy)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 20)
-        .padding(.bottom, 16)
+        .padding(.horizontal, GoFlyStyle.Layout.screenHorizontal)
+        .padding(.top, GoFlyStyle.Spacing.xl)
+        .padding(.bottom, GoFlyStyle.Spacing.lg)
         .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 180, alignment: .topLeading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             ZStack {
                 GoFlyLocationCardBackdrop(colorScheme: colorScheme)
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: GoFlyStyle.Radius.card, style: .continuous)
                     .fill(GoFlyStyle.locationCardSurface)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: GoFlyStyle.Radius.card, style: .continuous))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: GoFlyStyle.Radius.card, style: .continuous))
         .overlay(alignment: .topTrailing) {
             Button(action: onDismiss) {
                 GoFlyIcon(.close)

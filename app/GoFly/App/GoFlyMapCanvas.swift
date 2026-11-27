@@ -9,6 +9,8 @@ struct GoFlyCameraIntent: Equatable {
     var routeCoordinates: [GeoCoordinate]? = nil
     var ensureVisibleOnly = false
     var headingDegrees: Double? = nil
+    /// Rotate only: changes `camera.heading` without panning or resetting zoom.
+    var headingOnly = false
     /// Return to the default distance (about 500 m across the visible map).
     /// Otherwise a point intent only pans and keeps the person's zoom.
     var resetsZoom = false
@@ -28,6 +30,11 @@ struct GoFlyCameraIntent: Equatable {
         self.headingDegrees = headingDegrees
         self.resetsZoom = resetsZoom
         self.verticalFraction = verticalFraction
+    }
+    init(headingDegrees: Double) {
+        coordinate = GeoCoordinate(latitude: 0, longitude: 0)!
+        self.headingDegrees = headingDegrees
+        headingOnly = true
     }
     init(route: PlannedRoute) {
         coordinate = route.start
@@ -681,6 +688,15 @@ struct GoFlyMapCanvas: UIViewRepresentable {
             appliedBounds = map.bounds
             appliedSafeArea = map.safeAreaInsets
             correctionsRemaining = 2
+            if intent.headingOnly, let heading = intent.headingDegrees {
+                correctionsRemaining = 0
+                guard isNewIntent else { return }
+                if let camera = map.camera.copy() as? MKMapCamera {
+                    camera.heading = heading
+                    map.setCamera(camera, animated: !parent.reduceMotion)
+                }
+                return
+            }
             if intent.ensureVisibleOnly {
                 correctionsRemaining = 0
                 let target = map.convert(intent.coordinate.clLocationCoordinate, toPointTo: map)

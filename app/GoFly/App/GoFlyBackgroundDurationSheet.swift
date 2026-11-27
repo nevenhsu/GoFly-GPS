@@ -72,7 +72,7 @@ struct GoFlyBackgroundDurationSheet: View {
         .onChange(of: minutes) { _, _ in commit() }
         .presentationDetents([.height(320)])
         .presentationDragIndicator(.visible)
-        .presentationBackground(GoFlyStyle.surface)
+        .presentationBackground(GoFlyStyle.cardSurface)
         .presentationBackgroundInteraction(.enabled)
     }
 
@@ -96,11 +96,7 @@ struct GoFlyBackgroundDurationSheet: View {
             }
         }
         .frame(height: 128)
-        .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(GoFlyStyle.subtleBorder, lineWidth: 0.5)
-        )
+        .goFlyCard(radius: GoFlyStyle.Radius.control)
     }
 
     /// A real wheel: dragging scrolls continuously through the values and the

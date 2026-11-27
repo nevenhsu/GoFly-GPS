@@ -10,6 +10,8 @@
 "map.startServiceHint" = "Prepare the device service without moving its location.";
 "map.recenter" = "Center on current location";
 "map.recenterHint" = "Centers the map without moving the device. Phone GPS access is optional.";
+"map.compass" = "Reset map to north";
+"map.compassHint" = "Rotates the map back to north without moving your position.";
 "map.fitRoute" = "Fit route";
 "service.title" = "Device service";
 "service.start" = "Start";

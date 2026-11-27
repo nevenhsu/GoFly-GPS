@@ -44,9 +44,9 @@ struct GoFlyImportedRoutesView: View {
                                 }
                             }
                         }
-                        .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(GoFlyStyle.border, lineWidth: 0.5) }
+                        .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
+                        .overlay { RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous).strokeBorder(GoFlyStyle.border, lineWidth: GoFlyStyle.Layout.hairline) }
                     }
                 }
                 .padding(16)
@@ -67,7 +67,7 @@ struct GoFlyImportedRoutesView: View {
                 .padding(.bottom, 6)
                 .background(GoFlyStyle.canvas)
                 // Same bottom bar as the pairing import page (R07.s): divider, small print, button.
-                .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
+                .goFlyTopHairline()
         }
         .goFlySnackbar($snackbar, bottomPadding: 83)
         .background(GoFlyStyle.canvas.ignoresSafeArea())
@@ -121,7 +121,7 @@ struct GoFlyImportedRoutesView: View {
     }
 
     private var header: some View {
-        GoFlySheetHeader(title: goFlyString("imports.title")) {
+        GoFlySheetNavBar(title: goFlyString("imports.title")) {
             Button { dismiss() } label: {
                 if isShowingReturnLabel {
                     GoFlyIconLabel(title: goFlyString("mode.route"), icon: .chevronLeft)

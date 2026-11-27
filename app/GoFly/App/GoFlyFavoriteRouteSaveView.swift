@@ -113,13 +113,13 @@ struct GoFlySaveFavoriteRouteView: View {
         .presentationDragIndicator(.visible)
         // Same opaque sheet as the place editor: a view background over the system
         // sheet material lets the Save button tint change with the detent.
-        .presentationBackground(GoFlyStyle.surface)
+        .presentationBackground(GoFlyStyle.cardSurface)
         .interactiveDismissDisabled(saving)
         .onDisappear { saveTask?.cancel() }
     }
 
     private var header: some View {
-        GoFlySheetHeader(title: nil) {
+        GoFlySheetNavBar(title: nil) {
             Button(goFlyString("favoriteRoutes.cancel")) {
                 favorites.clearError()
                 onDismiss()
@@ -303,13 +303,13 @@ struct GoFlyFavoriteRouteLabelEditor: View {
         .presentationDragIndicator(.visible)
         // Same opaque sheet as the place editor: a view background over the system
         // sheet material lets the Save button tint change with the detent.
-        .presentationBackground(GoFlyStyle.surface)
+        .presentationBackground(GoFlyStyle.cardSurface)
         .interactiveDismissDisabled(saving)
         .onDisappear { saveTask?.cancel() }
     }
 
     private var header: some View {
-        GoFlySheetHeader(title: nil) {
+        GoFlySheetNavBar(title: nil) {
             Button(goFlyString("favoriteRoutes.cancel")) {
                 favorites.clearError()
                 onDismiss()

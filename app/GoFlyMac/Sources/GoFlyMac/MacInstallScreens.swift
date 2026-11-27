@@ -736,7 +736,7 @@ private struct InstallActionButton: View {
 }
 
 private struct InstallRule: View {
-    var body: some View { Rectangle().fill(GoFlyStyle.divider).frame(height: 0.75) }
+    var body: some View { Rectangle().fill(GoFlyStyle.line).frame(height: 0.75) }
 }
 
 private func installText(_ key: String) -> String { MacLocalization.text(key) }

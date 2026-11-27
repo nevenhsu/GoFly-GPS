@@ -66,7 +66,7 @@ struct GoFlyExecutionHeader: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
-        .background(GoFlyStyle.instructionSurface,
+        .background(GoFlyStyle.cardSurface,
                     in: RoundedRectangle(cornerRadius: GoFlyStyle.cornerRadius, style: .continuous))
         .goFlyShadow(.floating)
         .accessibilityElement(children: .contain)

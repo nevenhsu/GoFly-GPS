@@ -79,7 +79,7 @@ struct GoFlyFavoritesView: View {
     }
 
     private var header: some View {
-        GoFlySheetHeader(title: selecting
+        GoFlySheetNavBar(title: selecting
                          ? goFlyLocalizedFormat(goFlyString("favorites.selectedCount"), selected.count)
                          : goFlyString("favorites.title")) {
             Button {

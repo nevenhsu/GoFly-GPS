@@ -49,7 +49,7 @@ struct GoFlyActionSheet: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    private let cornerRadius: CGFloat = 16
+    private let cornerRadius: CGFloat = GoFlyStyle.Radius.card
 
     private var borderColor: Color {
         GoFlyThemeColor.lineSeparator.opacity(colorScheme == .dark ? 0.85 : 0.6)

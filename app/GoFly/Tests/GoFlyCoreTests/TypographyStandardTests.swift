@@ -29,12 +29,13 @@ struct TypographyStandardTests {
 
     /// Files whose fixed font sizes are icon or artwork geometry.
     private static let geometryFiles: Set<String> = ["GoFlySymbols.swift", "GoFlyMapCanvas.swift", "GoFlySetupBootstrap.swift",
-                                                     "GoFlyOnboardingView.swift", "GoFlyStyle.swift", "GoFlyComponentGallery.swift"]
+                                                     "GoFlyOnboardingView.swift", "GoFlyStyle.swift", "GoFlyTypography.swift",
+                                                     "GoFlyButtonStyles.swift", "GoFlySharedViews.swift", "GoFlyComponentGallery.swift"]
 
     @Test func textNeverUsesRawTextStylesOrMediumAndBoldWeights() throws {
         let raw = try NSRegularExpression(pattern: #"\.font\(\.(footnote|body|subheadline|headline|caption2?|title[23]?)\b"#)
         let weights = try NSRegularExpression(pattern: #"\.font\(.*\.weight\(\.(medium|bold|light|heavy)\)"#)
-        for source in try Self.appSources() where source.name != "GoFlyStyle.swift" {
+        for source in try Self.appSources() where source.name != "GoFlyTypography.swift" {
             for (index, line) in source.lines.enumerated() {
                 let range = NSRange(line.startIndex..., in: line)
                 #expect(raw.firstMatch(in: line, range: range) == nil, "\(source.name):\(index + 1) uses a raw text style; use GoFlyFont")
@@ -44,7 +45,7 @@ struct TypographyStandardTests {
     }
 
     @Test func typographyUsesTheSixteenFigmaThemeTokens() throws {
-        let source = try Self.appSource(named: "GoFlyStyle.swift")
+        let source = try Self.appSource(named: "GoFlyTypography.swift")
         guard let start = source.range(of: "enum GoFlyFont: CaseIterable {"),
               let end = source.range(of: "    var pointSize:", range: start.upperBound..<source.endIndex) else {
             Issue.record("GoFlyFont token enum or size table is missing")
@@ -97,13 +98,12 @@ struct TypographyStandardTests {
     }
 
     @Test func textColorRolesMapToThemeTokens() throws {
-        let source = try Self.appSource(named: "GoFlyStyle.swift")
-        guard let start = source.range(of: "enum GoFlyTextColor {"),
-              let end = source.range(of: "/// Page and sheet title row", range: start.upperBound..<source.endIndex) else {
+        let source = try Self.appSource(named: "GoFlyTypography.swift")
+        guard let start = source.range(of: "enum GoFlyTextColor {") else {
             Issue.record("GoFlyTextColor role map is missing")
             return
         }
-        let roles = String(source[start.lowerBound..<end.lowerBound])
+        let roles = String(source[start.lowerBound..<source.endIndex])
         let expectedMappings = [
             "static let primary = GoFlyThemeColor.textPrimary",
             "static let secondary = GoFlyThemeColor.textSecondary",
@@ -150,7 +150,7 @@ struct TypographyStandardTests {
                          "\(source.name):\(index + 1) applies a token as a fixed Font; use goFlyFont")
             }
         }
-        #expect(sources.contains { $0.name == "GoFlyStyle.swift" && $0.lines.contains { $0.contains("content.font(.system(size: size") } })
+        #expect(sources.contains { $0.name == "GoFlyTypography.swift" && $0.lines.contains { $0.contains("content.font(.system(size: size") } })
         #expect(sources.contains { $0.lines.contains { $0.contains(".goFlyFont(GoFlyFont.") } })
     }
 
@@ -167,7 +167,7 @@ struct TypographyStandardTests {
     @Test func textColorsComeFromTheTextColorSet() throws {
         let allowed = ["GoFlyTextColor.", "tone.", "GoFlyStyle.success", "GoFlyStyle.danger", "GoFlyStyle.warning", "foreground)", "(foreground"]
         let raw = try NSRegularExpression(pattern: #"\.foreground(Style|Color)\((\.(primary|secondary|white|black|gray)|Color\.|Color\(|GoFlyStyle\.(primary|secondary|surface|disabledForeground|errorForeground))"#)
-        for source in try Self.appSources() where !["GoFlyStyle.swift", "GoFlySetupBootstrap.swift", "GoFlyComponentGallery.swift"].contains(source.name) {
+        for source in try Self.appSources() where !["GoFlyStyle.swift", "GoFlyTypography.swift", "GoFlyButtonStyles.swift", "GoFlySharedViews.swift", "GoFlySetupBootstrap.swift", "GoFlyComponentGallery.swift"].contains(source.name) {
             for (index, line) in source.lines.enumerated() where line.contains(".foregroundStyle(") || line.contains(".foregroundColor(") {
                 let range = NSRange(line.startIndex..., in: line)
                 #expect(raw.firstMatch(in: line, range: range) == nil, "\(source.name):\(index + 1) uses a raw color; use GoFlyTextColor")

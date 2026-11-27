@@ -39,7 +39,7 @@ struct GoFlyRouteListView: View {
     }
 
     private var header: some View {
-        GoFlySheetHeader(title: goFlyString("route.list.title")) {
+        GoFlySheetNavBar(title: goFlyString("route.list.title")) {
             Button(action: onDismiss) {
                 GoFlyIconLabel(title: goFlyString("common.back"), icon: .chevronLeft)
                     .goFlyFont(GoFlyFont.body)

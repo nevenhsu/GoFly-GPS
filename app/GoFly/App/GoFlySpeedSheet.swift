@@ -3,7 +3,6 @@ import SwiftUI
 
 struct GoFlySpeedSheet: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorScheme) private var colorScheme
 
     let speed: RouteSpeed
     var canEdit: Bool = true
@@ -48,8 +47,7 @@ struct GoFlySpeedSheet: View {
             // Preset Chips with icons
             HStack(spacing: 8) {
                 ForEach(presets, id: \.self) { preset in
-                    let isSelected = speed.kilometersPerHour == preset
-                    Button {
+                    GoFlyPresetChip(isSelected: speed.kilometersPerHour == preset) {
                         if canEdit, let newSpeed = RouteSpeed(kilometersPerHour: preset) {
                             onSpeedChanged(newSpeed)
                         }
@@ -61,27 +59,7 @@ struct GoFlySpeedSheet: View {
                             }
                             Text("\(preset)")
                         }
-                        .goFlyFont(GoFlyFont.footnoteEmphasis)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background(
-                            colorScheme == .dark && isSelected
-                                ? GoFlyThemeColor.surfaceControl
-                                : GoFlyThemeColor.surfaceCard,
-                            in: Capsule()
-                        )
-                        .overlay {
-                            Capsule().strokeBorder(
-                                isSelected ? GoFlyThemeColor.iconAccent : GoFlyThemeColor.lineBorder,
-                                lineWidth: 1
-                            )
-                        }
-                        .foregroundStyle(isSelected ? GoFlyTextColor.accent : GoFlyTextColor.primary)
-                        .contentShape(Capsule())
                     }
-                    .buttonStyle(.plain)
                     .disabled(!canEdit)
                     .accessibilityIdentifier("route.speed.preset.\(preset)")
                 }
@@ -117,9 +95,9 @@ struct GoFlySpeedSheet: View {
             .padding(.top, 8) // 16 stack spacing + 8 = 24 under the preset chips
 
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 44)
-            .padding(.bottom, 8)
+            .padding(.horizontal, GoFlyStyle.Layout.sheetHorizontal)
+            .padding(.top, GoFlyStyle.Layout.compactSheetTop)
+            .padding(.bottom, GoFlyStyle.Spacing.sm)
 
             Spacer(minLength: 0)
 
@@ -129,14 +107,14 @@ struct GoFlySpeedSheet: View {
             }
             .buttonStyle(GoFlyButtonStyle(variant: .primary))
             .accessibilityIdentifier("route.speed.confirm")
-            .padding(.top, 20)
-            .padding(.horizontal, 20)
+            .padding(.top, GoFlyStyle.Spacing.xl)
+            .padding(.horizontal, GoFlyStyle.Layout.sheetHorizontal)
             // The sheet adds about 31 pt below its content; 9 pt more gives the 40 pt bottom margin.
-            .padding(.bottom, 15)
+            .padding(.bottom, GoFlyStyle.Layout.compactSheetButtonBottom)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(300)])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(GoFlyStyle.Layout.compactSheetDetentHeight)])
         .presentationDragIndicator(.visible)
-        .presentationBackground(GoFlyStyle.surface)
+        .presentationBackground(GoFlyStyle.cardSurface)
     }
 }

@@ -68,7 +68,7 @@ struct GoFlyFavoritesBottomBar: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 28)
-        .background(GoFlyStyle.tabBarSurface.ignoresSafeArea(edges: .bottom))
-        .overlay(alignment: .top) { GoFlyStyle.tabSeparator.frame(height: 1) }
+        .background(GoFlyStyle.overlayPanelSurface.ignoresSafeArea(edges: .bottom))
+        .goFlyTopHairline(height: 1)
     }
 }

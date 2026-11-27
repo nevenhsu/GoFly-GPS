@@ -26,7 +26,7 @@ struct GoFlyPlaceDetailsView: View {
                         card.padding(.horizontal, 16)
                     }
                 }
-                .background(GoFlyStyle.surface)
+                .background(GoFlyStyle.cardSurface)
                 .navigationTitle(goFlyString("search.placeDetails"))
                 .navigationBarTitleDisplayMode(.inline)
             }

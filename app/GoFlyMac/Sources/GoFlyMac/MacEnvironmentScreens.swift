@@ -257,7 +257,7 @@ private struct EnvironmentProgressSidebar: View {
         }
         .frame(width: 240).frame(maxHeight: .infinity, alignment: .topLeading)
         .background(GoFlyStyle.sidebar)
-        .overlay(alignment: .trailing) { Rectangle().fill(GoFlyStyle.divider).frame(width: 0.5) }
+        .overlay(alignment: .trailing) { Rectangle().fill(GoFlyStyle.line).frame(width: 0.5) }
     }
 
     @ViewBuilder private func statusIcon(passed: Bool, current: Bool, number: Int) -> some View {
@@ -807,7 +807,7 @@ struct MacDeviceSidebar: View {
         }
         .frame(width: 240)
         .background(GoFlyStyle.sidebar)
-        .overlay(alignment: .trailing) { Rectangle().fill(GoFlyStyle.divider).frame(width: 0.5) }
+        .overlay(alignment: .trailing) { Rectangle().fill(GoFlyStyle.line).frame(width: 0.5) }
     }
 
     private var deviceTeamSummary: String {

@@ -45,10 +45,10 @@ struct GoFlyStatusPill: View {
         // Figma StatusPill: hugs its text; 12 pt left/right and 4 pt top/bottom from the outer edge.
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
-        .background(GoFlyStyle.pillSurface, in: Capsule())
+        .background(GoFlyStyle.cardSurface, in: Capsule())
         .overlay {
             Capsule()
-                .strokeBorder(GoFlyStyle.pillBorder, lineWidth: 1)
+                .strokeBorder(GoFlyStyle.border, lineWidth: 1)
                 .allowsHitTesting(false)
         }
         .goFlyShadow(tone.pillUsesFloatingShadow ? .floating : nil)

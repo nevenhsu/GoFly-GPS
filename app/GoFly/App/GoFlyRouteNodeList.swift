@@ -59,7 +59,7 @@ struct GoFlyRouteNodeList: View {
                             if draggingID == id {
                                 let shape = rowShape(at: index)
                                 shape
-                                    .fill(GoFlyStyle.surface)
+                                    .fill(GoFlyStyle.cardSurface)
                                     .overlay { shape.strokeBorder(GoFlyStyle.primary, lineWidth: 2) }
                                     .allowsHitTesting(false)
                             }
@@ -80,7 +80,7 @@ struct GoFlyRouteNodeList: View {
             if let id = draggingID, let node = draft.nodes.first(where: { $0.id == id }) {
                 row(node)
                     .frame(width: listFrame.width, height: dragHeight)
-                    .background(GoFlyStyle.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12))
                     .shadow(color: GoFlyThemeColor.commonBlack.opacity(0.18), radius: 10, y: 5)
                     .scaleEffect(1.02)
                     .position(x: listFrame.width / 2, y: pointer.y - listFrame.minY)

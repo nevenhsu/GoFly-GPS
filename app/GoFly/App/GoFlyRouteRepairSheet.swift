@@ -58,7 +58,7 @@ struct GoFlyPlanningCardSheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(221)])
         .presentationDragIndicator(.visible)
-        .presentationBackground(GoFlyStyle.surface)
+        .presentationBackground(GoFlyStyle.cardSurface)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("\(idPrefix).sheet")
     }

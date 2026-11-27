@@ -163,7 +163,7 @@ struct GoFlySearchPanel: View {
                               showsSeparator: index < recentPlaces.count - 1)
                 }
             }
-            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
             .padding(.horizontal, 16)
         }
         // An empty query has not searched anything, so it never reports "no results" (B3).
@@ -187,7 +187,7 @@ struct GoFlySearchPanel: View {
                              showsSeparator: index < displayedFavorites.count - 1)
                 }
             }
-            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
             .padding(.horizontal, 16)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("search.favorites.card")
@@ -208,7 +208,7 @@ struct GoFlySearchPanel: View {
                     placeRow(place, identifier: place, showsSeparator: index < places.count - 1)
                 }
             }
-            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
             .padding(.horizontal, 16)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("search.nearby.card")
@@ -280,7 +280,7 @@ struct GoFlySearchPanel: View {
 
     private func coordinateCard(_ place: MapPlace) -> some View {
         coordinateRow(place)
-            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
             .padding(.horizontal, 16)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("search.coordinateCard")
@@ -405,7 +405,7 @@ struct GoFlySearchPanel: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier(identifier)
         }
-        .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
         .padding(.horizontal, 16)
     }
 

@@ -281,6 +281,7 @@ struct GoFlyMapView: View {
     /// When Recenter (or a confirmed GPS clear) asked to follow the next real fix.
     @State private var pendingGPSRecenterAt: Date?
     @State private var projection: GoFlyMapProjection?
+    @State private var mapHeadingDegrees: Double = 0
     @State private var topFrame = CGRect.zero
     @State private var panelFrame = CGRect.zero
     @State private var teleportCardFrame = CGRect.zero
@@ -1073,8 +1074,12 @@ struct GoFlyMapView: View {
                     symbol: executionSymbol,
                     onTrailingAction: nil
                 )
-                GoFlyStatusPill(text: pillText, tone: pillTone, identifier: "map.statusPill")
-                    .accessibilityValue(goFlyString(movement.status.textKey))
+                HStack(alignment: .top) {
+                    GoFlyStatusPill(text: pillText, tone: pillTone, identifier: "map.statusPill")
+                        .accessibilityValue(goFlyString(movement.status.textKey))
+                    Spacer(minLength: 0)
+                    if showsMapControls { compassButton }
+                }
             }
             .padding(.horizontal, 16).padding(.top, 8)
             .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named("mapRoot")) }) {
@@ -1212,6 +1217,9 @@ struct GoFlyMapView: View {
             },
             onProjection: {
                 MapKitSearchRegionContext.current = $0.searchRegion
+                if abs($0.cameraHeadingDegrees - mapHeadingDegrees) > 0.1 {
+                    mapHeadingDegrees = $0.cameraHeadingDegrees
+                }
                 // The map's centre and visible search region can move without
                 // a pin. Keep the search context fresh, but only publish a
                 // SwiftUI state update when the candidate/wander overlay uses
@@ -1896,11 +1904,15 @@ struct GoFlyMapView: View {
                 }
             )
 
-            HStack {
+            HStack(alignment: .top) {
                 GoFlyStatusPill(text: pillText, tone: pillTone, action: expandSheet,
                                 identifier: "map.statusPill")
                     .accessibilityValue(goFlyString(movement.status.textKey))
                 Spacer(minLength: 0)
+                if showsMapControls {
+                    compassButton
+                        .padding(.top, 9)
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -1933,8 +1945,37 @@ struct GoFlyMapView: View {
         activeSearch.resetSelection()
     }
 
-    /// The only map-side control: Figma `Recenter`. It also resets the map to north,
-    /// so there is no separate compass or follow-heading button.
+    /// Always-visible top-right compass button (Figma B1): translucent circular
+    /// housing that reflects live map heading and resets the map to north without
+    /// panning or changing zoom.
+    private var compassButton: some View {
+        Button { resetHeadingToNorth() } label: {
+            ZStack {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(Circle().fill(GoFlyStyle.cardSurface.opacity(0.65)))
+                    .frame(width: 44, height: 44)
+                GoFlyCompassIcon(headingDegrees: mapHeadingDegrees, size: 22)
+                Circle()
+                    .strokeBorder(GoFlyThemeColor.lineSeparator.opacity(0.75), lineWidth: 0.5)
+                    .frame(width: 44, height: 44)
+                    .allowsHitTesting(false)
+            }
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Circle())
+            .goFlyShadow(.floating)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(goFlyString("map.compass"))
+        .accessibilityHint(goFlyString("map.compassHint"))
+        .accessibilityIdentifier("map.compass")
+    }
+
+    private func resetHeadingToNorth() {
+        cameraIntent = GoFlyCameraIntent(headingDegrees: 0)
+    }
+
+    /// Bottom-right map-side controls (Figma `MapControls`: Recenter and mode-specific tools).
     private func mapControls(in geometry: GeometryProxy) -> some View {
         VStack(spacing: 12) {
             // Figma E6: a running wander searches a place to teleport to or head for.

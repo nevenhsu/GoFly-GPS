@@ -13,8 +13,11 @@ struct GoFlyGPXPointList: View {
         // height on first layout after launch and clips the Cancel / Start row against the tab bar.
         listContent
         .background(summarized ? GoFlyStyle.secondarySurface : GoFlyStyle.cardSurface,
-                    in: RoundedRectangle(cornerRadius: 12))
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(GoFlyStyle.border, lineWidth: 0.5) }
+                    in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous)
+                .strokeBorder(GoFlyStyle.border, lineWidth: GoFlyStyle.Layout.hairline)
+        }
         .accessibilityIdentifier("imports.points.list")
     }
 
@@ -97,7 +100,7 @@ struct GoFlyGPXPointsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            GoFlySheetHeader(title: goFlyString("imports.points.title")) {
+            GoFlySheetNavBar(title: goFlyString("imports.points.title")) {
                 Button { dismiss() } label: {
                     GoFlyIconLabel(title: goFlyString("common.back"), icon: .chevronLeft)
                         .goFlyFont(GoFlyFont.subheadlineEmphasis)

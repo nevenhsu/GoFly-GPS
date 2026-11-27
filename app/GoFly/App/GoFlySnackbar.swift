@@ -51,11 +51,11 @@ struct GoFlySnackbar: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 4)
         .frame(minHeight: 52)
-        .background(GoFlyStyle.snackbarSurface,
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(GoFlyStyle.cardSurface,
+                    in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(GoFlyStyle.snackbarBorder, lineWidth: 1)
+            RoundedRectangle(cornerRadius: GoFlyStyle.Radius.control, style: .continuous)
+                .strokeBorder(GoFlyStyle.border, lineWidth: 1)
         }
         .goFlyShadow(.floating)
         .accessibilityElement(children: .contain)

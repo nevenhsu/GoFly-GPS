@@ -722,7 +722,7 @@ struct GoFlyPairingImportView: View {
             .padding(.top, 16)
             .goFlyBottomActionPadding()
             .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
-            .overlay(alignment: .top) { GoFlyThemeColor.lineSeparator.frame(height: 0.5) }
+            .goFlyTopHairline()
         }
         .fileImporter(isPresented: $showingImporter,
                       allowedContentTypes: PairingFileStore.supportedContentTypes) { result in

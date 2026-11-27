@@ -63,14 +63,7 @@ private struct GoFlySettingsGroup<Content: View>: View {
         VStack(spacing: 0) {
             content()
         }
-        .background(GoFlyStyle.cardSurface,
-                    in: RoundedRectangle(cornerRadius: 14,
-                                         style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(GoFlyStyle.subtleBorder, lineWidth: 0.5)
-                .allowsHitTesting(false)
-        }
+        .goFlyCard(radius: GoFlyStyle.Radius.control)
     }
 }
 
@@ -546,16 +539,11 @@ struct GoFlyDeviceSupportSettingsPage: View {
                 .padding(.top, 24)
                 .accessibilityIdentifier("settings.support.action")
             }
-            .padding(.top, 24)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
+            .padding(.top, GoFlyStyle.Spacing.xxl)
+            .padding(.horizontal, GoFlyStyle.Layout.screenHorizontal)
+            .padding(.bottom, GoFlyStyle.Spacing.xxl)
             .frame(maxWidth: .infinity)
-            .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(GoFlyStyle.subtleBorder, lineWidth: 0.5)
-                    .allowsHitTesting(false)
-            }
+            .goFlyCard(radius: GoFlyStyle.Radius.control)
             .accessibilityIdentifier("settings.support.card")
         }
         .onChange(of: support.phase) { _, phase in

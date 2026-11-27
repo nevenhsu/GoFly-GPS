@@ -78,6 +78,44 @@ struct GoFlyRecenterIcon: View {
     var body: some View { GoFlyIcon(.locate, size: size, maximumSize: size * 1.5) }
 }
 
+/// Two-tone compass needle matching Figma `04 · iOS Redesign` (`B1` top-right Compass):
+/// red north pointer, muted south pointer, and surface-colored center pivot.
+struct GoFlyCompassIcon: View {
+    var headingDegrees: Double = 0
+    var size: CGFloat = 22
+
+    var body: some View {
+        Canvas { context, canvasSize in
+            let scaleX = canvasSize.width / 22
+            let scaleY = canvasSize.height / 22
+            func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+                CGPoint(x: x * scaleX, y: y * scaleY)
+            }
+
+            var north = Path()
+            north.move(to: pt(11, 2))
+            north.addLine(to: pt(14.8, 11))
+            north.addLine(to: pt(7.2, 11))
+            north.closeSubpath()
+            context.fill(north, with: .color(GoFlyThemeColor.iconDanger))
+
+            var south = Path()
+            south.move(to: pt(11, 20))
+            south.addLine(to: pt(14.8, 11))
+            south.addLine(to: pt(7.2, 11))
+            south.closeSubpath()
+            context.fill(south, with: .color(GoFlyThemeColor.iconDisabled))
+
+            let pivotRect = CGRect(x: 9.5 * scaleX, y: 9.5 * scaleY, width: 3 * scaleX, height: 3 * scaleY)
+            context.blendMode = .destinationOut
+            context.fill(Path(ellipseIn: pivotRect), with: .color(.black))
+        }
+        .frame(width: size, height: size)
+        .compositingGroup()
+        .rotationEffect(.degrees(-headingDegrees))
+    }
+}
+
 struct GoFlySpeedIcon: View {
     var size: CGFloat = 18
     var body: some View { GoFlyIcon(.speed, size: size, maximumSize: size * 1.5) }

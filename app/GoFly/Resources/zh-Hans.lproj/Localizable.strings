@@ -10,6 +10,8 @@
 "map.startServiceHint" = "准备设备服务，不会移动设备位置。";
 "map.recenter" = "回到当前位置";
 "map.recenterHint" = "只移动地图视角，不改变设备位置；手机定位为可选。";
+"map.compass" = "指南针，重置地图朝北";
+"map.compassHint" = "仅将地图旋转回正北，不改变当前位置与缩放。";
 "map.fitRoute" = "缩放至整条路线";
 "service.title" = "设备服务";
 "service.start" = "启动模拟";

@@ -14,7 +14,6 @@ extension WanderRadius {
 /// speed sheet's layout so the two settings read the same.
 struct GoFlyRangeSheet: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorScheme) private var colorScheme
 
     let radius: WanderRadius
     var onRadiusChanged: (WanderRadius) -> Void
@@ -71,45 +70,31 @@ struct GoFlyRangeSheet: View {
                 }
                 .padding(.top, 8)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 44)
-            .padding(.bottom, 8)
+            .padding(.horizontal, GoFlyStyle.Layout.sheetHorizontal)
+            .padding(.top, GoFlyStyle.Layout.compactSheetTop)
+            .padding(.bottom, GoFlyStyle.Spacing.sm)
 
             Spacer(minLength: 0)
 
             Button(action: onDismiss) { Text(goFlyString("common.doneSetting")) }
                 .buttonStyle(GoFlyButtonStyle(variant: .primary))
                 .accessibilityIdentifier("wander.range.confirm")
-                .padding(.top, 20)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 15)
+                .padding(.top, GoFlyStyle.Spacing.xl)
+                .padding(.horizontal, GoFlyStyle.Layout.sheetHorizontal)
+                .padding(.bottom, GoFlyStyle.Layout.compactSheetButtonBottom)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(300)])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(GoFlyStyle.Layout.compactSheetDetentHeight)])
         .presentationDragIndicator(.visible)
-        .presentationBackground(GoFlyStyle.surface)
+        .presentationBackground(GoFlyStyle.cardSurface)
     }
 
     private func presetChip(_ preset: WanderRadius) -> some View {
-        let isSelected = radius == preset
-        return Button { onRadiusChanged(preset) } label: {
+        GoFlyPresetChip(isSelected: radius == preset) {
+            onRadiusChanged(preset)
+        } label: {
             Text("\(preset.kilometersText) km")
-                .goFlyFont(GoFlyFont.footnoteEmphasis)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity)
-                .frame(height: 40)
-                .background(
-                    colorScheme == .dark && isSelected ? GoFlyThemeColor.surfaceControl : GoFlyThemeColor.surfaceCard,
-                    in: Capsule())
-                .overlay {
-                    Capsule().strokeBorder(isSelected ? GoFlyThemeColor.iconAccent : GoFlyThemeColor.lineBorder,
-                                           lineWidth: 1)
-                }
-                .foregroundStyle(isSelected ? GoFlyTextColor.accent : GoFlyTextColor.primary)
-                .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
         .accessibilityIdentifier("wander.range.preset.\(preset.kilometersText)")
     }
 }

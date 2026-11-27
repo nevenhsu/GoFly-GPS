@@ -504,7 +504,7 @@ private struct GoFlyRoundTripControl: View {
             }
             .padding(.horizontal, 12)
             .frame(height: 36)
-            .background(controller.roundTripEnabled ? GoFlyStyle.primary : GoFlyStyle.surface, in: Capsule())
+            .background(controller.roundTripEnabled ? GoFlyStyle.primary : GoFlyStyle.cardSurface, in: Capsule())
             .overlay { if !controller.roundTripEnabled { Capsule().strokeBorder(GoFlyStyle.border, lineWidth: 0.75) } }
             .contentShape(Capsule())
             .foregroundStyle(!controller.canSetRoundTrip ? GoFlyTextColor.disabled
