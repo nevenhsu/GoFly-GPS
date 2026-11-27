@@ -145,12 +145,12 @@ public enum FavoriteLabelDefaults {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !stripped.isEmpty else { return true }
         // Numeric postal codes (e.g. 110, 95014, 100-0005, 75001)
-        if stripped.allSatisfy({ $0.isASCIIDigit || $0 == "-" || $0 == " " }) {
+        if stripped.allSatisfy({ ($0.isASCII && $0.isNumber) || $0 == "-" || $0 == " " }) {
             return true
         }
         // Short alphanumeric postal codes with digits (e.g. UK SW1A 2AA, Canada M5V 3L9)
         if stripped.count <= 10,
-           stripped.contains(where: \.isASCIIDigit),
+           stripped.contains(where: { $0.isASCII && $0.isNumber }),
            stripped.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == " " || $0 == "-") }),
            stripped == stripped.uppercased() {
             return true
