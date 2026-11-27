@@ -98,7 +98,8 @@ enum SetupWireJSON {
 import Foundation
 
 /// Live requests are deliberately a closed, read-only set.
-public enum CheckAction: String, Codable, Sendable { case environment, devices, inspect, registeredDevices }
+/// `ipaRelease` reads GitHub; `ipaImport` replaces only GoFly's saved IPA (§5.5).
+public enum CheckAction: String, Codable, Sendable { case environment, devices, inspect, registeredDevices, ipaRelease, ipaImport }
 
 public enum MacBundleIdentifier {
     private static let prefix = "com.neven.gofly."
@@ -119,6 +120,13 @@ public struct CheckRequest: Codable, Sendable {
     public let deviceID: String?
     public let transport: ConnectedDevice.Transport?
     public let teamID: String?
+    public let version: String?
+    public let ipaURL: String?
+    public let ipaPath: String?
+    public let sigURL: String?
+    public let sigPath: String?
+    public let minimumVersion: String?
+    public let minimumBuild: String?
 
     public init(action: CheckAction, deviceID: String? = nil, transport: ConnectedDevice.Transport? = nil,
                 teamID: String? = nil) {
@@ -127,6 +135,96 @@ public struct CheckRequest: Codable, Sendable {
         self.deviceID = deviceID
         self.transport = action == .inspect ? transport : nil
         self.teamID = action == .inspect || action == .registeredDevices ? teamID : nil
+        self.version = nil; self.ipaURL = nil; self.ipaPath = nil; self.sigURL = nil; self.sigPath = nil
+        self.minimumVersion = nil; self.minimumBuild = nil
+    }
+
+    private init(action: CheckAction, version: String? = nil, source: IpaImportSource? = nil,
+                 minimum: (version: String, build: String)? = nil) {
+        self.requestID = UUID().uuidString
+        self.action = action
+        self.deviceID = nil; self.transport = nil; self.teamID = nil
+        self.version = version
+        switch source {
+        case .url(let ipa, let sig):
+            ipaURL = ipa; ipaPath = nil; sigURL = sig; sigPath = nil
+        case .file(let ipa, let sig):
+            ipaURL = nil; ipaPath = ipa; sigURL = sig.hasPrefix("https://") ? sig : nil
+            sigPath = sig.hasPrefix("https://") ? nil : sig
+        case nil:
+            ipaURL = nil; ipaPath = nil; sigURL = nil; sigPath = nil
+        }
+        minimumVersion = minimum?.version; minimumBuild = minimum?.build
+    }
+
+    /// Newest GitHub Release with a signed GoFly IPA, or one version.
+    public static func ipaRelease(version: String? = nil) -> CheckRequest {
+        CheckRequest(action: .ipaRelease, version: version)
+    }
+
+    /// Download or read, verify, then save. `minimum` rejects a downgrade.
+    public static func ipaImport(_ source: IpaImportSource,
+                                 minimum: (version: String, build: String)? = nil) -> CheckRequest {
+        CheckRequest(action: .ipaImport, source: source, minimum: minimum)
+    }
+}
+
+public enum IpaImportSource: Equatable, Sendable {
+    /// `sig` nil means the same URL plus `.sig`.
+    case url(ipa: String, sig: String?)
+    /// `sig` is a local path, or an https URL found on GitHub.
+    case file(ipa: String, sig: String)
+}
+
+/// The verified IPA GoFly keeps for installs and renewals until a newer verified one replaces it.
+public struct SavedIpa: Codable, Equatable, Sendable {
+    public let version: String
+    public let build: String
+    public let macProtocol: Int?
+    public let supported: Bool?
+    public let source: String?
+    public let sourceName: String?
+    public let importedAt: String?
+    public init(version: String, build: String, macProtocol: Int? = 1, supported: Bool? = true,
+                source: String? = nil, sourceName: String? = nil, importedAt: String? = nil) {
+        self.version = version; self.build = build; self.macProtocol = macProtocol; self.supported = supported
+        self.source = source; self.sourceName = sourceName; self.importedAt = importedAt
+    }
+}
+
+public struct IpaRelease: Codable, Equatable, Sendable {
+    public let version: String
+    public let build: String
+    public let macProtocol: Int
+    public let supported: Bool
+    public let ipaURL: String
+    public let sigURL: String
+    public let fileName: String
+    public let size: Int?
+    public let publishedAt: String?
+    public init(version: String, build: String, macProtocol: Int = 1, supported: Bool = true, ipaURL: String,
+                sigURL: String, fileName: String, size: Int? = nil, publishedAt: String? = nil) {
+        self.version = version; self.build = build; self.macProtocol = macProtocol; self.supported = supported
+        self.ipaURL = ipaURL; self.sigURL = sigURL; self.fileName = fileName; self.size = size
+        self.publishedAt = publishedAt
+    }
+}
+
+/// Marketing version first, then build: builds restart at 1 for each new version.
+public enum GoFlyVersionOrder {
+    public static func key(version: String?, build: String?) -> [Int]? {
+        guard let version, let build, let buildNumber = Int(build),
+              setupFullMatch(version, "^[0-9]+(\\.[0-9]+){0,3}$") else { return nil }
+        var parts = version.split(separator: ".").compactMap { Int($0) }
+        while parts.count < 4 { parts.append(0) }
+        return parts + [buildNumber]
+    }
+
+    /// nil when either side is unknown.
+    public static func isNewer(version: String?, build: String?, than otherVersion: String?, _ otherBuild: String?) -> Bool? {
+        guard let left = key(version: version, build: build),
+              let right = key(version: otherVersion, build: otherBuild) else { return nil }
+        return left.lexicographicallyPrecedes(right) == false && left != right
     }
 }
 
@@ -161,13 +259,17 @@ public struct MacEnvironment: Codable, Equatable, Sendable {
     public let xcodeVersion: String?
     public let projectVersion: String?
     public let projectBuild: String?
+    /// The saved IPA; projectVersion/projectBuild mirror it.
+    public let ipa: SavedIpa?
     public init(ready: Bool, checks: [EnvironmentCheck], teams: [MacTeam] = [],
-                xcodeVersion: String? = nil, projectVersion: String? = nil, projectBuild: String? = nil) {
+                xcodeVersion: String? = nil, projectVersion: String? = nil, projectBuild: String? = nil,
+                ipa: SavedIpa? = nil) {
         self.ready = ready; self.checks = checks; self.teams = teams
         self.xcodeVersion = xcodeVersion; self.projectVersion = projectVersion; self.projectBuild = projectBuild
+        self.ipa = ipa
     }
 
-    private enum CodingKeys: String, CodingKey { case ready, checks, teams, xcodeVersion, projectVersion, projectBuild }
+    private enum CodingKeys: String, CodingKey { case ready, checks, teams, xcodeVersion, projectVersion, projectBuild, ipa }
 
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -177,6 +279,7 @@ public struct MacEnvironment: Codable, Equatable, Sendable {
         xcodeVersion = try values.decodeIfPresent(String.self, forKey: .xcodeVersion)
         projectVersion = try values.decodeIfPresent(String.self, forKey: .projectVersion)
         projectBuild = try values.decodeIfPresent(String.self, forKey: .projectBuild)
+        ipa = try values.decodeIfPresent(SavedIpa.self, forKey: .ipa)
     }
 }
 
@@ -315,7 +418,9 @@ public enum ResponseDecoder {
                     "signing-required", "operation-failed", "busy", "usb-lockdown-failed", "usb-device-not-found",
                     "device-identity-mismatch", "unsupported-os-version", "runtime-unavailable", "dependency-mismatch",
                     "device-values-unavailable", "runtime-api-mismatch", "timeout", "configuration-invalid",
-                    "invalid-config"]
+                    "invalid-config", "storage-unavailable", "ipa-missing", "ipa-invalid",
+                    "ipa-signature-missing", "ipa-signature-invalid", "ipa-protocol-unsupported", "ipa-downgrade",
+                    "ipa-download-failed", "release-unavailable"]
                 guard let code = envelope.code, safeCodes.contains(code) else { throw CheckFailure.invalidResponse }
                 throw CheckFailure.service(code)
             }
@@ -511,7 +616,8 @@ public enum MacSetupResponseDecoder {
         "signing-required", "signature-invalid", "artifact-mismatch", "support-unavailable",
         "pairing-unknown", "pairing-rejected", "handoff-unknown", "commit-unknown",
         "transaction-unknown", "transaction-conflict", "busy", "cancelled", "timeout",
-        "storage-unavailable", "operation-failed", "device-limit-reached", "developer-untrusted"
+        "storage-unavailable", "operation-failed", "device-limit-reached", "developer-untrusted",
+        "ipa-missing", "ipa-invalid", "ipa-signature-invalid", "ipa-protocol-unsupported"
     ]
 
     public static func decode(_ data: Data, for request: MacSetupRequest) throws -> MacSetupSnapshot {

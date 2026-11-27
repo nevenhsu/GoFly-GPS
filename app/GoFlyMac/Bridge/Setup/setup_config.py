@@ -41,7 +41,8 @@ class SetupConfiguration:
             resources_root=resources,
             python_path=resources / "Python" / "python" / "install" / "bin" / "python3.14",
             developer_directory=Path(developer_directory),
-            project_path=resources / "iOSProject" / "GoFly.xcodeproj",
+            # Only the empty signing stub ships; GoFly itself comes from the saved IPA (§5.5).
+            project_path=resources / "SigningStub" / "GoFly.xcodeproj",
             target_bundle_id=target_bundle_id,
             target_name=target_name,
             state_root=_application_support() / "GoFly" / "state",
@@ -79,9 +80,9 @@ class SetupConfiguration:
             expected_python = self.resources_root / "work" / "mac-setup-env" / "bin" / "python"
             expected_native = self.resources_root / "work" / "gofly-ios" / "native" / "libidevice_ffi.a"
         else:
-            expected_project = self.resources_root / "iOSProject" / "GoFly.xcodeproj"
+            expected_project = self.resources_root / "SigningStub" / "GoFly.xcodeproj"
             expected_python = self.resources_root / "Python" / "python" / "install" / "bin" / "python3.14"
-            expected_native = self.resources_root / "native" / "libidevice_ffi.a"
+            expected_native = None
 
         expected_state = _application_support() / "GoFly" / "state"
         python_is_valid = self.python_path.is_file() and os.access(self.python_path, os.X_OK)
@@ -103,8 +104,7 @@ class SetupConfiguration:
             or self.developer_directory.is_symlink()
             or not self.developer_directory.is_dir()
             or not (self.developer_directory / "usr" / "bin" / "xcodebuild").is_file()
-            or not expected_native.is_file()
-            or expected_native.is_symlink()
+            or (expected_native is not None and (not expected_native.is_file() or expected_native.is_symlink()))
             or self.state_root != expected_state
             or self.state_root.is_symlink()
             or self.target_name != TARGET_NAME

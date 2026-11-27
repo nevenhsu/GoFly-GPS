@@ -650,7 +650,7 @@ private struct RenewChecker: MacChecking {
         let payload: [String: Any]
         switch request.action {
         case .environment:
-            payload = ["ready": true, "checks": [], "teams": [["teamID": "ABCDE12345", "teamName": "Test Team", "isFreeProvisioningTeam": true]], "xcodeVersion": "27.1"]
+            payload = ["ready": true, "checks": [], "teams": [["teamID": "ABCDE12345", "teamName": "Test Team", "isFreeProvisioningTeam": true]], "xcodeVersion": "27.1", "ipa": ["version": "1.0.0", "build": "1"]]
         case .devices:
             payload = ["devices": [["id": "00008110-001234567890abcd", "name": "iPhone", "transport": "usb"]]]
         case .inspect:
@@ -658,6 +658,8 @@ private struct RenewChecker: MacChecking {
                        "developerMode": true, "installed": true, "vpnInstalled": true]
         case .registeredDevices:
             payload = ["devices": []]
+        case .ipaRelease, .ipaImport:
+            throw CheckFailure.service("release-unavailable")
         }
         return try JSONSerialization.data(withJSONObject: [
             "requestID": request.requestID, "status": "ok", "payload": payload
@@ -689,7 +691,7 @@ private struct SetupReadOnlyChecker: MacChecking {
     func check(_ request: CheckRequest) async throws -> Data {
         guard request.action == .environment else { throw CheckFailure.unavailable }
         return try JSONSerialization.data(withJSONObject: ["requestID": request.requestID,
-            "status": "ok", "payload": ["ready": true, "checks": [], "teams": [["teamID": "ABCDE12345", "teamName": "Test Team", "isFreeProvisioningTeam": true]], "xcodeVersion": "27.1"]])
+            "status": "ok", "payload": ["ready": true, "checks": [], "teams": [["teamID": "ABCDE12345", "teamName": "Test Team", "isFreeProvisioningTeam": true]], "xcodeVersion": "27.1", "ipa": ["version": "1.0.0", "build": "1"]]])
     }
 }
 

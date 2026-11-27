@@ -19,7 +19,18 @@ public enum MacDevicePageState: Equatable, Sendable {
     case noDevice, chooseDevice, checking, inspectRequired, trustRequired
     case developerModeRequired, readyToInstall, installed, updateAvailable
     case wifiNeedsUSB, wifiUnavailable, restartRequired
+    /// D15/D15b/D16: no usable saved IPA yet, or the user opened "Choose another IPA".
+    case chooseIpa
+    /// D17: GitHub has a newer signed IPA than the phone and the saved one.
+    case releaseAvailable
 }
+
+public enum IpaSourceMode: String, Sendable { case url, file }
+
+/// Where the signature field's value came from (D15b).
+public enum IpaSignatureOrigin: Equatable, Sendable { case manual, sameFolder, github }
+
+public enum IpaReleaseLookup: Equatable, Sendable { case idle, loading, loaded, unavailable }
 
 @MainActor @Observable
 public final class MacAppModel {
@@ -45,6 +56,23 @@ public final class MacAppModel {
     public private(set) var networkAvailable = false
     public private(set) var hasNetworkStatus = false
     private var autoRenewCheckInProgress = false
+    // Saved IPA and its sources (MAC-INSTALLER-SPEC §5.5).
+    public private(set) var savedIpa: SavedIpa?
+    public private(set) var latestRelease: IpaRelease?
+    public private(set) var releaseLookup: IpaReleaseLookup = .idle
+    public private(set) var ipaChooserOpen = false
+    public private(set) var ipaImportBusy = false
+    public private(set) var ipaFailure: CheckFailure?
+    public var ipaSourceMode: IpaSourceMode = .url
+    public var ipaURLText = "" { didSet { if ipaURLText != latestRelease?.ipaURL { ipaURLEdited = true } } }
+    public private(set) var ipaURLEdited = false
+    public private(set) var ipaFilePath: String?
+    public private(set) var signatureLocation: String?
+    public private(set) var signatureOrigin: IpaSignatureOrigin?
+    public private(set) var signatureLookupBusy = false
+    @ObservationIgnored private var ipaTask: Task<Void, Never>?
+    @ObservationIgnored private var releaseTask: Task<Void, Never>?
+    @ObservationIgnored private var renewAfterImport = false
     @ObservationIgnored private let live: any MacChecking
     @ObservationIgnored private let preferences: UserDefaults
     @ObservationIgnored private var task: Task<Void, Never>?
@@ -73,7 +101,7 @@ public final class MacAppModel {
     }
 
     public var busy: Bool {
-        checkingBusy || restoringOperations || autoRenewCheckInProgress || setup?.isBusy == true
+        checkingBusy || restoringOperations || autoRenewCheckInProgress || ipaImportBusy || setup?.isBusy == true
     }
     public var setupLocksDevice: Bool {
         restoringOperations || setup?.locksDevice == true
@@ -189,10 +217,17 @@ public final class MacAppModel {
         }
         if failure != nil { return .inspectRequired }
         guard let inspection else { return .inspectRequired }
-        if inspection.installed == true { return projectIsNewer ? .updateAvailable : .installed }
+        if inspection.installed == true {
+            if ipaChooserOpen || savedIpaIsOlderThanInstalled || savedIpa?.supported == false { return .chooseIpa }
+            if releaseIsNewer { return .releaseAvailable }
+            if savedIpa == nil { return .chooseIpa }
+            return projectIsNewer ? .updateAvailable : .installed
+        }
         if selectedTransport == .wifi, inspection.installed == false { return .wifiNeedsUSB }
         if inspection.developerMode != true { return .developerModeRequired }
-        if inspection.installed == false, selectedTransport == .usb { return .readyToInstall }
+        if inspection.installed == false, selectedTransport == .usb {
+            return ipaChooserOpen || savedIpa == nil || savedIpa?.supported == false ? .chooseIpa : .readyToInstall
+        }
         return .inspectRequired
     }
 
@@ -307,6 +342,10 @@ public final class MacAppModel {
                     networkAvailable: networkAvailable,
                     operationInProgress: false
                 ) else { continue }
+                // Renewal installs the saved IPA as is; never download, swap or downgrade here.
+                guard let saved = savedIpa, saved.supported != false,
+                      GoFlyVersionOrder.isNewer(version: inspection.appVersion, build: inspection.appBuild,
+                                                than: saved.version, saved.build) != true else { continue }
 
                 selectedID = device.id
                 selectedTransport = device.transport
@@ -494,6 +533,7 @@ public final class MacAppModel {
 
     private func applyEnvironment(_ value: MacEnvironment) {
         environment = value
+        savedIpa = value.ipa
         hasCheckedEnvironment = true
         if let selectedTeamID, value.teams.contains(where: { $0.teamID == selectedTeamID }) {
             return
@@ -681,17 +721,28 @@ public final class MacAppModel {
         inspectSelected()
     }
 
+    /// The saved IPA is newer than the phone's GoFly (version first, then build).
     public var projectIsNewer: Bool {
-        let projectVersion = environment?.projectVersion
-        let projectBuild = environment?.projectBuild
-        let installedVersion = inspection?.appVersion
-        let installedBuild = inspection?.appBuild
-        if let projectBuild, let projectBuildNumber = Int(projectBuild),
-           let installedBuild, let installedBuildNumber = Int(installedBuild),
-           projectBuildNumber != installedBuildNumber {
-            return projectBuildNumber > installedBuildNumber
-        }
-        return projectVersion != nil && installedVersion != nil && projectVersion != installedVersion
+        GoFlyVersionOrder.isNewer(version: savedIpa?.version, build: savedIpa?.build,
+                                  than: inspection?.appVersion, inspection?.appBuild) == true
+    }
+
+    /// Installing the saved IPA would downgrade the phone (§5.5 forbids it).
+    public var savedIpaIsOlderThanInstalled: Bool {
+        GoFlyVersionOrder.isNewer(version: inspection?.appVersion, build: inspection?.appBuild,
+                                  than: savedIpa?.version, savedIpa?.build) == true
+    }
+
+    /// GitHub's newest signed IPA beats both the phone and the saved IPA.
+    public var releaseIsNewer: Bool {
+        guard let latestRelease, latestRelease.supported else { return false }
+        let beatsPhone = GoFlyVersionOrder.isNewer(version: latestRelease.version, build: latestRelease.build,
+                                                   than: inspection?.appVersion, inspection?.appBuild) == true
+        let beatsSaved = savedIpa.map {
+            GoFlyVersionOrder.isNewer(version: latestRelease.version, build: latestRelease.build,
+                                      than: $0.version, $0.build) == true
+        } ?? true
+        return beatsPhone && beatsSaved
     }
 
     public var renewButtonTitle: String {
@@ -777,6 +828,189 @@ public final class MacAppModel {
         if inspectAfterDeviceRefresh {
             inspectAfterDeviceRefresh = false
             inspectSelected()
+        }
+    }
+}
+
+// MARK: - Saved IPA, GitHub Release and the IPA chooser (MAC-INSTALLER-SPEC §5.5)
+
+extension MacAppModel {
+    /// Query GitHub again every time; nothing about a release is built into the app.
+    public func loadLatestRelease() {
+        guard releaseLookup != .loading else { return }
+        releaseLookup = .loading
+        let request = CheckRequest.ipaRelease()
+        releaseTask = Task {
+            do {
+                let data = try await live.check(request)
+                let release = try ResponseDecoder.decode(data, for: request, as: IpaRelease.self)
+                guard !Task.isCancelled else { return }
+                self.latestRelease = release
+                self.releaseLookup = .loaded
+                if !self.ipaURLEdited || self.ipaURLText.isEmpty {
+                    self.ipaURLText = release.ipaURL
+                    self.ipaURLEdited = false
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                self.releaseLookup = .unavailable
+            }
+        }
+    }
+
+    /// Async variant for the 24-hour check; returns the release when one is found.
+    @discardableResult
+    public func refreshLatestRelease() async -> IpaRelease? {
+        let request = CheckRequest.ipaRelease()
+        guard let data = try? await live.check(request),
+              let release = try? ResponseDecoder.decode(data, for: request, as: IpaRelease.self) else { return nil }
+        latestRelease = release
+        releaseLookup = .loaded
+        if !ipaURLEdited || ipaURLText.isEmpty { ipaURLText = release.ipaURL; ipaURLEdited = false }
+        return release
+    }
+
+    public func openIpaChooser() {
+        guard !busy else { return }
+        ipaChooserOpen = true
+        ipaFailure = nil
+        ipaURLEdited = false
+        ipaURLText = latestRelease?.ipaURL ?? ""
+        loadLatestRelease()
+    }
+
+    public func closeIpaChooser() {
+        guard !ipaImportBusy else { return }
+        ipaChooserOpen = false
+        ipaFailure = nil
+    }
+
+    public var canCloseIpaChooser: Bool {
+        ipaChooserOpen && savedIpa != nil && !savedIpaIsOlderThanInstalled && savedIpa?.supported != false
+    }
+
+    public func setIpaSourceMode(_ mode: IpaSourceMode) {
+        guard !ipaImportBusy else { return }
+        ipaSourceMode = mode
+        ipaFailure = nil
+    }
+
+    /// D15b IPA field. Fills the signature from the same folder, else from GitHub.
+    public func selectIpaFile(_ path: String) {
+        guard !ipaImportBusy else { return }
+        ipaFilePath = path
+        ipaFailure = nil
+        if signatureOrigin != .manual || signatureLocation == nil {
+            signatureLocation = nil
+            signatureOrigin = nil
+        } else {
+            return
+        }
+        let sibling = path + ".sig"
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: sibling, isDirectory: &isDirectory), !isDirectory.boolValue {
+            signatureLocation = sibling
+            signatureOrigin = .sameFolder
+            return
+        }
+        let name = (path as NSString).lastPathComponent
+        guard let range = name.range(of: #"^GoFly-GPS-([0-9]+(\.[0-9]+){0,3})\.ipa$"#, options: .regularExpression) else { return }
+        let version = String(name[range].dropFirst("GoFly-GPS-".count).dropLast(".ipa".count))
+        signatureLookupBusy = true
+        let request = CheckRequest.ipaRelease(version: version)
+        Task {
+            defer { self.signatureLookupBusy = false }
+            guard let data = try? await live.check(request),
+                  let release = try? ResponseDecoder.decode(data, for: request, as: IpaRelease.self),
+                  self.ipaFilePath == path, self.signatureLocation == nil else { return }
+            self.signatureLocation = release.sigURL
+            self.signatureOrigin = .github
+        }
+    }
+
+    /// D15b signature field, chosen by hand.
+    public func selectSignatureFile(_ path: String) {
+        guard !ipaImportBusy else { return }
+        signatureLocation = path
+        signatureOrigin = .manual
+        ipaFailure = nil
+    }
+
+    public var canImportIpa: Bool {
+        guard !busy else { return false }
+        switch ipaSourceMode {
+        case .url:
+            let text = ipaURLText.trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.hasPrefix("https://") && text.count <= 2048
+        case .file:
+            return ipaFilePath != nil && signatureLocation != nil
+        }
+    }
+
+    /// The phone's GoFly, so a selection can never downgrade it.
+    private var downgradeFloor: (version: String, build: String)? {
+        guard inspection?.installed == true, let version = inspection?.appVersion,
+              let build = inspection?.appBuild,
+              GoFlyVersionOrder.key(version: version, build: build) != nil else { return nil }
+        return (version, build)
+    }
+
+    public func importSelectedIpa() {
+        guard canImportIpa else { return }
+        let source: IpaImportSource
+        switch ipaSourceMode {
+        case .url:
+            source = .url(ipa: ipaURLText.trimmingCharacters(in: .whitespacesAndNewlines),
+                          sig: ipaURLText == latestRelease?.ipaURL ? latestRelease?.sigURL : nil)
+        case .file:
+            guard let ipa = ipaFilePath, let sig = signatureLocation else { return }
+            source = .file(ipa: ipa, sig: sig)
+        }
+        runIpaImport(source)
+    }
+
+    /// D17 primary: download the newest release, then update and renew.
+    public func downloadLatestAndUpdate() {
+        guard !busy, let release = latestRelease, release.supported else { return }
+        renewAfterImport = true
+        runIpaImport(.url(ipa: release.ipaURL, sig: release.sigURL))
+    }
+
+    public func cancelIpaImport() {
+        ipaTask?.cancel()
+    }
+
+    private func runIpaImport(_ source: IpaImportSource) {
+        guard !ipaImportBusy else { return }
+        ipaImportBusy = true
+        ipaFailure = nil
+        let request = CheckRequest.ipaImport(source, minimum: downgradeFloor)
+        ipaTask = Task {
+            defer { self.ipaImportBusy = false; self.ipaTask = nil }
+            do {
+                let data = try await live.check(request)
+                let saved = try ResponseDecoder.decode(data, for: request, as: SavedIpa.self)
+                self.savedIpa = saved
+                self.ipaChooserOpen = false
+                self.ipaFailure = nil
+                self.ipaFilePath = nil
+                self.signatureLocation = nil
+                self.signatureOrigin = nil
+                if self.renewAfterImport {
+                    self.renewAfterImport = false
+                    self.ipaImportBusy = false
+                    self.startRenew()
+                }
+            } catch {
+                self.renewAfterImport = false
+                if Task.isCancelled || error is CancellationError || (error as? CheckFailure) == .cancelled {
+                    self.ipaFailure = nil
+                } else {
+                    self.ipaFailure = error as? CheckFailure ?? .invalidResponse
+                    // D16 is part of the chooser, even when a D17 download failed.
+                    self.ipaChooserOpen = true
+                }
+            }
         }
     }
 }

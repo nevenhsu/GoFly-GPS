@@ -54,36 +54,24 @@ PRODUCTS="$(/usr/bin/xcrun swift build --disable-sandbox --package-path "$APP_SO
   --config-path "$BUILD_ROOT/config" --security-path "$BUILD_ROOT/security" --show-bin-path)"
 RESOURCES="$STAGING_BUNDLE/Contents/Resources"
 mkdir -p "$STAGING_BUNDLE/Contents/MacOS" "$RESOURCES/Bridge/Device" \
-  "$RESOURCES/Bridge/Setup" "$RESOURCES/Python" "$RESOURCES/native" \
-  "$RESOURCES/iOSProject"
+  "$RESOURCES/Bridge/Setup" "$RESOURCES/Python" "$RESOURCES/SigningStub"
 cp "$PRODUCTS/GoFlyMac" "$STAGING_BUNDLE/Contents/MacOS/GoFlyMac"
 cp "$APP_SOURCE/AppIcon.icns" "$RESOURCES/AppIcon.icns"
 cp -R "$PRODUCTS/GoFlyMac_GoFlyMac.bundle" "$RESOURCES/"
 cp "$APP_SOURCE/Bridge/bridge.py" "$APP_SOURCE/Bridge/wire.py" \
   "$RESOURCES/Bridge/"
 cp "$APP_SOURCE/Bridge/Setup/__init__.py" "$APP_SOURCE"/Bridge/Setup/setup_*.py \
-  "$RESOURCES/Bridge/Setup/"
+  "$APP_SOURCE"/Bridge/Setup/ipa_*.py "$RESOURCES/Bridge/Setup/"
 cp "$APP_SOURCE/Bridge/Device/__init__.py" "$APP_SOURCE/Bridge/Device/gofly_device.py" \
   "$RESOURCES/Bridge/Device/"
 
-# Keep the iOS build input relocatable and omit development-only material.
-/usr/bin/rsync -a \
-  --exclude='Tests/' --exclude='UITests/' --exclude='scripts/' \
-  --exclude='/NativeBridge/build.sh' --exclude='/NativeBridge/prepare-build.py' \
-  --exclude='/NativeBridge/*.patch' --exclude='/NativeBridge/upstream.json' \
-  --exclude='.DS_Store' \
-  --exclude='/.build/' --exclude='/.swiftpm/' --exclude='/work/' \
-  "$WORKSPACE_ROOT/app/GoFly/" "$RESOURCES/iOSProject/"
-if [ ! -d "$RESOURCES/iOSProject/GoFly.xcodeproj" ]; then
-  echo "The bundled iOS project is incomplete." >&2
-  exit 1
-fi
-if [ -e "$RESOURCES/iOSProject/.build" ]; then
-  echo "The bundled iOS project contains a local build cache." >&2
-  exit 1
-fi
-if /usr/bin/find "$RESOURCES/iOSProject" \( -name Tests -o -name UITests -o -name scripts -o -name build.sh -o -name prepare-build.py \) -print -quit | /usr/bin/grep -q .; then
-  echo "The bundled iOS project contains excluded development files." >&2
+# GoFly itself is no longer bundled: the user picks a signed IPA and GoFly re-signs
+# it (MAC-INSTALLER-SPEC §5.5). Only the empty signing stub ships, so Xcode can
+# still create the user's profile and certificate.
+/usr/bin/rsync -a --exclude='.DS_Store' --exclude='xcuserdata/' \
+  "$APP_SOURCE/SigningStub/" "$RESOURCES/SigningStub/"
+if [ ! -f "$RESOURCES/SigningStub/GoFly.xcodeproj/project.pbxproj" ] || [ ! -f "$RESOURCES/SigningStub/main.c" ]; then
+  echo "The bundled signing stub is incomplete." >&2
   exit 1
 fi
 
@@ -113,18 +101,16 @@ mkdir -p "$PYTHON_ROOT/lib/python3.14/site-packages"
 # Drop interpreter parts the bridge never imports (tests, IDLE, demos, bytecode caches).
 PYLIB="$PYTHON_ROOT/lib/python3.14"
 rm -rf "$PYLIB/test" "$PYLIB/idlelib" "$PYLIB/turtledemo"
+# Tk/Tcl GUI and pip are never used at runtime. jedi/IPython (pymobiledevice3's
+# interactive shell, imported lazily) and Pillow (screenshots) are outside the
+# bridge's import graph; only pymobiledevice3's own version is checked.
+rm -rf "$PYLIB/tkinter" "$PYLIB/lib-dynload"/_tkinter*.so "$PYTHON_ROOT/lib/tcl9"* "$PYTHON_ROOT/lib/tk9"* \
+  "$PYTHON_ROOT/lib/itcl"* "$PYTHON_ROOT/lib/thread"* "$PYTHON_ROOT/lib/libtcl"* "$PYTHON_ROOT/lib/libtk"* \
+  "$PYTHON_ROOT/lib/libtcl9tk"* "$PYTHON_ROOT/bin/pip"* "$PYTHON_ROOT/bin/idle"*
+SITE="$PYLIB/site-packages"
+rm -rf "$SITE/jedi" "$SITE"/jedi-*.dist-info "$SITE/IPython" "$SITE"/ipython-*.dist-info \
+  "$SITE/PIL" "$SITE"/pillow-*.dist-info "$SITE"/pillow.libs "$SITE/pip" "$SITE"/pip-*.dist-info
 /usr/bin/find "$PYTHON_ROOT" -name __pycache__ -type d -prune -exec rm -rf {} +
-
-NATIVE_ARCHIVE="$WORKSPACE_ROOT/work/gofly-ios/native/libidevice_ffi.a"
-if [ ! -f "$NATIVE_ARCHIVE" ] || [ -L "$NATIVE_ARCHIVE" ]; then
-  echo "Missing prebuilt native library: $NATIVE_ARCHIVE" >&2
-  exit 1
-fi
-/usr/bin/lipo -archs "$NATIVE_ARCHIVE" | /usr/bin/grep -q 'arm64' || {
-  echo "The prebuilt native library does not contain arm64." >&2
-  exit 1
-}
-cp "$NATIVE_ARCHIVE" "$RESOURCES/native/libidevice_ffi.a"
 
 /usr/bin/python3 - "$STAGING_BUNDLE" "$GOFLY_BUNDLE_ID" <<'PY'
 import plistlib
@@ -151,10 +137,25 @@ PY
 
 # Validate only bundle contents. Do not enumerate or connect to physical devices.
 "$BUNDLED_PYTHON" -I -c 'import importlib.metadata as m, platform; assert platform.machine() == "arm64"; assert m.version("pymobiledevice3") == "11.31.0"'
+# The trimmed runtime must still import every module the bridge loads.
+"$BUNDLED_PYTHON" -I -B -c '
+import importlib
+for name in ("pymobiledevice3.usbmux", "pymobiledevice3.lockdown", "pymobiledevice3.remote.tunnel_service",
+             "pymobiledevice3.exceptions", "pymobiledevice3.services.installation_proxy",
+             "pymobiledevice3.services.house_arrest", "pymobiledevice3.remote.userspace_tunnel",
+             "pymobiledevice3.services.dvt.instruments.process_control",
+             "pymobiledevice3.services.dvt.instruments.dvt_provider",
+             "pymobiledevice3.services.mobile_image_mounter", "pymobiledevice3.services.cryptexd",
+             "developer_disk_image", "cryptography.hazmat.primitives.asymmetric.ed25519", "requests"):
+    importlib.import_module(name)
+'
 test -f "$RESOURCES/Bridge/bridge.py"
 test -f "$RESOURCES/Bridge/Device/gofly_device.py"
-test -f "$RESOURCES/iOSProject/GoFly.xcodeproj/project.pbxproj"
-test -f "$RESOURCES/native/libidevice_ffi.a"
+test -f "$RESOURCES/Bridge/Setup/ipa_store.py"
+test -f "$RESOURCES/Bridge/Setup/ipa_resign.py"
+test -f "$RESOURCES/SigningStub/GoFly.xcodeproj/project.pbxproj"
+test ! -e "$RESOURCES/iOSProject"
+test ! -e "$RESOURCES/native"
 test -f "$RESOURCES/AppIcon.icns"
 
 # Replace only this script's generated development artifact, after staging is complete.

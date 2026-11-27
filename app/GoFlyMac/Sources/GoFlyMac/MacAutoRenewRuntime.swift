@@ -24,13 +24,30 @@ final class MacAutoRenewRuntime {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             guard !Task.isCancelled else { return }
+            await self.checkRelease(model)
             await model.checkAutomaticRenewal()
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(MacAutoRenewPolicy.checkInterval))
                 guard !Task.isCancelled else { return }
+                await self.checkRelease(model)
                 await model.checkAutomaticRenewal()
             }
         }
+    }
+
+    /// Same cadence as automatic renewal: look for a newer signed IPA on GitHub
+    /// and notify once per release. Renewal itself never switches versions (§5.5).
+    private func checkRelease(_ model: MacAppModel) async {
+        guard model.networkAvailable, let release = await model.refreshLatestRelease(), release.supported,
+              let saved = model.savedIpa,
+              GoFlyVersionOrder.isNewer(version: release.version, build: release.build,
+                                        than: saved.version, saved.build) == true else { return }
+        let key = "gofly.mac.notifiedRelease"
+        let identity = "\(release.version)+\(release.build)"
+        guard UserDefaults.standard.string(forKey: key) != identity else { return }
+        UserDefaults.standard.set(identity, forKey: key)
+        notify(title: MacLocalization.text("auto-renew.notification.release.title"),
+               body: String(format: MacLocalization.text("auto-renew.notification.release.body"), release.version))
     }
 
     func handle(_ state: MacAutoRenewState) {
@@ -74,8 +91,10 @@ final class MacAutoRenewRuntime {
     }
 
     private func notify(titleKey: String, bodyKey: String) {
-        let title = MacLocalization.text(titleKey)
-        let body = MacLocalization.text(bodyKey)
+        notify(title: MacLocalization.text(titleKey), body: MacLocalization.text(bodyKey))
+    }
+
+    private func notify(title: String, body: String) {
         Task { @MainActor in
             let center = UNUserNotificationCenter.current()
             let settings = await center.notificationSettings()

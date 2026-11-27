@@ -4,6 +4,7 @@
 <dict>
     <key>GoFlyRequiresMacSetup</key><true/>
     <key>GoFlyTransferProtocolVersion</key><integer>1</integer>
+    <key>GoFlyMacProtocol</key><integer>1</integer>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key><false/>

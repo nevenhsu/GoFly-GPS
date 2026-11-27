@@ -103,6 +103,34 @@ struct GoFlyApp: App {
                                 model.openDevices(firstInstall: true)
                             case "D02", "D03", "D04":
                                 model.openDevices(firstInstall: true)
+                            case "D15", "D15b", "D16", "D15flow":
+                                // Simulated USB iPhone, no saved IPA yet (§5.5).
+                                model.openDevices(firstInstall: true)
+                                for _ in 0..<200 {
+                                    if model.devicePageState == .chooseIpa && !model.busy { break }
+                                    try? await Task.sleep(for: .milliseconds(25))
+                                }
+                                if screen == "D15b" {
+                                    model.setIpaSourceMode(.file)
+                                    model.selectIpaFile(NSHomeDirectory() + "/Downloads/GoFly-GPS-1.0.0.ipa")
+                                    model.selectSignatureFile(NSHomeDirectory() + "/Downloads/GoFly-GPS-1.0.0.ipa.sig")
+                                }
+                                if screen == "D16" || screen == "D15flow" {
+                                    for _ in 0..<200 {
+                                        if model.canImportIpa { break }
+                                        try? await Task.sleep(for: .milliseconds(25))
+                                    }
+                                    model.importSelectedIpa()
+                                }
+                            case "D17":
+                                model.openDevices(firstInstall: false)
+                                for _ in 0..<200 {
+                                    if !model.isChecking { break }
+                                    try? await Task.sleep(for: .milliseconds(25))
+                                }
+                                model.select("capture-device", transport: .usb)
+                                model.inspectSelected()
+                                await model.refreshLatestRelease()
                             case "D05", "D06", "D07":
                                 model.openDevices(firstInstall: true)
                                 for _ in 0..<200 {
@@ -121,7 +149,7 @@ struct GoFlyApp: App {
                                     if screen != "D07", model.setup?.progressStage == targetStage { break }
                                     try? await Task.sleep(for: .milliseconds(50))
                                 }
-                            case "D08", "D09", "D12", "D13":
+                            case "D08", "D09", "D12", "D13", "D08choose":
                                 model.openDevices(firstInstall: false)
                                 for _ in 0..<200 {
                                     if !model.isChecking { break }
@@ -188,6 +216,25 @@ struct GoFlyApp: App {
                                     try? await Task.sleep(for: .milliseconds(50))
                                 }
                             }
+                            if screen == "D08choose" {
+                                for _ in 0..<200 {
+                                    if model.devicePageState == .installed && !model.busy { break }
+                                    try? await Task.sleep(for: .milliseconds(25))
+                                }
+                                model.openIpaChooser()
+                            }
+                            if screen == "D15flow" {
+                                for _ in 0..<200 {
+                                    if model.devicePageState == .readyToInstall && !model.busy { break }
+                                    try? await Task.sleep(for: .milliseconds(25))
+                                }
+                            }
+                            if let output = CaptureLaunchOptions.outputPath {
+                                // Self-rendered screenshot: no screen-recording permission needed.
+                                try? await Task.sleep(for: .milliseconds(1500))
+                                CaptureLaunchOptions.writeWindowImage(to: output)
+                                NSApp.terminate(nil)
+                            }
                         }
                     }
                     if Bundle.main.infoDictionary?["GoFlyCaptureScreen"] as? String == "D01" {
@@ -235,6 +282,18 @@ enum CaptureLaunchOptions {
         default: nil
         }
     }
+    static var outputPath: String? {
+        arguments.first(where: { $0.hasPrefix("--capture-output=") })?
+            .replacingOccurrences(of: "--capture-output=", with: "")
+    }
+
+    @MainActor static func writeWindowImage(to path: String) {
+        guard let view = NSApp.windows.first(where: { $0.isVisible })?.contentView,
+              let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+    }
+
     static var preferencesSuiteName: String? {
         guard isEnabled, let screen, let appearance else { return nil }
         return "com.neven.gofly.capture-ui.\(screen).\(appearance).\(ProcessInfo.processInfo.processIdentifier)"
@@ -305,12 +364,17 @@ private actor CaptureChecker: MacChecking {
             return ["id": id, "title": title, "detail": detail,
                     "passed": passed, "status": passed ? "passed" : "failed"]
         }
+        let noSavedIpa = ["D15", "D15b", "D16", "D15flow"].contains(screen ?? "")
         let payload: [String: Any]
         switch request.action {
         case .environment:
             payload = ["ready": checks.allSatisfy { $0["passed"] as? Bool == true } && !teams.isEmpty,
                        "checks": checks, "teams": teams,
-                       "xcodeVersion": "27.1", "projectVersion": "1.0.0", "projectBuild": "24"]
+                       "xcodeVersion": "27.1", "projectVersion": noSavedIpa ? NSNull() : "1.0.0",
+                       "projectBuild": noSavedIpa ? NSNull() : "24",
+                       "ipa": noSavedIpa ? NSNull() : ["version": "1.0.0", "build": "24", "macProtocol": 1,
+                                                        "supported": true, "source": "url",
+                                                        "sourceName": "GoFly-GPS-1.0.0.ipa"] as [String: Any]]
         case .devices:
             let nevenUSB: [String: Any] = ["id": "capture-secondary", "name": "Neven 的 iPhone", "transport": "usb", "osVersion": "27.0.1"]
             let renewalUSB: [String: Any] = ["id": "00008110-0000000000000006", "name": "Neven 的 iPhone", "transport": "usb", "osVersion": "27.0.1"]
@@ -326,7 +390,8 @@ private actor CaptureChecker: MacChecking {
             case "D02", "D03", "D04", "D05", "D06", "D07": devices = [onboardingUSB]
             case "D08": devices = [["id": "capture-device", "name": "Neven 的 iPhone", "transport": "wifi", "osVersion": "27.0.1"],
                                    ["id": "capture-secondary", "name": "測試 iPhone", "transport": "usb", "osVersion": "27.0.1"]]
-            case "D09": devices = [mainUSB]
+            case "D09", "D17", "D08choose": devices = [mainUSB]
+            case "D15", "D15b", "D16", "D15flow": devices = [onboardingUSB]
             case "D10", "D11": devices = [renewalUSB, renewalWiFi]
             case "D12": devices = [nevenUSB, testWiFi]
             case "D13":
@@ -341,7 +406,7 @@ private actor CaptureChecker: MacChecking {
                 request.deviceID == "00008110-0000000000000014"
             let isAutomaticRenewalScreen = screen == "D10" || screen == "D11"
             let installed = isAutomaticRenewalScreen ? isAutomaticRenewalTarget
-                : (screen == "D08" || screen == "D09" || screen == "D13" || request.deviceID == "capture-secondary")
+                : (screen == "D08" || screen == "D09" || screen == "D13" || screen == "D17" || screen == "D08choose" || request.deviceID == "capture-secondary")
             let developerMode: Any = screen == "D03" ? false : true
             let days = (screen == "D09" || screen == "D13" || isAutomaticRenewalTarget) ||
                 (screen == "D08" && request.deviceID == "capture-secondary") ? 2 : 6
@@ -365,6 +430,17 @@ private actor CaptureChecker: MacChecking {
                        "teamID": "ABCDE12345"]
         case .registeredDevices:
             payload = ["devices": []]
+        case .ipaRelease:
+            let newer = screen == "D17"
+            payload = ["version": newer ? "1.0.1" : "1.0.0", "build": newer ? "3" : "24", "macProtocol": 1,
+                       "supported": true, "fileName": newer ? "GoFly-GPS-1.0.1.ipa" : "GoFly-GPS-1.0.0.ipa",
+                       "ipaURL": "https://github.com/nevenhsu/GoFly-GPS/releases/download/v1.0.0/GoFly-GPS-1.0.0.ipa",
+                       "sigURL": "https://github.com/nevenhsu/GoFly-GPS/releases/download/v1.0.0/GoFly-GPS-1.0.0.ipa.sig",
+                       "publishedAt": "2026-11-27T00:00:00Z"]
+        case .ipaImport:
+            if screen == "D16" { throw CheckFailure.service("ipa-signature-invalid") }
+            payload = ["version": "1.0.0", "build": "24", "macProtocol": 1, "supported": true,
+                       "source": "url", "sourceName": "GoFly-GPS-1.0.0.ipa"]
         }
         return try JSONSerialization.data(withJSONObject: [
             "requestID": request.requestID, "status": "ok", "payload": payload,

@@ -21,7 +21,8 @@ private struct EchoChecker: MacChecking {
                                         ["id": "ios-platform", "title": "iOS 平台", "detail": "通過", "passed": true],
                                         ["id": "apple-account", "title": "Apple 帳號", "detail": "通過", "passed": true]],
                                      "teams": [["teamID": "ABCDE12345", "teamName": "Test Team", "isFreeProvisioningTeam": true]],
-                                     "xcodeVersion": "27.1", "projectVersion": "0.2.0", "projectBuild": "21"]
+                                     "xcodeVersion": "27.1", "projectVersion": "0.2.0", "projectBuild": "21",
+                                     "ipa": ["version": "0.2.0", "build": "21", "macProtocol": 1, "supported": true]]
         case .devices: payload = ["devices": [["id": "device-a", "name": "iPhone", "transport": "usb"],
                                               ["id": "device-a", "name": "iPhone", "transport": "wifi"]]]
         case .inspect:
@@ -35,6 +36,8 @@ private struct EchoChecker: MacChecking {
         case .registeredDevices:
             #expect(request.teamID == "ABCDE12345")
             payload = ["devices": [["id": "device-a", "name": ""], ["id": "device-z", "name": "Old iPhone"]]]
+        case .ipaRelease, .ipaImport:
+            throw CheckFailure.service("release-unavailable")
         }
         return try JSONSerialization.data(withJSONObject: ["requestID": request.requestID,
                                                            "status": "ok", "payload": payload])

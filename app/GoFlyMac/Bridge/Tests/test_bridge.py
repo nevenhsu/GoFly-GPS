@@ -229,7 +229,7 @@ class BridgeTests(unittest.TestCase):
             directories = [
                 "Python/python/install/bin",
                 "Python/python/install/lib/python3.14/site-packages",
-                "Bridge/Device", "Bridge/Setup", "iOSProject/GoFly.xcodeproj", "native",
+                "Bridge/Device", "Bridge/Setup", "SigningStub/GoFly.xcodeproj",
             ]
             for relative in directories:
                 (root / relative).mkdir(parents=True, exist_ok=True)
@@ -238,8 +238,8 @@ class BridgeTests(unittest.TestCase):
                 "Bridge/Setup/setup_protocol.py", "Bridge/Setup/setup_config.py",
                 "Bridge/Setup/setup_journal.py", "Bridge/Setup/setup_producer.py",
                 "Bridge/Setup/setup_adapters.py", "Bridge/Setup/setup_support.py",
-                "iOSProject/GoFly.xcodeproj/project.pbxproj", "iOSProject/GoFly.xcconfig",
-                "native/libidevice_ffi.a",
+                "Bridge/Setup/ipa_store.py", "Bridge/Setup/ipa_resign.py",
+                "SigningStub/GoFly.xcodeproj/project.pbxproj", "SigningStub/main.c",
             ]
             for relative in files:
                 (root / relative).write_text("fixture")
@@ -248,7 +248,7 @@ class BridgeTests(unittest.TestCase):
             interpreter.chmod(0o700)
             config = bridge.Config.from_bundle(root, root / "Developer")
             self.assertEqual(config.python_path, root / "Python/python/install/bin/python3.14")
-            self.assertEqual(config.project_path, root / "iOSProject/GoFly.xcodeproj")
+            self.assertEqual(config.project_path, root / "SigningStub/GoFly.xcodeproj")
             self.assertEqual(config.state_root, Path.home() / "Library/Application Support/GoFly/state")
 
     def test_incomplete_bundle_has_one_stable_damage_code(self):

@@ -21,6 +21,8 @@ bash app/GoFly/scripts/package-ipa.sh
 
 IPA 輸出位於 `work/dist/ipa`；必要的工具鏈、原生庫與 Release 建置中間檔使用固定的 `work/gofly-ios` 目錄重用，不會自動執行模擬器、UI 測試或產生 `.xcresult`。這些中間檔仍會佔用空間，刪除後下次打包須重建或重新下載。
 
+IPA 簽章：打包時以 `~/.ssh/gofly-ipa-signing.pem`（或 `GOFLY_IPA_SIGNING_KEY`／`--signing-key`）與 Homebrew OpenSSL 3 另外輸出 `GoFly-GPS-<version>.ipa.sig`，三個檔案（`.ipa`、`.ipa.sha256`、`.ipa.sig`）都要上傳到同一個 GitHub Release；找不到私鑰或私鑰不符時打包失敗。`GoFly-Info.plist` 的 `GoFlyMacProtocol` 是 Mac 協定版本，只有交接格式改變才加一。已發布的 IPA 也可用 `python3 app/GoFly/scripts/sign_ipa.py <ipa>` 補簽（IPA 需含 `GoFlyMacProtocol`）。格式見 [Mac 安裝器規格 §5.5](../../docs/MAC-INSTALLER-SPEC.md#55-選擇-ipa-與來源驗證)。
+
 首次原生建置需要 Apple Silicon、可用的固定 idevice 來源 checkout，以及下載 Rust 工具鏈與鎖定依賴的網路。來源位置、工具鏈隔離與建置步驟見 [NativeBridge](NativeBridge/README.md)。原生 patch 或 shim 不符時，device 驗證直接失敗。
 
 ## 裝置準備與驗收界線

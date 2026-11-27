@@ -6,7 +6,6 @@ public struct MacBundleResources: Sendable {
     public let pythonURL: URL
     public let bridgeURL: URL
     public let projectURL: URL
-    public let nativeLibraryURL: URL
     public let stateRootURL: URL
     public let developerDirectoryURL: URL
 
@@ -18,10 +17,12 @@ public struct MacBundleResources: Sendable {
         let root = resourcesURL.standardizedFileURL
         let python = root.appendingPathComponent("Python/python/install/bin/python3.14")
         let bridge = root.appendingPathComponent("Bridge/bridge.py")
-        let project = root.appendingPathComponent("iOSProject/GoFly.xcodeproj")
+        // Only the empty signing stub ships; GoFly itself is the saved, verified IPA.
+        let project = root.appendingPathComponent("SigningStub/GoFly.xcodeproj")
         let projectFile = project.appendingPathComponent("project.pbxproj")
-        let projectConfig = root.appendingPathComponent("iOSProject/GoFly.xcconfig")
-        let native = root.appendingPathComponent("native/libidevice_ffi.a")
+        let stubSource = root.appendingPathComponent("SigningStub/main.c")
+        let ipaStore = root.appendingPathComponent("Bridge/Setup/ipa_store.py")
+        let ipaResign = root.appendingPathComponent("Bridge/Setup/ipa_resign.py")
         let wire = root.appendingPathComponent("Bridge/wire.py")
         let deviceBoundary = root.appendingPathComponent("Bridge/Device/gofly_device.py")
         let setupProtocol = root.appendingPathComponent("Bridge/Setup/setup_protocol.py")
@@ -32,9 +33,9 @@ public struct MacBundleResources: Sendable {
         let setupSupport = root.appendingPathComponent("Bridge/Setup/setup_support.py")
         let sitePackages = root.appendingPathComponent("Python/python/install/lib/python3.14/site-packages", isDirectory: true)
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let requiredFiles = [bridge, native, projectFile, projectConfig, wire, deviceBoundary,
+        let requiredFiles = [bridge, projectFile, stubSource, wire, deviceBoundary,
                              setupProtocol, setupConfig, setupJournal, setupProducer,
-                             setupAdapters, setupSupport]
+                             setupAdapters, setupSupport, ipaStore, ipaResign]
         guard root.path.hasPrefix("/"), !Self.isSymlink(root),
               requiredFiles.allSatisfy(Self.isRegularFile),
               Self.isDirectory(project), Self.isDirectory(sitePackages),
@@ -45,7 +46,6 @@ public struct MacBundleResources: Sendable {
         self.pythonURL = python
         self.bridgeURL = bridge
         self.projectURL = project
-        self.nativeLibraryURL = native
         self.stateRootURL = support.appendingPathComponent("GoFly/state", isDirectory: true)
         self.developerDirectoryURL = developerDirectoryURL.standardizedFileURL
     }
@@ -92,7 +92,9 @@ public struct ProcessBridge: MacChecking, MacSetupRunning {
                 try runner.run(executable: self.bundle.pythonURL.path,
                                arguments: self.arguments,
                                developerDirectory: self.bundle.developerDirectoryURL.path, input: input,
-                               timeout: request.action == .inspect ? 100 : 45)
+                               timeout: request.action == .ipaImport ? 1_800
+                                   : request.action == .ipaRelease ? 90
+                                   : request.action == .inspect ? 100 : 45)
             }.value
         } onCancel: { runner.cancel(reason: .cancelled) }
     }

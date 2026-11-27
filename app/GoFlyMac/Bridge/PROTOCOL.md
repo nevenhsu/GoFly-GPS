@@ -15,12 +15,14 @@ Every request has UUID `requestID` and `action`. Success replies echo them with 
 | `preflight` | Read-only validation for one fresh setup transaction. Does not pair, sign, install, or prepare device support. |
 | `apply` | Explicitly performs the install or renew transaction after preflight. |
 | `status` | Reads the current durable transaction; does not create or repair state. |
+| `ipaRelease` | Reads GitHub Releases for the newest published GoFly IPA with a `.ipa.sig` (or one `version`), verifying the signature file. Does not download the IPA. |
+| `ipaImport` | Downloads (`ipaURL`, optional `sigURL`) or reads (`ipaPath` with `sigPath` or `sigURL`) an IPA, verifies it against the built-in key, and atomically replaces the saved IPA. Optional `minimumVersion`/`minimumBuild` refuse a downgrade. A failure keeps the previous saved IPA. |
 
 `preflight` and `apply` require a UUID `setupID`, normalized `deviceID`, `mode` (`install` or `renew`), and exactly `{ "teamID": "<10-character Team ID>", "allowProvisioningUpdates": <boolean> }` in `options`. `install` requires USB. `renew` accepts USB or Wi-Fi. `inspect` requires an explicit transport and never guesses or silently changes transport. `status` may omit transaction fields to read the global current transaction.
 
 ## Bundle paths and state
 
-The app derives resources from `Bundle.main`; no generated setup-configuration JSON, repository path, or workspace fallback is used by the production bundle. The Bridge, CPython interpreter, Python packages, iOS project, and native archive are validated under `Contents/Resources`. Persistent transaction data is private under `~/Library/Application Support/GoFly/state`; old `GoFlySetup` user state is not read, moved, or removed. Python runs isolated with `-I -B` so environment variables and bytecode writes cannot alter the signed app bundle.
+The app derives resources from `Bundle.main`; no generated setup-configuration JSON, repository path, or workspace fallback is used by the production bundle. The Bridge, CPython interpreter, Python packages and the `SigningStub` project are validated under `Contents/Resources`. Installs and renewals re-sign the saved IPA under `state/ipa/current` (MAC-INSTALLER-SPEC §5.5); `environment` reports it as `ipa`. Persistent transaction data is private under `~/Library/Application Support/GoFly/state`; old `GoFlySetup` user state is not read, moved, or removed. Python runs isolated with `-I -B` so environment variables and bytecode writes cannot alter the signed app bundle.
 
 ## Setup and completion
 

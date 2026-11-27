@@ -27,6 +27,8 @@ SAFE_ERROR_CODES = frozenset({
     "device-identity-mismatch", "unsupported-os-version",
     "device-values-unavailable", "read-only-mode", "device-limit-reached",
     "developer-untrusted",
+    "ipa-missing", "ipa-invalid", "ipa-signature-missing", "ipa-signature-invalid",
+    "ipa-protocol-unsupported", "ipa-downgrade", "ipa-download-failed", "release-unavailable",
 })
 
 

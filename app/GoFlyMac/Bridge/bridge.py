@@ -97,7 +97,7 @@ class Config:
             resources_root=resources,
             python_path=resources / "Python" / "python" / "install" / "bin" / "python3.14",
             developer_directory=Path(developer_directory),
-            project_path=resources / "iOSProject" / "GoFly.xcodeproj",
+            project_path=resources / "SigningStub" / "GoFly.xcodeproj",
             target_name=target_name,
             state_root=Path.home() / "Library" / "Application Support" / "GoFly" / "state",
         )
@@ -116,15 +116,16 @@ def _bundle_resources_valid(resources: Path) -> bool:
         "Bridge/Setup/setup_producer.py",
         "Bridge/Setup/setup_adapters.py",
         "Bridge/Setup/setup_support.py",
-        "iOSProject/GoFly.xcodeproj/project.pbxproj",
-        "iOSProject/GoFly.xcconfig",
-        "native/libidevice_ffi.a",
+        "Bridge/Setup/ipa_store.py",
+        "Bridge/Setup/ipa_resign.py",
+        "SigningStub/GoFly.xcodeproj/project.pbxproj",
+        "SigningStub/main.c",
     )
     directories = (
         "Python/python/install/lib/python3.14/site-packages",
         "Bridge/Device",
         "Bridge/Setup",
-        "iOSProject/GoFly.xcodeproj",
+        "SigningStub/GoFly.xcodeproj",
     )
     try:
         if any((resources / relative).is_symlink() or not (resources / relative).is_file() for relative in files):
@@ -155,6 +156,14 @@ def _load_module(path: Path, name: str) -> Any:
         sys.modules.pop(name, None)
         raise BridgeError("bundle-damaged") from None
     return module
+
+
+def _ipa_store_module() -> Any:
+    try:
+        from Setup import ipa_store
+    except ImportError:
+        import ipa_store  # type: ignore[no-redef]
+    return ipa_store
 
 
 def load_device_module(config: Config) -> Any:
@@ -438,28 +447,19 @@ class Bridge:
                 })
         return sorted(found.values(), key=lambda team: (team["teamName"], team["teamID"]))
 
-    def _project_identity(self) -> tuple[str | None, str | None]:
-        path = self.config.resources_root / "iOSProject/GoFly.xcconfig"
-        if path.is_symlink() or not path.is_file():
-            return None, None
+    def _saved_ipa(self) -> dict[str, Any] | None:
+        """The verified saved IPA (MAC-INSTALLER-SPEC §5.5), or None."""
         try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
+            store_module = _ipa_store_module()
+            return store_module.IpaStore(self.config.state_root).current()
+        except Exception:
+            return None
+
+    def _project_identity(self) -> tuple[str | None, str | None]:
+        saved = self._saved_ipa()
+        if saved is None:
             return None, None
-        values: dict[str, str] = {}
-        for line in text.splitlines():
-            line = line.split("//", 1)[0].strip()
-            if "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            values[key.strip()] = value.strip()
-        version = values.get("MARKETING_VERSION")
-        build = values.get("CURRENT_PROJECT_VERSION")
-        if not isinstance(version, str) or re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,3}", version) is None:
-            version = None
-        if not isinstance(build, str) or re.fullmatch(r"[0-9]{1,16}", build) is None:
-            build = None
-        return version, build
+        return saved.get("version"), saved.get("build")
 
     def _check_xcode_installed(self) -> str:
         developer = self.config.developer_directory
@@ -648,9 +648,30 @@ class Bridge:
         check("apple-account", "Apple 帳號", team_details[team_status], team_status)
 
         ready = all(item["status"] == "passed" for item in checks)
-        project_version, project_build = self._project_identity()
+        saved = self._saved_ipa()
+        ipa = None
+        if saved is not None:
+            ipa = {key: saved.get(key) for key in ("version", "build", "macProtocol", "supported",
+                                                   "source", "sourceName", "importedAt")}
         return {"ready": ready, "checks": checks, "teams": teams or [], "xcodeVersion": xcode,
-                "projectVersion": project_version, "projectBuild": project_build}
+                "projectVersion": ipa["version"] if ipa else None,
+                "projectBuild": ipa["build"] if ipa else None, "ipa": ipa}
+
+    def ipa_release(self, version: str | None) -> dict[str, Any]:
+        return _ipa_store_module().release_info(version)
+
+    def ipa_import(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        module = _ipa_store_module()
+        minimum = None
+        if "minimumVersion" in request:
+            minimum = (request["minimumVersion"], request["minimumBuild"])
+        saved = module.import_from_sources(
+            module.IpaStore(self.config.state_root),
+            ipa_url=request.get("ipaURL"), ipa_path=request.get("ipaPath"),
+            sig_url=request.get("sigURL"), sig_path=request.get("sigPath"), minimum=minimum,
+        )
+        return {key: saved.get(key) for key in ("version", "build", "macProtocol", "supported",
+                                                "source", "sourceName", "importedAt")}
 
     def _profile_device_ids(self, team_id: str) -> list[str]:
         """Union of ProvisionedDevices across this team's Xcode-managed profiles.
@@ -875,6 +896,10 @@ class Bridge:
                 payload = self.devices()
             elif action == "registeredDevices":
                 payload = self.registered_devices(request["teamID"])
+            elif action == "ipaRelease":
+                payload = self.ipa_release(request.get("version"))
+            elif action == "ipaImport":
+                payload = self.ipa_import(request)
             else:
                 from Setup.setup_protocol import bundle_id_for_team
                 payload = self.inspect(request["deviceID"], bundle_id_for_team(request["teamID"]), request.get("transport"))
@@ -890,9 +915,23 @@ def _validate_request(request: Any) -> str:
         raise BridgeError("invalid-request")
     wire_request_id(request)
     action = wire_action(request)
-    if action not in {"environment", "devices", "inspect", "registeredDevices"}:
+    if action not in {"environment", "devices", "inspect", "registeredDevices", "ipaRelease", "ipaImport"}:
         raise BridgeError("invalid-request")
     allowed = {"requestID", "action"}
+    if action == "ipaRelease" and "version" in request:
+        allowed.add("version")
+        if not isinstance(request["version"], str) or re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,3}", request["version"]) is None:
+            raise BridgeError("invalid-request")
+    if action == "ipaImport":
+        fields = {"ipaURL", "ipaPath", "sigURL", "sigPath", "minimumVersion", "minimumBuild"}
+        allowed.update(fields)
+        for key in fields & set(request):
+            if not isinstance(request[key], str) or not 1 <= len(request[key]) <= 2048:
+                raise BridgeError("invalid-request")
+        if ("ipaURL" in request) == ("ipaPath" in request) or ("sigURL" in request and "sigPath" in request):
+            raise BridgeError("invalid-request")
+        if ("minimumVersion" in request) != ("minimumBuild" in request):
+            raise BridgeError("invalid-request")
     if action == "registeredDevices":
         allowed.add("teamID")
         team_id = request.get("teamID")
@@ -1012,12 +1051,14 @@ def _setup_error_payload(request: Any, config: Any = None) -> dict[str, Any]:
 def _setup_response(value: Mapping[str, Any], config: Config, *, producer_factory: Any = None) -> dict[str, Any]:
     try:
         from Setup.setup_adapters import PinnedPymobiledeviceAdapter, PinnedXcodeProcessAdapter, close_async_runtime
+        from Setup.ipa_resign import IpaResignProcessAdapter
         from Setup.setup_config import SetupConfiguration
         from Setup.setup_producer import SetupProducer
         from Setup.setup_protocol import bundle_id_for_team, decode_request
         from Setup.setup_support import PinnedSupportAdapter
     except ImportError:
         from setup_adapters import PinnedPymobiledeviceAdapter, PinnedXcodeProcessAdapter, close_async_runtime
+        from ipa_resign import IpaResignProcessAdapter
         from setup_config import SetupConfiguration
         from setup_producer import SetupProducer
         from setup_protocol import bundle_id_for_team, decode_request
@@ -1053,7 +1094,10 @@ def _setup_response(value: Mapping[str, Any], config: Config, *, producer_factor
         else:
             device = PinnedPymobiledeviceAdapter(state_root=setup_config.state_root,
                                                  target_bundle_id=setup_config.target_bundle_id)
-            producer = SetupProducer(setup_config, device=device, process=PinnedXcodeProcessAdapter(setup_config),
+            # The app bundle installs the saved, verified IPA; source builds stay
+            # only in the maintainer's development mode.
+            process_type = PinnedXcodeProcessAdapter if setup_config.development_mode else IpaResignProcessAdapter
+            producer = SetupProducer(setup_config, device=device, process=process_type(setup_config),
                                      support=PinnedSupportAdapter(device))
         payload = producer.handle(request).as_dict()
         from Setup.setup_protocol import _response_payload
@@ -1089,7 +1133,7 @@ def run_stdio(config: Config, *, stdin: Any = None, setup_producer_factory: Any 
         action = wire_action(value)
     except WireError as error:
         return wire_response(None, status="error", code=error.code)
-    if action in {"environment", "devices", "inspect", "registeredDevices"}:
+    if action in {"environment", "devices", "inspect", "registeredDevices", "ipaRelease", "ipaImport"}:
         try:
             _validate_request(value)
             return Bridge(config).handle(value)

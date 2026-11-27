@@ -4,26 +4,29 @@
 
 這份文件定義 GoFly Mac 安裝器的現行規格。視覺以 Figma「05 · Mac Redesign（新版）」（`123-61504`）的「V1」section 渲染畫面為準。DMG 打包流程見 [Mac 開發說明](../app/GoFlyMac/DEVELOPMENT.md)。
 
+> **規格變更（2026-11-28，已實作、尚未實機驗收）**：Mac App 不再內建 iOS 原始碼並在本機建置，改為由使用者選擇已簽章的 GoFly IPA，Mac 驗證來源後用使用者的 Team 重新簽名並安裝（§5.5）。iOS 可以常常發版，Mac App 只有在協定、Bridge 或公鑰改變時才需要更新。實作與驗證範圍見 §5.5 末「實作狀態」；`scripts/install-ios-test.sh` 的維護者開發模式仍從原始碼建置。
+
 ## 1. 目標
 
 一般使用者只需要：
 
 1. 下載 GoFly Mac 的 DMG 並開啟。
 2. 照 GoFly 的畫面，在**全新的 Mac** 上準備好 macOS、Xcode、iOS 平台，並在 Xcode 登入**自己的** Apple 帳號（免費帳號即可）。
-3. 用 USB 連接 iPhone，按一次「安裝 GoFly」。GoFly 用使用者自己的 Team 建置、簽名，並完成配對交接。
-4. 之後不需要再插線：Mac App 開著時，簽名剩不到 4 天會自動延長（USB 或同一個 Wi‑Fi）；也可以手動按「延長簽名」。
+3. 在 GoFly Mac 取得要安裝的 IPA（§5.5）：預設已帶入 GitHub 最新 Release 的 IPA 網址，按「下載並驗證」即可；也可以改貼其他版本的網址，或切到「選擇檔案」分別選擇已下載的 `.ipa` 與 `.ipa.sig`。
+4. 用 USB 連接 iPhone，按一次「安裝 GoFly」。GoFly 驗證 IPA 來源，用使用者自己的 Team 重新簽名，並完成配對交接。
+5. 之後不需要再插線：Mac App 開著時，簽名剩不到 4 天會自動延長（USB 或同一個 Wi‑Fi）；也可以手動按「延長簽名」。
 
 不提供備份、還原或重置功能；不支援 Intel Mac、付費 Developer ID 公證，也不代替使用者輸入密碼或接受條款。
 
 ### 1.1 與 SideStore IPA 的界線
 
-Mac producer 使用來源 `GoFlyRequiresMacSetup=true`，安裝／renew 的 pairing、support 與精確 activation receipt 驗證均保留。SideStore IPA 僅由獨立打包腳本把 Payload 副本旗標改為 `false`，不修改來源或 Mac 內建 iOS project。兩者共用 iOS onboarding；權限授權與 VPN 可達不等於配對或定位就緒。Mac 不提供側載 Bundle ID 的準備能力；Team／Bundle ID 規則不變。驗收需區分 IPA 能啟動、正式 Mac setup 完成與定位成功。
+Mac producer 安裝的 App 必須是 `GoFlyRequiresMacSetup=true`，安裝／renew 的 pairing、support 與精確 activation receipt 驗證均保留。SideStore IPA 由獨立打包腳本把 Payload 副本旗標改為 `false`，不修改來源。新規格（§5.5）中 Mac 與 SideStore 使用**同一個已簽章 IPA**：Mac 重新簽名前把副本旗標改回 `true`，不修改使用者選的原檔。兩者共用 iOS onboarding；權限授權與 VPN 可達不等於配對或定位就緒。Mac 不提供側載 Bundle ID 的準備能力；Team／Bundle ID 規則不變。驗收需區分 IPA 能啟動、正式 Mac setup 完成與定位成功。
 
 ## 2. iOS App 依賴
 
 | iOS App 需要的東西 | 由誰提供 | 使用者要做什麼 |
 | --- | --- | --- |
-| 用使用者 Team 簽名的 GoFly.app（`com.neven.gofly.<teamid>`） | Mac App 內附 iOS 專案原始碼與預編譯的 `libidevice_ffi.a`，在本機用 `xcodebuild` 建置並自動簽名 | 安裝 Xcode、下載 iOS 平台、登入 Apple 帳號 |
+| 用使用者 Team 簽名的 GoFly.app（`com.neven.gofly.<teamid>`） | 現行：Mac App 內附 iOS 專案原始碼與預編譯的 `libidevice_ffi.a`，在本機用 `xcodebuild` 建置並自動簽名。新規格（§5.5）：使用者選擇的已簽章 IPA，Mac 驗證後以使用者 Team 重新簽名；描述檔由內建的簽名用空殼專案經 `xcodebuild` 取得 | 安裝 Xcode、下載 iOS 平台、登入 Apple 帳號 |
 | 開發憑證與描述檔（免費 Team 7 天） | Xcode 自動管理（`-allowProvisioningUpdates`），需要連網 | 第一次簽名時，在鑰匙圈視窗輸入 Mac 登入密碼並點「永遠允許」 |
 | 配對資料（GoFly 連 `10.7.0.1` 上的 remotepairingd 用；連接埠每次以 Bonjour `_remotepairing._tcp` 自動探索，不寫死） | 首次安裝時由 Mac 透過 USB 建立並交付 | 在 iPhone 點「信任」並輸入 iPhone 密碼 |
 | 裝置支援檔（26.0–26.3 用 personalized DDI，26.4 起用 cryptex） | Mac 依實際 iOS 版本準備並交付；手機不自行下載 | 無 |
@@ -69,7 +72,7 @@ DMG 內含 `GoFly.app`、`install.sh` 與 `THIRD-PARTY-NOTICES.md`。建置器�
 
 唯讀 `environment` 依序回報 macOS 版本、可用空間、Xcode 安裝、Xcode 初次啟動／授權、iOS 平台及 Apple 帳號六項檢查，另回報 Team 清單。檢查狀態為通過、未通過或未知；無法讀取時不得當成通過。E01 是否第一次開啟以本機偏好旗標判斷。macOS 最低版本取已安裝 Xcode 的 `LSMinimumSystemVersion`；尚未安裝時依目前規劃的 Xcode 27.1（最低 macOS 26.6）判斷。可用空間以 `/Applications` 所在磁碟為準，至少 40 GB。只讀檢查不執行 `-runFirstLaunch`、不接受授權、不下載平台。若 GoFly 內建資源驗證失敗，只顯示「GoFly 無法啟動，請重新安裝」。
 
-Bridge、Python 與 iOS 專案都打包在 DMG 內，沒有「App 資源」或「Python 環境」的設定步驟。萬一 App 內建檔案被修改或刪除，只顯示通用錯誤視窗「GoFly 無法啟動，請重新安裝」，不另外設計畫面。
+Bridge、Python 與 iOS 專案都打包在 DMG 內，沒有「App 資源」或「Python 環境」的設定步驟。新規格（§5.5）中 DMG 改為內建 Bridge、Python、簽名用空殼專案與 IPA 簽章公鑰，不再內建 iOS 原始碼或 `libidevice_ffi.a`。萬一 App 內建檔案被修改或刪除，只顯示通用錯誤視窗「GoFly 無法啟動，請重新安裝」，不另外設計畫面。
 
 GoFly 只打開 App Store、Xcode、系統設定和網頁，不代替使用者點擊、接受條款或輸入密碼。文案必須說清楚要輸入哪一種密碼：Mac 登入密碼、iPhone 密碼或 Apple 帳號密碼。
 
@@ -92,7 +95,9 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 | 未信任／未開開發者模式 | USB | 無；準備清單 | D02、D03 |
 | 已準備、沒有 GoFly | USB | **安裝 GoFly** | D04 |
 | 沒有 GoFly | Wi‑Fi | 停用：「第一次安裝需要 USB 連接」 | D12 |
-| 已安裝 GoFly | USB 或 Wi‑Fi | **延長簽名**；Mac 上有新版時改為「更新並延長簽名」 | D08、D09 |
+| 已準備、尚未選擇 IPA（§5.5） | USB | 「IPA 來源」切換網址／檔案：網址模式 **下載並驗證**（預設最新 Release）；檔案模式 **驗證**。驗證通過後改為「安裝 GoFly」 | D15、D15b；失敗時 D16 |
+| 已安裝 GoFly，GitHub 有更新的 build（§5.5） | USB 或 Wi‑Fi | **下載新版並更新**；次要「只延長簽名」 | D17 |
+| 已安裝 GoFly | USB 或 Wi‑Fi | **延長簽名**；Mac 上有新版時改為「更新並延長簽名」。「新版」是指已選 IPA 比手機上的新（先比版本號，再比 build；每個新版本的 build 從 1 開始）；另有次要動作「選擇其他 IPA」 | D08、D09 |
 | 簽名已過期 | USB 或 Wi‑Fi | **延長簽名**；說明「過期只是暫時無法開啟，資料還在」 | D08 的狀態 |
 | 選取的 Wi‑Fi 手機找不到 | Wi‑Fi | 無；列出 Wi‑Fi 條件與「改用 USB」 | D13 |
 
@@ -135,7 +140,97 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 - D14 側欄狀態依操作類型：首次安裝顯示「安裝未完成」，延長簽名顯示「延長簽名未完成」。
 - 未完成的操作只鎖住它自己那支手機。D14 時「重新搜尋」仍會更新清單；若原手機已拔掉、改接另一支 USB 手機，就自動選取新手機並從頭檢查（右側回到 D02–D04，不停在「重新開始」）；也可以直接點側欄的另一支手機。原交易的 journal 不在 Mac App 端改動，由下一次 `apply` 依上列規則封存為 `journal.abandoned.json`；若在那之前重開 Mac App，仍顯示原手機的 D14。
 
+### 5.5 選擇 IPA 與來源驗證
+
+**目的**：iOS 常常發版，Mac App 很少更新。Mac App 不綁定任何一個 iOS 版本，而是安裝使用者選的 GoFly IPA。只要 IPA 用 GoFly 的私鑰簽過，而且協定版本相容，舊的 Mac App 也能安裝新版 IPA。
+
+**為什麼一定要驗證來源**：安裝時 Mac 會把這支手機的配對資料交給裝上的 App，拿到配對資料就能使用這支手機的開發者服務。所以 Mac 只安裝驗得到 GoFly 簽章的 IPA；只看 Info.plist 防不了被竄改的檔案。
+
+#### 簽章金鑰
+
+- 演算法 Ed25519。**只有一把現用金鑰**，不內建備用金鑰。
+- 私鑰只存在維護者的 Mac：`~/.ssh/gofly-ipa-signing.pem`（PKCS#8 PEM，權限 `600`）。不進版控、不放 `work/`、不上傳到任何服務。
+- 公鑰內建在 Mac App，以 raw 32 bytes 的 base64 表示：`83Z/8TxN24aGZCX0jVLiPLdRrIA3+tVbUH5S1nnzY3c=`。
+- Key ID = 公鑰 raw bytes 的 SHA-256 前 16 個十六進位字元：`dacaa532bcd9b2e7`。
+- OpenSSL 產生的簽章已確認可由 CryptoKit `Curve25519.Signing.PublicKey.isValidSignature` 驗證（2026-11-28）。
+- **私鑰遺失或外流**：產生新的金鑰對，發布內建新公鑰的 Mac App，之後的 IPA 改用新私鑰簽。舊版 Mac App 驗不過新 IPA，使用者需要更新 Mac App；外流時這一步同時讓 Mac 不再接受舊私鑰簽的檔案。不提供線上撤銷或金鑰清單下載。
+
+#### 簽章檔
+
+打包 IPA 時（`app/GoFly/scripts/package-ipa.sh`）在 `GoFly-GPS-<version>.ipa` 與 `.ipa.sha256` 旁邊另外輸出 `GoFly-GPS-<version>.ipa.sig`，三個檔案一起發布到 GitHub Release。找不到私鑰時打包失敗，不輸出未簽章的成品。`.sig` 是 UTF-8 JSON：
+
+```json
+{
+  "format": "gofly-ipa-signature-v1",
+  "keyID": "dacaa532bcd9b2e7",
+  "ipaSHA256": "<IPA 檔案的 SHA-256，小寫十六進位>",
+  "version": "<CFBundleShortVersionString>",
+  "build": "<CFBundleVersion>",
+  "macProtocol": 1,
+  "signature": "<Ed25519 簽章的 base64>"
+}
+```
+
+簽章的訊息不是 JSON 本身，而是以下各欄位用 `\n` 串接、結尾也有 `\n` 的 UTF-8 文字，避免 JSON 排序或空白造成差異：
+
+```
+gofly-ipa-signature-v1
+<keyID>
+<ipaSHA256>
+<version>
+<build>
+<macProtocol>
+```
+
+#### 協定版本
+
+- iOS App 的 Info.plist 加入整數 `GoFlyMacProtocol`，代表 Mac 與 iOS 之間配對交接、裝置支援交付、啟用回報與 readback 的格式版本。第一版為 `1`。
+- 只有這些格式改變且舊 Mac 無法處理時才把數字加一；一般 iOS 功能更新不改。
+- Mac App 內建自己支援的版本範圍。IPA 的 `GoFlyMacProtocol` 不在範圍內時拒絕，提示「這個 IPA 需要更新版的 GoFly Mac」（不同於來源驗證失敗）。
+
+#### 選擇與驗證流程
+
+1. 取得 IPA（D15；已安裝時從 D04／D08／D09 的「選擇其他 IPA…」回到同一個選擇畫面）。IPA 是這部 Mac 共用的，不分手機。畫面上以「IPA 來源」切換兩種模式，預設「從網址下載」：
+   - **網址（預設最新版，D15）**：D15 開啟時，GoFly 以匿名請求查詢 GitHub API `repos/nevenhsu/GoFly-GPS/releases`（同一個 repo 也發 Mac DMG，所以不用 `releases/latest`），略過草稿與預發布，取第一個同時有 `GoFly-GPS-<版本>.ipa` 與同名 `.ipa.sig` 的 Release；`.sig` 先下載並驗證簽章後，才預先帶入 IPA 下載網址，狀態列顯示「已帶入最新版：GoFly GPS <版本>（build <n>）・<發布日>」。查不到（離線、API 限制、Release 缺少任一檔案）時欄位留空，狀態列寫「無法取得最新版，請貼上網址或選擇檔案」，不阻擋其他來源。使用者可以改貼任何 `https` 的 `.ipa` 網址；GoFly 在同一位置加 `.sig` 下載簽章檔。主要按鈕「下載並驗證」下載兩個檔案到暫存區，下載中顯示進度與「取消」。repo 名稱與網址只決定從哪裡下載，信任一律來自下列簽章驗證。Mac App **不內建任何版本的 IPA 網址或檔名**：每次顯示選擇畫面（包括從「選擇其他 IPA…」回來）都重新查詢，所以發布新 Release 後，舊版 Mac App 也會帶入新的網址；使用者已手動改過欄位時不覆蓋。
+   - **選擇檔案（D15b）**：兩個獨立欄位，各有「選擇…」按鈕，也可以把檔案拖到對應欄位。「IPA 檔案（.ipa）」只能選 `.ipa`；「簽章檔（.ipa.sig）」只能選 `.ipa.sig`。選好 IPA 時，同資料夾有同名 `.ipa.sig` 就自動帶入簽章檔欄位；沒有時，連網則到 GitHub Release 找同版本（依 IPA 檔名的版本）的 `.ipa.sig` 下載並帶入；都找不到時簽章檔欄位顯示「尚未選擇」，需手動選擇。使用者隨時可以手動換掉自動帶入的簽章檔。兩個欄位都有檔案才能按主要按鈕「驗證」。簽章檔的來源不影響安全性：沒有私鑰無法偽造，配錯檔案只會驗證失敗。
+   下載失敗、缺少簽章檔或驗證失敗時顯示 D16 並說明原因。
+2. 依序驗證，任何一項失敗就拒絕（D16），不進入安裝，也不保留檔案：
+   - `.sig` 格式為 `gofly-ipa-signature-v1`，`keyID` 等於內建公鑰的 Key ID，Ed25519 簽章正確。
+   - IPA 實際 SHA-256 等於 `ipaSHA256`。
+   - IPA 結構只有 `Payload/GoFly.app/…`，沒有絕對路徑、`..`、指向 App 外的 symlink；解壓總大小有上限（1 GB）。
+   - `Payload/GoFly.app/Info.plist` 的 `CFBundleIdentifier` 為 `com.neven.gofly`，`CFBundleShortVersionString`／`CFBundleVersion`／`GoFlyMacProtocol` 等於 `.sig` 內的值，且協定版本在 Mac 支援範圍內。
+3. **保存**：驗證通過後把 IPA 與 `.sig` 複製到 Mac 的 GoFly state（`state/ipa/current/`），複製後再驗一次。之後的安裝（含其他手機的首次安裝、D14「重新開始」、App 被刪除後重新安裝）、手動延長簽名與自動延長簽名**都直接使用這份副本，不重新下載，也不要求重新選擇檔案**；每次使用前重新核對 SHA-256 與簽章，不符時視為沒有已保存的 IPA（顯示 D15），不安裝。
+   - 已保存的 IPA 一直保留，直到被取代：使用者按 D17「下載新版並更新」、在選擇畫面下載或選擇了另一個 IPA，且**新檔案驗證通過**後，才以原子替換換掉舊副本。新檔案下載失敗、驗證失敗（D16）或使用者取消時，舊副本不動，原本的安裝與延長簽名照常可用。
+   - 有已保存的 IPA 時，D04 直接顯示它的版本並可按「安裝 GoFly」，不經過 D15；D15 只在這部 Mac 還沒有已保存的 IPA 時出現，或由「選擇其他 IPA…」打開。
+   - 使用者之後移動或刪除原檔不影響 GoFly。已保存的 IPA 不隨交易保留策略（§5.4）回收。
+4. 畫面顯示已選 IPA 的版本與 build，例如「GoFly GPS 1.0.15（build 42）· 已驗證」。
+
+**GitHub 有新版的提示（D17）**：Mac App 開著時，啟動時與每 24 小時（和 §5.3 自動延長簽名同一次檢查）用同一個 Release 查詢取得最新版；Release 須同時有 `.ipa` 與 `.ipa.sig`，版本與 build 取自 Release 的 IPA 檔名與 `.sig`（只下載 `.sig`，不先下載 IPA）。最新版比手機上的 GoFly 與已選 IPA 都新時（先比版本號再比 build），D08／D09 改為 D17：說明「build 42 → build 45」，主要按鈕「下載新版並更新」依序下載、驗證、設為已選 IPA，再覆蓋安裝並延長簽名（保留資料）；次要按鈕「只延長簽名」沿用目前已選的 IPA。查詢失敗時不提示，畫面照舊。自動延長簽名**不自動下載或改用新版**，只沿用已選 IPA；發現新版時另發一次 macOS 通知「GitHub 上有新版 GoFly」（同一個 build 只通知一次）。`.sig` 在使用者按下更新、下載 IPA 後才做完整驗證，提示本身不代表已驗證。
+
+**降版**：已選 IPA 比手機上已安裝的 GoFly 舊（先比版本號再比 build）時不允許安裝；選擇畫面把手機上的版本傳給 Bridge 當下限（`ipa-downgrade`），已保存的 IPA 若比手機舊，裝置頁改顯示 D15 並提示選擇同版或更新版，自動延長簽名也會略過（舊版可能讀不懂新版的資料），提示選擇同版或更新版本。同一個 build 可以用來延長簽名。
+
+#### 重新簽名
+
+在交易資料夾內進行，不修改 `state/ipa/current/` 的副本：
+
+1. 解開 IPA，`Info.plist` 的 `CFBundleIdentifier` 改為 `com.neven.gofly.<teamid>`，`GoFlyRequiresMacSetup` 改為 `true`。
+2. 用內建的簽名用空殼專案（Bundle ID 同為 `com.neven.gofly.<teamid>`）執行 `xcodebuild`，沿用 §5.1 的 `-allowProvisioningUpdates`、`-allowProvisioningDeviceRegistration`、`device-limit-reached`／`identity-mismatch` 規則取得描述檔與簽名憑證。空殼專案不含 GoFly 程式。
+3. 移除原本的 `_CodeSignature`，放入 `embedded.mobileprovision`，依描述檔產生 entitlements（`application-identifier`、`com.apple.developer.team-identifier`、`get-task-allow`），先由內而外簽 `Frameworks/` 內的每個 framework／dylib，最後簽 App。
+4. 接著照原本流程安裝、交付配對與裝置支援、讀回啟用回報。完成條件與到期日規則（§5）不變。
+
+IPA 不可含 App Extension 或額外 entitlements；未來若加入，須先更新本規格與 Mac App。
+
+#### 實作狀態（2026-11-28）
+
+- 打包：`app/GoFly/scripts/package-ipa.sh` → `package_ipa.py` 檢查 `GoFlyMacProtocol`（`GoFly-Info.plist` 整數 1），呼叫 `sign_ipa.py` 以 OpenSSL 3（Homebrew）與 `~/.ssh/gofly-ipa-signing.pem` 產生 `.ipa.sig`；私鑰不符內建公鑰或找不到時打包失敗。
+- Bridge：`Bridge/Setup/ipa_store.py`（驗簽、結構檢查、保存與原子替換、GitHub Release 查詢與下載）、`Bridge/Setup/ipa_resign.py`（`IpaResignProcessAdapter`：建置 `SigningStub` 取得描述檔與憑證後重新簽名）；新動作 `ipaRelease`、`ipaImport`，`environment` 回報 `ipa`。錯誤碼：`ipa-missing`、`ipa-invalid`、`ipa-signature-missing`、`ipa-signature-invalid`、`ipa-protocol-unsupported`、`ipa-downgrade`、`ipa-download-failed`、`release-unavailable`。
+- Mac App：D15（網址）／D15b（`.ipa` 與 `.ipa.sig` 兩個欄位，支援拖放）／D16／D17、D04/D08/D09 的「選擇其他 IPA…」、24 小時檢查的 macOS 新版通知。DMG 不再含 `iOSProject/` 與 `native/`，並移除執行時不載入的 Tk/Tcl、pip、jedi、IPython、Pillow：開發產物由 282 MB 降到約 144 MB。
+- 已驗證（模擬 iPhone，不連 Apple、不連手機）：`Bridge/Setup/Tests/test_ipa_e2e.py` 以真的簽章、保存、xcodebuild 空殼、重新簽名、嚴格成品驗證與 producer 交易，跑完首次安裝 → 刪除原檔後延長簽名 → 拒絕竄改／降版／缺簽章 → 新版取代並更新；同一測試也以打包後的精簡 Python 執行通過。Bridge 106 項與 Swift 78 項單元測試通過；示範模式截圖確認 D15、D15b、D16、D17、D04、D09 與「選擇其他 IPA…」流程（淺／深色、中英文）。
+- 未驗證：實機 USB／Wi‑Fi 安裝與延長簽名、真實配對交接與裝置支援、`allowProvisioningUpdates` 連 Apple 建立描述檔、GitHub 上真正含 `.sig` 的 Release（目前 Release 都沒有 `.sig`，`ipaRelease` 回 `release-unavailable`）。
+
 ## 6. 畫面清單（Figma V1）
+
+> §5.5 的畫面在 05 頁「V1 · D 選擇 IPA（§5.5）」（`413:16903`）與「Dark · V1 · D 選擇 IPA（§5.5）」（`413:17120`），2026-11-28 新增：D15、D15b（本機檔案，兩個檔案欄位）、D04（已選 IPA）、D09（已選 IPA 比較新）、D16、D17（GitHub 有新版，同一 section 第二列）。仍未畫成獨立畫面、只寫在畫面註解中的：D08 加上「選擇其他 IPA…」、下載中的進度與「取消」、查不到最新版時的空白欄位，以及 D16 的其他失敗原因（缺少簽章檔、無法下載、需要更新 GoFly Mac、不允許降版）。
 
 以下畫面各有淺色與深色版本，另附啟動流程圖：
 
@@ -165,6 +260,10 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 | D12 | 需要 USB 連接 |
 | D13 | 找不到這支 iPhone（Wi‑Fi） |
 | D14 | 未完成：重新開始 |
+| D15 | 選擇 IPA：從網址下載（預設帶入最新版網址；§5.5） |
+| D15b | 選擇 IPA：本機檔案（.ipa 與 .ipa.sig 兩個欄位；§5.5） |
+| D16 | IPA 無法使用（驗證或下載失敗；§5.5） |
+| D17 | GitHub 有新版：下載新版並更新（§5.5） |
 
 ## 7. 驗收條件
 
@@ -177,4 +276,5 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 - 只有讀回啟用回報後才顯示「完成」與新的到期日；讀不到時寫「待確認」。
 - 中斷後只能「重新開始」；重新開始不會套用舊交易的配對，覆蓋安裝保留資料。
 - 1000 × 700 pt 下內容可捲動、底部按鈕可按到；深淺色都清楚可讀。
+- 選擇 IPA（§5.5）：連網時 D15 預先帶入 GitHub 最新 Release 的 IPA 網址與版本，按「下載並驗證」後不需其他操作即可進入 D04；離線或查不到時欄位留空，仍可貼網址或選檔案。網址與檔案兩種來源走同一套驗證。檔案模式有 `.ipa` 與 `.ipa.sig` 兩個欄位，同資料夾或 GitHub 找得到簽章檔時自動帶入，兩個欄位都有檔案才能驗證。發布新 Release 後，不更新 Mac App，已安裝手機的頁面在下一次檢查（啟動或 24 小時內）顯示 D17；按「下載新版並更新」完成後手機為新 build、資料保留；「只延長簽名」不改版本；自動延長簽名不會自動換成新版。用正確私鑰簽的新版 IPA，不更新 Mac App 也能安裝與延長簽名；IPA 或 `.sig` 被改任何一個 byte、缺少 `.sig`、Key ID 不符、協定版本超出範圍、IPA 含路徑穿越或 App 外 symlink、或 build 低於手機上的版本時一律拒絕，且不開始交易。重新簽名後手機上的 App 為 `com.neven.gofly.<teamid>`、`GoFlyRequiresMacSetup=true`，資料保留。安裝成功後，自動延長簽名、手動延長簽名、重新開始與重新安裝都使用 `state/ipa/current/` 的已保存副本，不重新下載或選檔，原檔被移走仍可執行；只有新版或新檔案驗證通過才取代它，新檔案驗證失敗時舊副本仍可用。打包 IPA 時找不到私鑰會失敗；私鑰不在版控中。
 - Mac 所有色彩都來自 Mac 專屬語意 token；淺／深色符合 Figma，檢視畫面程式時沒有散落的原始色值，iOS 色彩程式不受影響。

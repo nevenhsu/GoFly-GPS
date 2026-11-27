@@ -887,7 +887,7 @@ class StdioB1Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = SetupConfiguration.from_bundle(root, root / "Developer")
-            self.assertEqual(config.project_path, root / "iOSProject/GoFly.xcodeproj")
+            self.assertEqual(config.project_path, root / "SigningStub/GoFly.xcodeproj")
             self.assertEqual(config.python_path, root / "Python/python/install/bin/python3.14")
             self.assertEqual(config.state_root, Path.home() / "Library/Application Support/GoFly/state")
 

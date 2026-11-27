@@ -1,4 +1,6 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 import GoFlyMacCore
 
 private func deviceText(_ key: String) -> String { MacLocalization.text(key) }
@@ -34,7 +36,7 @@ struct MacDeviceDetailScreen: View {
     private var deviceBreadcrumb: String {
         guard let device else { return deviceText("device.crumb") }
         switch state {
-        case .trustRequired, .developerModeRequired, .readyToInstall, .restartRequired: break
+        case .trustRequired, .developerModeRequired, .readyToInstall, .restartRequired, .chooseIpa: break
         default: return deviceText("device.crumb")
         }
         return String(format: deviceText("device.crumb.selected"), device.displayName)
@@ -50,7 +52,8 @@ struct MacDeviceDetailScreen: View {
         case .developerModeRequired: "device.d03.title"
         case .readyToInstall: "device.d04.title"
         case .installed: device?.displayName ?? deviceText("device.d08.title.fallback")
-        case .updateAvailable: device?.displayName ?? deviceText("device.d08.title.fallback")
+        case .updateAvailable, .releaseAvailable: device?.displayName ?? deviceText("device.d08.title.fallback")
+        case .chooseIpa: "device.d15.title"
         case .wifiNeedsUSB: device?.displayName ?? deviceText("device.d12.title.fallback")
         case .wifiUnavailable:
             String(format: deviceText("device.d13.title.format"), device?.displayName ?? deviceText("device.d13.title.fallback"))
@@ -66,6 +69,8 @@ struct MacDeviceDetailScreen: View {
         case .readyToInstall: "device.d04.subtitle"
         case .installed: "device.d08.subtitle"
         case .updateAvailable: "device.d09.subtitle"
+        case .releaseAvailable: "device.d08.subtitle"
+        case .chooseIpa: "device.d04.subtitle"
         case .wifiNeedsUSB: "device.d12.subtitle"
         case .wifiUnavailable: "device.d13.subtitle"
         case .restartRequired: "device.d14.subtitle"
@@ -111,6 +116,10 @@ struct MacDeviceDetailScreen: View {
             installedPage(isUpdate: false)
         case .updateAvailable:
             installedPage(isUpdate: true)
+        case .releaseAvailable:
+            installedPage(isUpdate: false, release: model.latestRelease)
+        case .chooseIpa:
+            IpaChooserPage(model: model)
         case .wifiNeedsUSB:
             wifiUSBPage
         case .wifiUnavailable:
@@ -177,7 +186,7 @@ struct MacDeviceDetailScreen: View {
             VStack(spacing: 0) {
                 summaryRow(title: "device.team", value: MacLocalization.teamSummary(model.selectedTeam))
                 DeviceRule().padding(.leading, 16)
-                summaryRow(title: "device.install.version", value: projectVersion)
+                summaryRow(title: "device.install.version", value: savedIpaVerified)
             }
             .background(GoFlyStyle.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             Text(deviceText("device.d04.note"))
@@ -187,14 +196,32 @@ struct MacDeviceDetailScreen: View {
         .frame(maxWidth: 784, alignment: .leading)
     }
 
-    private func installedPage(isUpdate: Bool) -> some View {
+    private func installedPage(isUpdate: Bool, release: IpaRelease? = nil) -> some View {
         VStack(alignment: .leading, spacing: 20) {
             if isUpdate {
                 InfoBanner(title: "device.d09.banner.title", detail: versionDifference, kind: .info)
+            } else if let release {
+                InfoBanner(title: "device.d17.banner.title",
+                           detail: String(format: deviceText("device.d17.banner.detail"),
+                                          shortVersion(model.inspection?.appVersion, model.inspection?.appBuild),
+                                          shortVersion(release.version, release.build)),
+                           kind: .info)
             }
             VStack(spacing: 0) {
                 summaryRow(title: "device.app.version", value: installedVersion)
                 DeviceRule().padding(.leading, 16)
+                if let release {
+                    summaryRow(title: "device.d17.latest", value: String(
+                        format: deviceText("device.d17.latest.value"), release.version, release.build,
+                        release.publishedAt.flatMap(Self.releaseDate).map {
+                            String(format: deviceText("ipa.url.published"), $0)
+                        } ?? ""))
+                    DeviceRule().padding(.leading, 16)
+                } else if isUpdate, let saved = model.savedIpa {
+                    summaryRow(title: "device.saved.ipa", value: String(format: deviceText("ipa.saved.verified"),
+                                                                        saved.version, saved.build), valueColor: GoFlyStyle.ink)
+                    DeviceRule().padding(.leading, 16)
+                }
                 summaryRow(title: "device.signature.expiry", value: expiryDateText,
                            valueColor: expiryValueColor)
                 DeviceRule().padding(.leading, 16)
@@ -269,11 +296,30 @@ struct MacDeviceDetailScreen: View {
                 DeviceActionButton(title: "device.rescan") { model.inspectSelected() }
                 DeviceActionButton(title: "device.install", primary: true, enabled: false) {}
             case .readyToInstall:
+                DeviceActionButton(title: "ipa.action.chooseOther") { model.openIpaChooser() }
                 DeviceActionButton(title: "device.install", primary: true) { model.beginFirstInstall() }
             case .installed:
+                DeviceActionButton(title: "ipa.action.chooseOther") { model.openIpaChooser() }
                 DeviceActionButton(title: "device.renew", primary: true) { model.startRenew() }
             case .updateAvailable:
+                DeviceActionButton(title: "ipa.action.chooseOther") { model.openIpaChooser() }
                 DeviceActionButton(title: "device.updateRenew", primary: true) { model.startRenew() }
+            case .releaseAvailable:
+                DeviceActionButton(title: "device.d17.renewOnly",
+                                   enabled: model.savedIpa != nil && !model.savedIpaIsOlderThanInstalled) { model.startRenew() }
+                DeviceActionButton(title: model.ipaImportBusy ? "ipa.action.downloading" : "device.d17.update",
+                                   primary: true, enabled: !model.ipaImportBusy) { model.downloadLatestAndUpdate() }
+            case .chooseIpa:
+                if model.ipaImportBusy {
+                    DeviceActionButton(title: "ipa.action.cancel") { model.cancelIpaImport() }
+                    DeviceActionButton(title: "ipa.action.downloading", primary: true, enabled: false) {}
+                } else {
+                    if model.canCloseIpaChooser {
+                        DeviceActionButton(title: "ipa.action.cancel") { model.closeIpaChooser() }
+                    }
+                    DeviceActionButton(title: model.ipaSourceMode == .url ? "ipa.action.download" : "ipa.action.verify",
+                                       primary: true, enabled: model.canImportIpa) { model.importSelectedIpa() }
+                }
             case .wifiNeedsUSB:
                 DeviceActionButton(title: "device.install.usbRequired", primary: true, enabled: false) {}
             case .wifiUnavailable:
@@ -391,23 +437,36 @@ struct MacDeviceDetailScreen: View {
         return deviceText(key)
     }
 
-    private var projectVersion: String {
-        MacLocalization.projectVersion(version: model.environment?.projectVersion,
-                                       build: model.environment?.projectBuild)
+    private var savedIpaVerified: String {
+        guard let saved = model.savedIpa else { return deviceText("device.version.pending") }
+        return String(format: deviceText("ipa.saved.verified"), saved.version, saved.build)
+    }
+
+    private func shortVersion(_ version: String?, _ build: String?) -> String {
+        guard let version else { return "—" }
+        return String(format: deviceText("device.version.short"), version, build ?? "—")
+    }
+
+    static func releaseDate(_ raw: String) -> String? {
+        guard let date = ISO8601DateFormatter().date(from: raw) else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 
     private var installedVersion: String {
         guard let version = model.inspection?.appVersion else { return deviceText("device.version.pending") }
         let normalizedVersion = version.hasSuffix(".0") ? String(version.dropLast(2)) : version
         let build = model.inspection?.appBuild.map { "（build \($0)）" } ?? ""
-        let latest = model.projectIsNewer ? "" : " · \(deviceText("device.version.latest"))"
+        let latest = model.projectIsNewer || model.releaseIsNewer ? "" : " · \(deviceText("device.version.latest"))"
         return "\(normalizedVersion)\(build)\(latest)"
     }
 
     private var versionDifference: String {
-        let oldBuild = model.inspection?.appBuild ?? "—"
-        let newBuild = model.environment?.projectBuild ?? "—"
-        return String(format: deviceText("device.d09.banner.detail"), oldBuild, newBuild)
+        String(format: deviceText("device.d09.banner.detail"),
+               shortVersion(model.inspection?.appVersion, model.inspection?.appBuild),
+               shortVersion(model.savedIpa?.version, model.savedIpa?.build))
     }
 
     private var expiryDateText: String {
@@ -632,9 +691,163 @@ private extension MacDevicePageState {
         case .readyToInstall: "D04"
         case .installed: "D08"
         case .updateAvailable: "D09"
+        case .chooseIpa: "D15"
+        case .releaseAvailable: "D17"
         case .wifiNeedsUSB: "D12"
         case .wifiUnavailable: "D13"
         case .restartRequired: "D14"
+        }
+    }
+}
+
+/// D15 (URL, default latest GitHub Release), D15b (two file fields) and D16 (failure).
+private struct IpaChooserPage: View {
+    @Bindable var model: MacAppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if let failure = model.ipaFailure {
+                InfoBanner(title: "ipa.failure.title", detail: Self.failureText(failure), kind: .error)
+            } else if model.savedIpaIsOlderThanInstalled {
+                InfoBanner(title: "ipa.saved.older.title", detail: "ipa.saved.older.detail", kind: .warning)
+            } else if model.savedIpa?.supported == false {
+                InfoBanner(title: "ipa.saved.unsupported.title", detail: "ipa.failure.protocol", kind: .warning)
+            }
+            VStack(spacing: 0) {
+                checkRow("device.prep.usb")
+                DeviceRule().padding(.leading, 54)
+                checkRow("device.prep.trust.done")
+                DeviceRule().padding(.leading, 54)
+                checkRow("device.prep.developer.done")
+            }
+            .background(GoFlyStyle.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .opacity(model.inspection?.installed == true ? 0 : 1)
+            .frame(height: model.inspection?.installed == true ? 0 : nil)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(deviceText("ipa.source.title")).font(GoFlyStyle.font(13, bold: true))
+                Picker(deviceText("ipa.source.title"), selection: Binding(
+                    get: { model.ipaSourceMode }, set: { model.setIpaSourceMode($0) })) {
+                    Text(deviceText("ipa.source.url")).tag(IpaSourceMode.url)
+                    Text(deviceText("ipa.source.file")).tag(IpaSourceMode.file)
+                }
+                .pickerStyle(.segmented).labelsHidden().frame(width: 300)
+                .disabled(model.ipaImportBusy)
+                .accessibilityIdentifier("ipa-source-mode")
+            }
+            if model.ipaSourceMode == .url { urlMode } else { fileMode }
+            if let saved = model.savedIpa, model.ipaChooserOpen {
+                Text(String(format: deviceText("ipa.saved.current"), saved.version, saved.build))
+                    .font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: 784, alignment: .leading)
+        .onAppear { if model.releaseLookup == .idle || model.latestRelease == nil { model.loadLatestRelease() } }
+    }
+
+    private var urlMode: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(deviceText("ipa.url.label")).font(GoFlyStyle.font(13, bold: true))
+            TextField(deviceText("ipa.url.placeholder"), text: $model.ipaURLText)
+                .textFieldStyle(.roundedBorder).font(GoFlyStyle.font(12))
+                .disabled(model.ipaImportBusy)
+                .accessibilityIdentifier("ipa-url")
+            HStack(spacing: 6) {
+                if model.releaseLookup == .loading { ProgressView().controlSize(.mini) }
+                Text(urlStatus).font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
+            }
+            Text(deviceText("ipa.url.note")).font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var urlStatus: String {
+        if model.ipaURLEdited, model.ipaURLText != model.latestRelease?.ipaURL { return deviceText("ipa.url.custom") }
+        switch model.releaseLookup {
+        case .loading, .idle: return deviceText("ipa.url.loading")
+        case .unavailable: return deviceText("ipa.url.unavailable")
+        case .loaded:
+            guard let release = model.latestRelease else { return deviceText("ipa.url.unavailable") }
+            let published = release.publishedAt.flatMap(MacDeviceDetailScreen.releaseDate)
+                .map { String(format: deviceText("ipa.url.published"), $0) } ?? ""
+            return String(format: deviceText("ipa.url.latest"), release.version, release.build, published)
+        }
+    }
+
+    private var fileMode: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(deviceText("ipa.file.ipa")).font(GoFlyStyle.font(13, bold: true))
+            fileField(path: model.ipaFilePath, identifier: "ipa-file", type: "ipa") { model.selectIpaFile($0) }
+            Text(deviceText("ipa.file.sig")).font(GoFlyStyle.font(13, bold: true)).padding(.top, 8)
+            fileField(path: model.signatureLocation, identifier: "ipa-signature-file", type: "sig") {
+                model.selectSignatureFile($0)
+            }
+            Text(signatureStatus).font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var signatureStatus: String {
+        if model.signatureLookupBusy { return deviceText("ipa.file.sig.searching") }
+        switch model.signatureOrigin {
+        case .sameFolder: return deviceText("ipa.file.sig.sameFolder") + " " + deviceText("ipa.file.note")
+        case .github: return deviceText("ipa.file.sig.github") + " " + deviceText("ipa.file.note")
+        default: return deviceText("ipa.file.note")
+        }
+    }
+
+    private func fileField(path: String?, identifier: String, type: String,
+                           choose: @escaping (String) -> Void) -> some View {
+        HStack(spacing: 12) {
+            Text(Self.display(path) ?? deviceText("ipa.file.none"))
+                .font(GoFlyStyle.font(12)).foregroundStyle(path == nil ? GoFlyStyle.muted : GoFlyStyle.ink)
+                .lineLimit(1).truncationMode(.middle)
+                .padding(.horizontal, 10).frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                .background(GoFlyStyle.inputSurface, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(GoFlyStyle.inputBorder, lineWidth: 0.75))
+                .dropDestination(for: URL.self) { urls, _ in
+                    guard let url = urls.first, url.isFileURL, url.pathExtension.lowercased() == type else { return false }
+                    choose(url.path)
+                    return true
+                }
+                .accessibilityIdentifier(identifier)
+            DeviceActionButton(title: "ipa.file.choose", enabled: !model.ipaImportBusy) {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = true
+                panel.canChooseDirectories = false
+                panel.allowsMultipleSelection = false
+                if let kind = UTType(filenameExtension: type) { panel.allowedContentTypes = [kind] }
+                if panel.runModal() == .OK, let url = panel.url { choose(url.path) }
+            }
+        }
+    }
+
+    private func checkRow(_ title: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(MacColorSystem.success).frame(width: 22, height: 22)
+            Text(deviceText(title)).font(GoFlyStyle.font(13, bold: true))
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 13)
+    }
+
+    static func display(_ path: String?) -> String? {
+        guard let path else { return nil }
+        if path.hasPrefix("https://") { return path }
+        let home = NSHomeDirectory()
+        return path.hasPrefix(home) ? "~" + path.dropFirst(home.count) : path
+    }
+
+    static func failureText(_ failure: CheckFailure) -> String {
+        guard case .service(let code) = failure else { return deviceText("ipa.failure.generic") }
+        switch code {
+        case "ipa-signature-invalid": return deviceText("ipa.failure.signature")
+        case "ipa-signature-missing": return deviceText("ipa.failure.missingSig")
+        case "ipa-download-failed", "release-unavailable": return deviceText("ipa.failure.download")
+        case "ipa-protocol-unsupported": return deviceText("ipa.failure.protocol")
+        case "ipa-downgrade": return deviceText("ipa.failure.downgrade")
+        case "ipa-invalid", "invalid-request": return deviceText("ipa.failure.invalid")
+        default: return deviceText("ipa.failure.generic")
         }
     }
 }

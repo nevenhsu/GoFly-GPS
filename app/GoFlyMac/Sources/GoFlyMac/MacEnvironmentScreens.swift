@@ -836,6 +836,8 @@ struct MacDeviceSidebar: View {
                 return macText(model.setup?.mode == .renew ? "device.d14.sidebar.renew" : "device.d14.sidebar.install")
             case .trustRequired, .developerModeRequired, .readyToInstall, .wifiNeedsUSB:
                 return macText("device.status.notInstalledGoFly")
+            case .chooseIpa where model.inspection?.installed == false:
+                return macText("device.status.notInstalledGoFly")
             case .wifiUnavailable:
                 if let days = model.signingDaysRemaining {
                     return String(format: macText("device.sidebar.wifiMissing"), days)

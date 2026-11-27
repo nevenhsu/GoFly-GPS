@@ -3,6 +3,7 @@ from pathlib import Path
 import plistlib
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 from package_ipa import package
@@ -20,10 +21,20 @@ class SideStorePackageTests(unittest.TestCase):
             "CFBundleIdentifier": "com.neven.gofly",
             "CFBundleSupportedPlatforms": ["iPhoneOS"],
             "CFBundleShortVersionString": "1.0.6",
+            "CFBundleVersion": "4",
+            "GoFlyMacProtocol": 1,
             "CFBundleExecutable": "GoFly",
             "BGTaskSchedulerPermittedIdentifiers": ["com.neven.gofly.movement"],
         }
         self.write_info()
+        # Signing needs the maintainer's private key; tests stub it out.
+        def fake_sign(ipa, key):
+            output = ipa.with_name(ipa.name + ".sig")
+            output.write_text("{}", encoding="utf-8")
+            return output
+        patcher = mock.patch("package_ipa.sign_ipa.sign", side_effect=fake_sign)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         (self.app / "GoFly").write_bytes(b"fixture executable")
         (self.app / "GoFly").chmod(0o755)
 
@@ -46,7 +57,7 @@ class SideStorePackageTests(unittest.TestCase):
         again = package(self.app, output.parent)
         self.assertEqual(again, output)
         archived = list((output.parent / "archive").glob("*/GoFly-GPS-1.0.6.ipa*"))
-        self.assertEqual(sorted(p.name for p in archived), ["GoFly-GPS-1.0.6.ipa", "GoFly-GPS-1.0.6.ipa.sha256"])
+        self.assertEqual(sorted(p.name for p in archived), ["GoFly-GPS-1.0.6.ipa", "GoFly-GPS-1.0.6.ipa.sha256", "GoFly-GPS-1.0.6.ipa.sig"])
         self.assertEqual(next(p for p in archived if p.suffix == ".ipa").read_bytes(), first)
 
     def test_missing_or_untyped_mac_policy_is_rejected(self):

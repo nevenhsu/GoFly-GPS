@@ -11,8 +11,17 @@ layout and copy follow Figma `05 · Mac Redesign（新版）`.
 - `Sources/GoFlyMac` contains Mac-only SwiftUI screens, localization, and
   `MacColorSystem.swift`. Keep Mac semantic color tokens independent from the
   iOS app's color implementation.
-- The app bundle contains the pinned Python runtime, bridge, iOS build inputs,
-  and native library. Runtime paths are derived from `Bundle.main`.
+- The app bundle contains the pinned Python runtime, bridge, the IPA signature
+  public key (in `Bridge/Setup/ipa_store.py`) and the empty `SigningStub` Xcode
+  project. It no longer contains iOS sources or the native library: GoFly is
+  installed from a user-selected signed IPA (MAC-INSTALLER-SPEC §5.5). Runtime
+  paths are derived from `Bundle.main`.
+- Local end-to-end check with a simulated iPhone (needs the IPA signing key and
+  a local GoFly provisioning profile; no phone, no Apple contact):
+  `cd app/GoFlyMac/Bridge && ../../../work/mac-setup-env/bin/python -m unittest Setup.Tests.test_ipa_e2e`.
+- UI capture in DEBUG builds: `GoFlyMac --ui-capture --capture-screen=D15
+  --capture-appearance=light --capture-output=/path/D15.png` renders the window
+  to a PNG and quits (D15, D15b, D16, D17, D15flow, D08choose and earlier screens).
 - macOS appearance follows the system light/dark setting. UI text is localized
   in Traditional Chinese, Simplified Chinese, and English.
 

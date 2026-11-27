@@ -631,6 +631,8 @@ struct MacInstallScreen: View {
             case "device-disconnected": installText("setup.failure.disconnected")
             case "device-limit-reached": installText("setup.failure.deviceLimit")
             case "developer-untrusted": installText("setup.failure.untrusted")
+            case "ipa-missing", "ipa-invalid", "ipa-signature-invalid": installText("setup.failure.ipaMissing")
+            case "ipa-protocol-unsupported": installText("ipa.failure.protocol")
             case "wifi-device-not-found", "wifi-pairing-unknown", "wifi-support-unavailable", "wifi-renew-unknown":
                 installText("setup.failure.wifi")
             default: installText("setup.failure.generic")

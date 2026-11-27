@@ -16,7 +16,7 @@ The Mac needs a macOS version supported by the installed full Xcode and the iOS 
 
 ## V1 behavior
 
-- The app bundles its pinned arm64 CPython runtime, Bridge, iOS project inputs, and native FFI archive. Runtime paths come from `Bundle.main`; persistent GoFly GPS state is stored under `~/Library/Application Support/GoFly/state`.
+- The app bundles its pinned arm64 CPython runtime, Bridge and an empty signing-stub Xcode project. GoFly itself is not bundled: the user picks a signed IPA (by default the latest GitHub Release, or a local `.ipa` plus `.ipa.sig`), GoFly verifies it with the built-in public key, saves it, and re-signs it with the user's Team. Runtime paths come from `Bundle.main`; persistent GoFly GPS state, including the saved IPA, is stored under `~/Library/Application Support/GoFly/state`.
 - First installation is USB-only. Renew supports USB and Wi-Fi; Wi-Fi renewal checks the selected phone's existing pairing and does not create a new pairing.
 - Automatic renewal checks at app launch and every 24 hours while the Mac app is open. It runs only when enabled for that device, the observed signing lifetime is below four days, a supported transport and network are available, and no other operation is active. A failed attempt waits until the next 24-hour check.
 - An interrupted operation is restarted from a new setup transaction; there is no resume action. Renewal overwrites the same Team-scoped app and preserves its app data.
@@ -31,8 +31,7 @@ bash app/GoFlyMac/build-app.sh <YOUR_XCODE_TEAM_ID>
 open work/gofly-mac/GoFly.app
 ```
 
-To package the DMG after preparing the native library with
-`bash app/GoFly/NativeBridge/build.sh`:
+To package the DMG (the native library is no longer needed for the Mac app):
 
 ```sh
 bash app/GoFlyMac/make-dmg.sh <YOUR_XCODE_TEAM_ID>
