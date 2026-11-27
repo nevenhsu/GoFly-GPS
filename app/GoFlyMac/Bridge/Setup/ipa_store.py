@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import binascii
 import datetime as dt
+import fcntl
 import hashlib
 import json
 import os
@@ -19,6 +20,7 @@ import stat
 import tempfile
 import uuid
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
@@ -248,12 +250,30 @@ class IpaStore:
         self.current_dir = self.root / "current"
 
     def _ensure_root(self) -> None:
-        for path in (self.state_root.parent, self.state_root, self.root):
-            if path.is_symlink() or (path.exists() and not path.is_dir()):
+        try:
+            parent_base = self.state_root.parent.parent
+            if parent_base.is_symlink() or (parent_base.exists() and not parent_base.is_dir()):
                 raise SetupBridgeError("storage-unavailable")
-            if not path.exists():
-                path.mkdir(mode=0o700)
-            os.chmod(path, 0o700)
+            if not parent_base.exists():
+                parent_base.mkdir(parents=True, exist_ok=True)
+            for path in (self.state_root.parent, self.state_root, self.root):
+                if path.is_symlink() or (path.exists() and not path.is_dir()):
+                    raise SetupBridgeError("storage-unavailable")
+                path.mkdir(mode=0o700, exist_ok=True)
+                os.chmod(path, 0o700)
+        except OSError:
+            raise SetupBridgeError("storage-unavailable") from None
+
+    @contextmanager
+    def _locked(self):
+        # Bridge requests run in separate processes. Recovery may clean up a
+        # staging directory only when no import is using it.
+        fd = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            yield
+        finally:
+            os.close(fd)
 
     def _recover(self) -> None:
         """Finish or undo a swap interrupted between its two renames."""
@@ -270,8 +290,14 @@ class IpaStore:
     def current(self) -> dict[str, Any] | None:
         """Metadata of the saved IPA after re-verifying it, or None."""
         try:
-            self._recover()
-            directory = self.current_dir
+            with self._locked():
+                self._recover()
+                return self._read_copy(self.current_dir)
+        except OSError:
+            return None
+
+    def _read_copy(self, directory: Path) -> dict[str, Any] | None:
+        try:
             if directory.is_symlink() or not directory.is_dir():
                 return None
             ipa, sig, meta = (directory / IPA_NAME, directory / SIGNATURE_NAME, directory / META_NAME)
@@ -292,14 +318,28 @@ class IpaStore:
         except (SetupBridgeError, OSError, ValueError, UnicodeError):
             return None
 
-    def ipa_path(self) -> Path:
-        return self.current_dir / IPA_NAME
+    def extract_current(self, destination: Path, expected_sha256: str) -> Path:
+        """Keep the saved archive in place from digest check through extraction."""
+        try:
+            with self._locked():
+                self._recover()
+                return extract_app(self.current_dir / IPA_NAME, destination, expected_sha256)
+        except OSError:
+            raise SetupBridgeError("storage-unavailable") from None
 
     def import_files(self, ipa: Path, signature_data: bytes, *, source: str, source_name: str,
                      minimum: tuple[str, str] | None = None) -> dict[str, Any]:
         """Verify, then atomically replace the saved IPA. A failure keeps the old one."""
         signature = parse_signature(signature_data)
-        self._ensure_root()
+        try:
+            self._ensure_root()
+            with self._locked():
+                return self._replace(ipa, signature_data, signature, source, source_name, minimum)
+        except OSError:
+            raise SetupBridgeError("storage-unavailable") from None
+
+    def _replace(self, ipa: Path, signature_data: bytes, signature: IpaSignature, source: str,
+                 source_name: str, minimum: tuple[str, str] | None) -> dict[str, Any]:
         self._recover()
         staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=self.root))
         try:
@@ -314,6 +354,9 @@ class IpaStore:
                 raise SetupBridgeError("ipa-downgrade")
             meta.update(source=source, sourceName=source_name[:300], importedAt=_now())
             (staging / META_NAME).write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+            verified = self._read_copy(staging)
+            if verified is None:
+                raise SetupBridgeError("storage-unavailable")
             previous = None
             if self.current_dir.exists():
                 previous = self.root / f".previous-{uuid.uuid4().hex}"
@@ -322,12 +365,7 @@ class IpaStore:
             staging = None
             if previous is not None:
                 shutil.rmtree(previous, ignore_errors=True)
-            current = self.current()
-            if current is None:
-                raise SetupBridgeError("storage-unavailable")
-            return current
-        except OSError:
-            raise SetupBridgeError("storage-unavailable") from None
+            return verified
         finally:
             if staging is not None:
                 shutil.rmtree(staging, ignore_errors=True)

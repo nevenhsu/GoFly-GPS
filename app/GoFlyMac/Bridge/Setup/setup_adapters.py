@@ -1358,9 +1358,21 @@ class PinnedPymobiledeviceAdapter:
                     raise SetupBridgeError("developer-mode-required") from None
                 if type(developer_value) is not bool:
                     raise SetupBridgeError("developer-mode-required")
-                trusted_value = values.get("TrustedHostAttached")
-                if type(trusted_value) is not bool:
-                    raise SetupBridgeError("trust-required")
+                if transport == "wifi":
+                    # TrustedHostAttached can be false while a cable-free
+                    # paired Lockdown session over TLS is active.
+                    writer = getattr(getattr(client, "service", None), "writer", None)
+                    session_id = getattr(client, "session_id", None)
+                    trusted_value = (
+                        getattr(client, "paired", None) is True
+                        and isinstance(session_id, str) and bool(session_id)
+                        and writer is not None and not writer.is_closing()
+                        and writer.get_extra_info("ssl_object") is not None
+                    )
+                else:
+                    trusted_value = values.get("TrustedHostAttached")
+                    if type(trusted_value) is not bool:
+                        raise SetupBridgeError("trust-required")
                 return DeviceObservation(actual, version, connection_type, developer_value, trusted_value)
             finally:
                 with contextlib.suppress(Exception):
@@ -1756,6 +1768,22 @@ class PinnedPymobiledeviceAdapter:
             # Do not continue a partial remote multi-file archive on retry.
             raise SetupBridgeError("transaction-unknown") from None
 
+    def _prepare_wifi_controls(self, service: Any, *, device_id: str, manifest: bytes) -> None:
+        """Retire previous controls before a Wi-Fi handoff publishes its input."""
+        if any(self._remote_exists(service, path) for path in (
+            V1_INCOMING, V1_INCOMING_CONSUMING, V1_INCOMING + ".staging",
+        )):
+            raise SetupBridgeError("transaction-unknown")
+        names = _run(service.listdir(APP_SETUP_ROOT))
+        if not isinstance(names, list) or any(not isinstance(name, str) for name in names):
+            raise SetupBridgeError("handoff-unknown")
+        if any(name.endswith(".staging") for name in names):
+            raise SetupBridgeError("transaction-unknown")
+        if (self._remote_exists(service, FORMAL_INPUT)
+                and self._read_remote_bounded(service, FORMAL_INPUT) == manifest):
+            return
+        self._retire_completed_controls(service, device_id=device_id)
+
     def _archive_abandoned_controls(self, service: Any, present_paths: list[str]) -> None:
         """Move leftover controls of an abandoned transaction aside; nothing is deleted."""
         parent = f"{APP_SETUP_ROOT}/retired"
@@ -1981,6 +2009,8 @@ class PinnedPymobiledeviceAdapter:
                 if service_cls is None or not callable(getattr(service_cls, "create", None)):
                     raise SetupBridgeError("runtime-api-mismatch")
                 service = _run(service_cls.create(client, self._target_bundle_id(), documents_only=False))
+                if transport == "wifi":
+                    self._prepare_wifi_controls(service, device_id=device_id, manifest=raw_manifest)
                 _run(service.makedirs(f"{FORMAL_GENERATIONS}/{_uuid(setup_id)}/DDI"))
                 for filename in names:
                     self._upload_remote_file(

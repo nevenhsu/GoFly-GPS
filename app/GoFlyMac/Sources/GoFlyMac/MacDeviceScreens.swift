@@ -634,7 +634,7 @@ private struct InfoBanner: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(deviceText(title)).font(GoFlyStyle.font(13, bold: true))
                 if let detail {
-                    Text(detail.hasPrefix("device.") ? deviceText(detail) : detail)
+                    Text(detail.hasPrefix("device.") || detail.hasPrefix("ipa.") ? deviceText(detail) : detail)
                         .font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -742,7 +742,7 @@ private struct IpaChooserPage: View {
             }
         }
         .frame(maxWidth: 784, alignment: .leading)
-        .onAppear { if model.releaseLookup == .idle || model.latestRelease == nil { model.loadLatestRelease() } }
+        .onAppear { model.loadLatestRelease() }
     }
 
     private var urlMode: some View {

@@ -78,6 +78,35 @@ class HandoffRolloverTests(unittest.TestCase):
     def test_fresh_container_does_not_write(self):
         self.retire()
         self.assertEqual(self.service.renames, 0)
+
+    def test_wifi_rollover_archives_previous_controls_and_keeps_active_receipt(self):
+        setup, nonce = completed_fixture(self.service)
+        controls = {path: self.service.files[path] for path in PATHS}
+        activation = self.service.files[ACTIVATION_RECEIPT]
+        self.adapter._prepare_wifi_controls(self.service, device_id=DEVICE, manifest=controls[FORMAL_INPUT])
+        self.assertEqual(self.service.renames, 0)
+
+        self.adapter._prepare_wifi_controls(self.service, device_id=DEVICE, manifest=b"new manifest")
+        for path, content in controls.items():
+            self.assertNotIn(path, self.service.files)
+            archived = f"{APP_SETUP_ROOT}/retired/{setup}-{nonce}/{path.rsplit('/', 1)[1]}"
+            self.assertEqual(self.service.files[archived], content)
+        self.assertEqual(self.service.files[ACTIVATION_RECEIPT], activation)
+
+        self.service.files[FORMAL_INPUT] = b"previous Wi-Fi manifest"
+        self.adapter._prepare_wifi_controls(self.service, device_id=DEVICE, manifest=b"next Wi-Fi manifest")
+        self.assertNotIn(FORMAL_INPUT, self.service.files)
+        self.assertEqual(list(self.abandoned().values()), [b"previous Wi-Fi manifest"])
+        self.assertEqual(self.service.files[ACTIVATION_RECEIPT], activation)
+
+    def test_wifi_rollover_rejects_staging_and_pairing_claims_even_without_controls(self):
+        for path in (FORMAL_INPUT + ".staging", V1_INCOMING, V1_INCOMING + ".staging", V1_INCOMING_CONSUMING):
+            with self.subTest(path=path):
+                self.service.files = {path: b"in progress"}
+                with self.assertRaisesRegex(SetupBridgeError, "transaction-unknown"):
+                    self.adapter._prepare_wifi_controls(self.service, device_id=DEVICE, manifest=b"new manifest")
+                self.assertEqual(self.service.files, {path: b"in progress"})
+
     def test_two_completed_transactions_archive_only_controls(self):
         self.service.files['Documents/favorites.json'] = b'user data'
         for _ in range(2):

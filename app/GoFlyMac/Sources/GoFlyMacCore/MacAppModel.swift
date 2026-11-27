@@ -960,8 +960,9 @@ extension MacAppModel {
         let source: IpaImportSource
         switch ipaSourceMode {
         case .url:
-            source = .url(ipa: ipaURLText.trimmingCharacters(in: .whitespacesAndNewlines),
-                          sig: ipaURLText == latestRelease?.ipaURL ? latestRelease?.sigURL : nil)
+            let trimmed = ipaURLText.trimmingCharacters(in: .whitespacesAndNewlines)
+            source = .url(ipa: trimmed,
+                          sig: trimmed == latestRelease?.ipaURL ? latestRelease?.sigURL : nil)
         case .file:
             guard let ipa = ipaFilePath, let sig = signatureLocation else { return }
             source = .file(ipa: ipa, sig: sig)

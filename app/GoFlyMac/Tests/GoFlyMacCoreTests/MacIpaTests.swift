@@ -163,3 +163,139 @@ nonisolated(unsafe) private let latest: [String: Any] = [
     #expect(m.signatureLocation == ipa.path + ".sig")
     #expect(m.canImportIpa)
 }
+
+/// Real Swift -> Packaged GoFly.app ProcessBridge E2E with only the iPhone simulated.
+/// Run with an isolated HOME and GOFLY_E2E_PACKAGED_APP=1 so user state is never touched.
+private actor SimulatedPhoneOverRealBridge: MacChecking {
+    let real: ProcessBridge
+    var installed = false
+    var installedVersion = "1.0.14"
+    var installedBuild = "5"
+
+    init(real: ProcessBridge) { self.real = real }
+
+    func setPhoneInstalled(_ installed: Bool, version: String = "1.0.14", build: String = "5") {
+        self.installed = installed
+        self.installedVersion = version
+        self.installedBuild = build
+    }
+
+    func check(_ request: CheckRequest) async throws -> Data {
+        switch request.action {
+        case .environment, .ipaImport, .ipaRelease, .registeredDevices:
+            return try await real.check(request)
+        case .devices:
+            let payload: [String: Any] = ["devices": [
+                ["id": "00008110-0000000000000001", "name": "Simulated iPhone", "transport": "usb", "osVersion": "26.4"]
+            ]]
+            return try JSONSerialization.data(withJSONObject: [
+                "requestID": request.requestID, "status": "ok", "payload": payload
+            ])
+        case .inspect:
+            let payload: [String: Any] = [
+                "device": ["id": "00008110-0000000000000001", "name": "Simulated iPhone", "transport": "usb", "osVersion": "26.4"],
+                "developerMode": true, "installed": installed, "vpnInstalled": installed,
+                "appVersion": installed ? installedVersion : NSNull(),
+                "appBuild": installed ? installedBuild : NSNull(),
+                "teamID": request.teamID ?? NSNull(),
+            ]
+            return try JSONSerialization.data(withJSONObject: [
+                "requestID": request.requestID, "status": "ok", "payload": payload
+            ])
+        }
+    }
+}
+
+@Test @MainActor func packagedAppRealBridgeEndToEndWithSimulatedPhone() async throws {
+    guard ProcessInfo.processInfo.environment["GOFLY_E2E_PACKAGED_APP"] == "1" else { return }
+    let workspace = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let resources = workspace.appendingPathComponent("work/gofly-mac/GoFly.app/Contents/Resources", isDirectory: true)
+    let ipaDir = workspace.appendingPathComponent("work/dist/ipa", isDirectory: true)
+    let ipa = try #require(
+        try FileManager.default.contentsOfDirectory(at: ipaDir, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "ipa" }.sorted { $0.lastPathComponent < $1.lastPathComponent }.last
+    )
+    let sig = URL(fileURLWithPath: ipa.path + ".sig")
+    #expect(FileManager.default.fileExists(atPath: sig.path))
+
+    let bundle = try MacBundleResources(resourcesURL: resources)
+    let realBridge = ProcessBridge(bundle: bundle)
+    let journal = BridgeStatusJournalReader(runner: realBridge)
+    let hybrid = SimulatedPhoneOverRealBridge(real: realBridge)
+
+    // 1. Fresh launch with no saved IPA -> D15 (chooseIpa).
+    let suite1 = "gofly.e2e.1.\(UUID().uuidString)"
+    let prefs1 = try #require(UserDefaults(suiteName: suite1))
+    defer { prefs1.removePersistentDomain(forName: suite1) }
+    let setup1 = MacSetupModel(runner: realBridge, journal: journal)
+    let m1 = MacAppModel(live: hybrid, setup: setup1, preferences: prefs1)
+    await m1.restoreSetup()
+    m1.beginLaunchCheck()
+    try await idle(m1)
+    #expect(m1.environment?.ready == true)
+    #expect(m1.savedIpa == nil)
+    m1.openDevices(firstInstall: true)
+    try await idle(m1)
+    #expect(m1.devicePageState == .chooseIpa)
+
+    // 2. Choose local signed IPA (auto-detects sibling .sig) -> real ProcessBridge ipaImport -> D04 (readyToInstall).
+    m1.setIpaSourceMode(.file)
+    m1.selectIpaFile(ipa.path)
+    #expect(m1.signatureOrigin == .sameFolder)
+    #expect(m1.canImportIpa)
+    m1.importSelectedIpa()
+    try await idle(m1)
+    let imported = try #require(m1.savedIpa)
+    #expect(imported.supported == true)
+    #expect(m1.ipaFailure == nil)
+    #expect(m1.devicePageState == .readyToInstall)
+
+    // 3. Relaunch (fresh MacAppModel) -> real ProcessBridge environment reads saved IPA -> directly D04.
+    let suite2 = "gofly.e2e.2.\(UUID().uuidString)"
+    let prefs2 = try #require(UserDefaults(suiteName: suite2))
+    defer { prefs2.removePersistentDomain(forName: suite2) }
+    let m2 = MacAppModel(live: hybrid, setup: MacSetupModel(runner: realBridge, journal: journal), preferences: prefs2)
+    await m2.restoreSetup()
+    m2.beginLaunchCheck()
+    try await idle(m2)
+    #expect(m2.savedIpa?.version == imported.version)
+    #expect(m2.savedIpa?.build == imported.build)
+    m2.openDevices(firstInstall: true)
+    try await idle(m2)
+    #expect(m2.devicePageState == .readyToInstall)
+
+    // 4. Tampered IPA is rejected by real ProcessBridge -> D16, saved IPA preserved.
+    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    let tampered = tmp.appendingPathComponent("tampered.ipa")
+    try FileManager.default.copyItem(at: ipa, to: tampered)
+    let handle = try FileHandle(forWritingTo: tampered)
+    try handle.seekToEnd()
+    try handle.write(contentsOf: Data("x".utf8))
+    try handle.close()
+    m2.openIpaChooser()
+    m2.setIpaSourceMode(.file)
+    m2.selectIpaFile(tampered.path)
+    m2.selectSignatureFile(sig.path)
+    m2.importSelectedIpa()
+    try await idle(m2)
+    #expect(m2.ipaFailure == .service("ipa-signature-invalid"))
+    #expect(m2.savedIpa?.version == imported.version)
+
+    // 5. Downgrade below phone's installed version is rejected by real ProcessBridge.
+    await hybrid.setPhoneInstalled(true, version: "99.0.0", build: "1")
+    m2.closeIpaChooser()
+    m2.inspectSelected()
+    try await idle(m2)
+    #expect(m2.savedIpaIsOlderThanInstalled)
+    #expect(m2.devicePageState == .chooseIpa)
+    m2.setIpaSourceMode(.file)
+    m2.selectIpaFile(ipa.path)
+    m2.importSelectedIpa()
+    try await idle(m2)
+    #expect(m2.ipaFailure == .service("ipa-downgrade"))
+}

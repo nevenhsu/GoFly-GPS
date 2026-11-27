@@ -724,7 +724,7 @@ class RestartFromScratchStageTests(unittest.TestCase):
 
 
 class AdapterBoundaryTests(unittest.TestCase):
-    """The two single-point regressions kept from the deleted USB/process files."""
+    """Regressions for the device and process boundaries."""
 
     serial = "00000000-000000000000ABCD"
 
@@ -745,6 +745,35 @@ class AdapterBoundaryTests(unittest.TestCase):
         self.assertEqual(create.call_args.kwargs["serial"], self.serial)
         self.assertIs(create.call_args.kwargs["autopair"], False)
         self.assertEqual(create.call_args.kwargs["connection_type"], "USB")
+
+    def test_network_observation_requires_a_paired_lockdown_session_over_tls(self) -> None:
+        values = {"UniqueDeviceID": self.serial, "ProductVersion": "27.2.1", "TrustedHostAttached": False}
+        writer = mock.Mock()
+        client = SimpleNamespace(
+            get_value=AsyncMock(side_effect=lambda **kwargs: True if kwargs else values),
+            close=AsyncMock(), service=SimpleNamespace(writer=writer),
+        )
+        create = AsyncMock(return_value=client)
+        adapter = PinnedPymobiledeviceAdapter()
+        adapter._modules = (
+            SimpleNamespace(list_devices=AsyncMock(return_value=[SimpleNamespace(serial=self.serial, connection_type="Network")])),
+            SimpleNamespace(create_using_usbmux=create), SimpleNamespace(),
+        )
+        for paired, session_id, closing, tls, trusted in (
+            (True, "session", False, True, True),
+            (False, "session", False, True, False),
+            (True, None, False, True, False),
+            (True, "session", False, False, False),
+            (True, "session", True, True, False),
+        ):
+            with self.subTest(paired=paired, session_id=session_id, closing=closing, tls=tls):
+                client.paired = paired
+                client.session_id = session_id
+                writer.is_closing.return_value = closing
+                writer.get_extra_info.return_value = object() if tls else None
+                self.assertIs(adapter.observe(self.serial.lower(), "wifi").trust, trusted)
+                self.assertIs(create.call_args.kwargs["autopair"], False)
+                self.assertEqual(create.call_args.kwargs["connection_type"], "Network")
 
     def test_launch_uses_verified_rsd_and_never_kills_existing(self) -> None:
         device = "00000000-000000000000abcd"

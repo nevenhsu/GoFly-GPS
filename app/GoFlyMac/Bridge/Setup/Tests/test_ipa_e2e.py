@@ -20,9 +20,11 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 import uuid
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -244,9 +246,32 @@ class IpaInstallEndToEnd(unittest.TestCase):
         self.assertEqual(missing_sig.get("code"), "ipa-signature-missing")
         self.assertEqual(self.bridge._project_identity(), (version, build))
 
-        # 6. A newer verified IPA replaces the saved one and updates the phone.
-        replaced = self.bridge_call(action="ipaImport", ipaPath=str(newer), sigPath=str(newer) + ".sig",
-                                    minimumVersion=version, minimumBuild=build)
+        # 6. D17 discovers a newer signed release, then downloads and installs it.
+        url = "https://github.com/nevenhsu/GoFly-GPS/releases/download/v99.0.0/" + newer.name
+        release = {"assets": [
+            {"name": newer.name, "browser_download_url": url},
+            {"name": newer.name + ".sig", "browser_download_url": url + ".sig"},
+        ]}
+        fixture = {url: newer, url + ".sig": Path(str(newer) + ".sig")}
+        downloads = []
+
+        def download(candidate, destination, **_kwargs):
+            downloads.append(candidate)
+            shutil.copyfile(fixture[candidate], destination)
+
+        store_module = bridge._ipa_store_module()
+        with (
+            mock.patch.object(store_module, "_api_json", return_value=[release]),
+            mock.patch.object(store_module, "download", side_effect=download),
+        ):
+            latest = self.bridge_call(action="ipaRelease")
+            self.assertEqual(latest["status"], "ok", latest)
+            self.assertEqual((latest["payload"]["version"], latest["payload"]["build"]), ("99.0.0", "1"))
+            self.assertEqual(downloads, [url + ".sig"])
+            replaced = self.bridge_call(action="ipaImport", ipaURL=latest["payload"]["ipaURL"],
+                                        sigURL=latest["payload"]["sigURL"],
+                                        minimumVersion=version, minimumBuild=build)
+            self.assertEqual(downloads, [url + ".sig", url + ".sig", url])
         self.assertEqual(replaced["status"], "ok", replaced)
         self.assertEqual(self.bridge._project_identity(), ("99.0.0", "1"))
         result = self.apply("renew")
@@ -265,6 +290,43 @@ class IpaInstallEndToEnd(unittest.TestCase):
             self.apply("install")
         self.assertEqual(missing.exception.code, "ipa-missing")
         self.assertEqual(self.phone.installed_apps, [])
+
+    def test_read_during_replacement_preserves_the_import(self) -> None:
+        store = ipa_store.IpaStore(self.state)
+        signature = Path(str(self.ipa) + ".sig").read_bytes()
+        store.import_files(self.ipa, signature, source="file", source_name="original")
+        verifying = threading.Event()
+        finish_verifying = threading.Event()
+        reading = threading.Event()
+        inspect = ipa_store.inspect_ipa
+
+        def inspect_staged(*args):
+            verifying.set()
+            if not finish_verifying.wait(5):
+                raise TimeoutError("replacement test did not release verification")
+            return inspect(*args)
+
+        def read_current():
+            reading.set()
+            return ipa_store.IpaStore(self.state).current()
+
+        with mock.patch.object(ipa_store, "inspect_ipa", side_effect=inspect_staged), ThreadPoolExecutor(2) as pool:
+            pending_import = pool.submit(store.import_files, self.ipa, signature, source="file", source_name="replacement")
+            try:
+                self.assertTrue(verifying.wait(5))
+                pending_read = pool.submit(read_current)
+                self.assertTrue(reading.wait(5))
+                # The reader may wait or read the old copy. It must never
+                # recover the active import's staging directory as stale.
+                try:
+                    pending_read.result(timeout=0.5)
+                except TimeoutError:
+                    pass
+            finally:
+                finish_verifying.set()
+            self.assertEqual(pending_import.result(timeout=5)["sourceName"], "replacement")
+            self.assertIsNotNone(pending_read.result(timeout=5))
+        self.assertEqual(store.current()["sourceName"], "replacement")
 
 
 if __name__ == "__main__":

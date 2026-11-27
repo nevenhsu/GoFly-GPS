@@ -17,11 +17,11 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from .ipa_store import IpaStore, extract_app
+    from .ipa_store import IpaStore
     from .setup_adapters import PinnedXcodeProcessAdapter
     from .setup_protocol import SetupBridgeError, TARGET_NAME, bundle_id_matches_team
 except ImportError:  # script execution from the packaged Setup directory
-    from ipa_store import IpaStore, extract_app
+    from ipa_store import IpaStore
     from setup_adapters import PinnedXcodeProcessAdapter
     from setup_protocol import SetupBridgeError, TARGET_NAME, bundle_id_matches_team
 
@@ -139,7 +139,7 @@ class IpaResignProcessAdapter(PinnedXcodeProcessAdapter):
             work.mkdir(mode=0o700)
             stub_app = work / "stub.app"
             os.rename(built, stub_app)
-            app = extract_app(store.ipa_path(), transaction, saved["ipaSHA256"])
+            app = store.extract_current(transaction, saved["ipaSHA256"])
             rewrite_info(app, target_bundle_id)
             resign(app, stub_app, work)
         except SetupBridgeError:

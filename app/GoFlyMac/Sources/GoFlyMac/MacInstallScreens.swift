@@ -456,8 +456,8 @@ struct MacInstallScreen: View {
     }
 
     private var projectDescription: String {
-        MacLocalization.projectVersion(version: model.environment?.projectVersion,
-                                       build: model.environment?.projectBuild)
+        MacLocalization.projectVersion(version: model.savedIpa?.version ?? model.environment?.projectVersion,
+                                       build: model.savedIpa?.build ?? model.environment?.projectBuild)
     }
 
     private var expiryDescription: String {
@@ -620,7 +620,8 @@ struct MacInstallScreen: View {
         case .service(let code):
             if setup.pendingTransaction?.transport == .wifi,
                !["signing-required", "signature-invalid", "artifact-mismatch", "configuration-invalid",
-                 "dependency-mismatch", "environment-not-ready"].contains(code) {
+                 "dependency-mismatch", "environment-not-ready",
+                 "ipa-missing", "ipa-invalid", "ipa-signature-invalid", "ipa-protocol-unsupported"].contains(code) {
                 return installText("setup.failure.wifi")
             }
             return switch code {

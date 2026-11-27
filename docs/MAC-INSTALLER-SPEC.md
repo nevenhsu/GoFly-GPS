@@ -113,7 +113,7 @@ App 以**裝置為中心**。側欄列出看得到的 iPhone（USB／Wi‑Fi 標
 - 流程：建置 → 簽名 → 覆蓋安裝（保留資料）→ 核對配對與裝置支援 → 讀回啟用回報 → 完成（D11：新的到期日、「手機上的資料和設定已保留」）。
 - 手動：在 D08／D09 按主要按鈕就開始，不另設確認頁。版本不同時，按鈕上方寫明「build 21 → build 24，資料保留」。
 - **Wi‑Fi 時只核對手機上現有的配對**，不重新建立；核對失敗時要求接 USB。USB 時照首次安裝的規則重新交付配對。
-- Wi‑Fi 條件：Mac 與 iPhone 在同一個網路、iPhone 之前用 USB 配對過這部 Mac、iPhone 已解鎖。
+- Wi‑Fi 續簽驗收時，Mac 與 iPhone 需在同一個網路，iPhone 必須已解鎖，並曾以 USB 配對這部 Mac。拔除 USB 後，以既有配對建立的 Lockdown TLS 工作階段確認信任，再核對 GoFly 已保存的配對。發佈新交接資料前會封存上一筆交易的控制檔，保留活動啟用回報、配對和使用者資料。現有配對交付或控制檔寫入仍進行中時，停止本次交接。
 
 ### 5.3 自動延長簽名
 
@@ -226,7 +226,9 @@ IPA 不可含 App Extension 或額外 entitlements；未來若加入，須先更
 - Bridge：`Bridge/Setup/ipa_store.py`（驗簽、結構檢查、保存與原子替換、GitHub Release 查詢與下載）、`Bridge/Setup/ipa_resign.py`（`IpaResignProcessAdapter`：建置 `SigningStub` 取得描述檔與憑證後重新簽名）；新動作 `ipaRelease`、`ipaImport`，`environment` 回報 `ipa`。錯誤碼：`ipa-missing`、`ipa-invalid`、`ipa-signature-missing`、`ipa-signature-invalid`、`ipa-protocol-unsupported`、`ipa-downgrade`、`ipa-download-failed`、`release-unavailable`。
 - Mac App：D15（網址）／D15b（`.ipa` 與 `.ipa.sig` 兩個欄位，支援拖放）／D16／D17、D04/D08/D09 的「選擇其他 IPA…」、24 小時檢查的 macOS 新版通知。DMG 不再含 `iOSProject/` 與 `native/`，並移除執行時不載入的 Tk/Tcl、pip、jedi、IPython、Pillow：開發產物由 282 MB 降到約 144 MB。
 - 已驗證（模擬 iPhone，不連 Apple、不連手機）：`Bridge/Setup/Tests/test_ipa_e2e.py` 以真的簽章、保存、xcodebuild 空殼、重新簽名、嚴格成品驗證與 producer 交易，跑完首次安裝 → 刪除原檔後延長簽名 → 拒絕竄改／降版／缺簽章 → 新版取代並更新；同一測試也以打包後的精簡 Python 執行通過。Bridge 106 項與 Swift 78 項單元測試通過；示範模式截圖確認 D15、D15b、D16、D17、D04、D09 與「選擇其他 IPA…」流程（淺／深色、中英文）。
-- 未驗證：實機 USB／Wi‑Fi 安裝與延長簽名、真實配對交接與裝置支援、`allowProvisioningUpdates` 連 Apple 建立描述檔、GitHub 上真正含 `.sig` 的 Release（目前 Release 都沒有 `.sig`，`ipaRelease` 回 `release-unavailable`）。
+- E2E 複驗：以現有 App bundle 的 Python 與 Swift `ProcessBridge`，在隔離的本機狀態中完成模擬 USB 首次安裝、刪除來源檔後延長簽名、讀回完成交易，以及已保存副本缺失時回傳 `ipa-missing`。GitHub Release 查詢與下載使用模擬回應，覆蓋查詢只下載 `.sig`、更新再下載 IPA 並重新簽名。另修正匯入與讀取並行時可能誤清除匯入暫存檔，並補上回歸測試。
+- 實機複驗：iOS 27.2.1（`iPhone16,1`）使用 1.0.14 build 5 的已簽章 IPA，完成 USB 首次安裝、USB 覆蓋續簽及拔線後的純 Wi‑Fi 覆蓋續簽。USB 確認安裝、配對匯入和裝置支援，Wi‑Fi 核對並沿用既有配對。各流程均讀到完成的啟用回報。測試使用內含本次 Bridge 修正的隔離 bundle 副本與現有本機描述檔。
+- 未驗證：`allowProvisioningUpdates` 連 Apple 建立描述檔，以及 GitHub 上真正含 `.sig` 的 Release。
 
 ## 6. 畫面清單（Figma V1）
 
