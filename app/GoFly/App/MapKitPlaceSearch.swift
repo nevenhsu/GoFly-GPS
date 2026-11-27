@@ -74,9 +74,8 @@ final class MapKitPlaceSearch: PlaceSearching {
             let identity = item.identifier.map { PlaceIdentity.mapKit($0.rawValue) }
                 ?? .coordinate(coordinate)
             guard seen.insert(identity).inserted else { return nil }
-            let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines)
             let address = item.address?.fullAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-            let title = [name, address].compactMap { $0 }.first { !$0.isEmpty } ?? coordinate.displayText
+            let title = item.goFlyPlaceTitle(fallbackCoordinate: coordinate)
             return MapPlace(id: identity, title: title, coordinate: coordinate, address: address)
         }
     }

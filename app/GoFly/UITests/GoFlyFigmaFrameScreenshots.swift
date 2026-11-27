@@ -612,7 +612,7 @@ final class GoFlyFigmaFrameScreenshots: XCTestCase {
                     XCTAssertTrue(app.descendants(matching: .any)["snackbar"].label.contains("已刪除 1 項"))
                     XCTAssertEqual(favoriteRows.count, 7)
                 case "C2":
-                    XCTAssertEqual(app.textFields["favorites.editor.label"].placeholderValue, "標籤")
+                    XCTAssertFalse((app.textFields["favorites.editor.label"].placeholderValue ?? "").isEmpty)
                     XCTAssertFalse(app.staticTexts["標籤"].exists, "C2 uses the field placeholder without a separate label")
                     XCTAssertTrue(app.buttons["favorites.editor.clear"].exists)
                     let form = app.scrollViews["favorites.editor.form"]

@@ -10,7 +10,6 @@ struct GoFlySaveFavoriteRouteView: View {
     var onDismiss: () -> Void
 
     @State private var label = ""
-    @State private var fallbackLabel = FavoriteLabelDefaults.defaultName()
     @State private var saving = false
     @State private var localErrorKey: String?
     @State private var savedOmittingCurrent: FavoriteRouteRecord?
@@ -48,7 +47,7 @@ struct GoFlySaveFavoriteRouteView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 TextField(goFlyString("favoriteRoutes.label"), text: $label,
-                                          prompt: Text(goFlyString("favoriteRoutes.namePlaceholder")))
+                                          prompt: Text(fallbackLabel.isEmpty ? goFlyString("favoriteRoutes.namePlaceholder") : fallbackLabel))
                                     .focused($focused)
                                     .submitLabel(.done)
                                     .onSubmit { focused = false }
@@ -120,9 +119,15 @@ struct GoFlySaveFavoriteRouteView: View {
 
     private var header: some View {
         GoFlySheetNavBar(title: nil) {
-            Button(goFlyString("favoriteRoutes.cancel")) {
+            Button {
                 favorites.clearError()
                 onDismiss()
+            } label: {
+                Text(goFlyString("favoriteRoutes.cancel"))
+                    .goFlyFont(GoFlyFont.subheadlineEmphasis)
+                    .foregroundStyle(GoFlyTextColor.primary)
+                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("favoriteRoutes.save.cancel")
@@ -172,11 +177,20 @@ struct GoFlySaveFavoriteRouteView: View {
         return goFlyLocalizedFormat(goFlyString("favoriteRoutes.placeCount"), controller.draft.nodes.filter { $0.value != .empty }.count)
     }
 
+    private var fallbackLabel: String {
+        FavoriteLabelDefaults.defaultName(
+            for: controller.draft,
+            currentRouteOrigin: currentRouteOrigin(),
+            currentLocationFallback: goFlyString("route.currentLocation")
+        )
+    }
+
     private func save() {
         guard !saving, savedOmittingCurrent == nil, controller.canEdit, favorites.canMutate else { return }
         let draft = controller.draft
         let origin = currentRouteOrigin()
-        let capturedLabel = FavoriteLabelDefaults.resolved(label, fallback: fallbackLabel)
+        let fallback = FavoriteLabelDefaults.defaultName(for: draft, currentRouteOrigin: origin)
+        let capturedLabel = FavoriteLabelDefaults.resolved(label, fallback: fallback)
         let candidate: FavoriteRouteSaveCandidate
         do { candidate = try FavoriteRouteSaveBuilder.build(draft: draft, currentRouteOrigin: origin) }
         catch {
@@ -208,7 +222,7 @@ struct GoFlyFavoriteRouteLabelEditor: View {
     var onDelete: (() -> Void)? = nil
 
     @State private var label: String
-    @State private var fallbackLabel = FavoriteLabelDefaults.defaultName()
+    @State private var fallbackLabel: String
     @State private var saving = false
     @State private var saveTask: Task<Void, Never>?
     @State private var headerHeight: CGFloat = 0
@@ -220,6 +234,7 @@ struct GoFlyFavoriteRouteLabelEditor: View {
         self.onDismiss = onDismiss
         self.onDelete = onDelete
         _label = State(initialValue: record.label ?? "")
+        _fallbackLabel = State(initialValue: FavoriteLabelDefaults.defaultName(for: record))
     }
 
     var body: some View {
@@ -238,7 +253,7 @@ struct GoFlyFavoriteRouteLabelEditor: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             TextField(goFlyString("favoriteRoutes.label"), text: $label,
-                                      prompt: Text(goFlyString("favoriteRoutes.namePlaceholder")))
+                                      prompt: Text(fallbackLabel.isEmpty ? goFlyString("favoriteRoutes.namePlaceholder") : fallbackLabel))
                                 .focused($focused)
                                 .submitLabel(.done)
                                 .onSubmit { focused = false }
@@ -310,9 +325,15 @@ struct GoFlyFavoriteRouteLabelEditor: View {
 
     private var header: some View {
         GoFlySheetNavBar(title: nil) {
-            Button(goFlyString("favoriteRoutes.cancel")) {
+            Button {
                 favorites.clearError()
                 onDismiss()
+            } label: {
+                Text(goFlyString("favoriteRoutes.cancel"))
+                    .goFlyFont(GoFlyFont.subheadlineEmphasis)
+                    .foregroundStyle(GoFlyTextColor.primary)
+                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("favoriteRoutes.editor.cancel")
@@ -320,7 +341,10 @@ struct GoFlyFavoriteRouteLabelEditor: View {
             if let onDelete {
                 Button(role: .destructive, action: onDelete) {
                     Text(goFlyString("favoriteRoutes.deleteSingle"))
+                        .goFlyFont(GoFlyFont.subheadlineEmphasis)
                         .foregroundStyle(GoFlyTextColor.danger)
+                        .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(saving || !favorites.canMutate)

@@ -26,12 +26,18 @@ struct GoFlyImportedRoutesView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if fileOperationInProgress || imports.isBusy || imports.isValidatingSelection {
                         ProgressView(goFlyString(imports.isValidatingSelection ? "imports.validating" : "imports.working"))
+                            .goFlyFont(GoFlyFont.body)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 12)
                             .accessibilityIdentifier("imports.working")
                     }
                     if imports.loadState == .loading {
                         ProgressView(goFlyString("imports.loading"))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 24)
                     } else if imports.loadState == .ready, imports.records.isEmpty {
-                        GoFlyEmptyState(symbol: nil, message: goFlyString("imports.empty"))
+                        GoFlyEmptyState(symbol: GoFlySymbols.route, message: goFlyString("imports.empty"))
+                            .padding(.vertical, 24)
                             .accessibilityIdentifier("imports.empty")
                     }
                     if !imports.records.isEmpty {
@@ -44,9 +50,7 @@ struct GoFlyImportedRoutesView: View {
                                 }
                             }
                         }
-                        .background(GoFlyStyle.cardSurface, in: RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
-                        .clipShape(RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous))
-                        .overlay { RoundedRectangle(cornerRadius: GoFlyStyle.Radius.small, style: .continuous).strokeBorder(GoFlyStyle.border, lineWidth: GoFlyStyle.Layout.hairline) }
+                        .goFlyCard(radius: GoFlyStyle.Radius.small)
                     }
                 }
                 .padding(16)
@@ -54,7 +58,7 @@ struct GoFlyImportedRoutesView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("imports.content")
-        .safeAreaInset(edge: .bottom) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 8) {
                 GoFlyLiveContainerPickerHint()
                 importButton
@@ -64,19 +68,17 @@ struct GoFlyImportedRoutesView: View {
                 .allowsHitTesting(!showingActions)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
-                .padding(.bottom, 6)
-                .background(GoFlyStyle.canvas)
+                .goFlyBottomActionPadding()
+                .background(GoFlyStyle.canvas.ignoresSafeArea(edges: .bottom))
                 // Same bottom bar as the pairing import page (R07.s): divider, small print, button.
                 .goFlyTopHairline()
         }
         .goFlySnackbar($snackbar, bottomPadding: 83)
         .background(GoFlyStyle.canvas.ignoresSafeArea())
         .goFlyPushedFullScreen()
-        .overlay(alignment: .top) {
+        .goFlyToastOverlay(topInset: 54) {
             if let failure = currentFailureKey {
-                GoFlyToastOverlay(topInset: 54) {
-                    notice(failure, identifier: "imports.error")
-                }
+                notice(failure, identifier: "imports.error")
             }
         }
         .overlay(alignment: .bottom) {
@@ -122,28 +124,11 @@ struct GoFlyImportedRoutesView: View {
 
     private var header: some View {
         GoFlySheetNavBar(title: goFlyString("imports.title")) {
-            Button { dismiss() } label: {
-                if isShowingReturnLabel {
-                    GoFlyIconLabel(title: goFlyString("mode.route"), icon: .chevronLeft)
-                        .goFlyFont(GoFlyFont.subheadlineEmphasis)
-                } else {
-                    Text(goFlyString("common.dismiss"))
-                        .goFlyFont(GoFlyFont.subheadlineEmphasis)
-                }
-            }
-            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
-            .buttonStyle(.plain)
-            .foregroundStyle(isShowingReturnLabel ? GoFlyTextColor.accent : GoFlyTextColor.primary)
-            .accessibilityLabel(goFlyString(isShowingReturnLabel ? "common.back" : "common.dismiss"))
-            .accessibilityIdentifier("imports.back")
+            GoFlyNavBackButton(title: goFlyString("mode.route"), identifier: "imports.back")
         } trailing: {
             EmptyView()
         }
         .padding(.horizontal, 16)
-    }
-
-    private var isShowingReturnLabel: Bool {
-        showingActions || shareItem != nil || showingImporter || snackbar != nil || currentFailureKey != nil
     }
 
     private var isBusy: Bool { fileOperationInProgress || imports.isBusy || imports.isValidatingSelection }
@@ -174,7 +159,6 @@ struct GoFlyImportedRoutesView: View {
             } catch { presentFileError(error) }
         } label: {
             Text(goFlyString("imports.import"))
-                .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(GoFlyButtonStyle(variant: .primary))
         .disabled(isBusy || !imports.canMutate)

@@ -82,24 +82,22 @@ struct GoFlyFavoritesView: View {
         GoFlySheetNavBar(title: selecting
                          ? goFlyLocalizedFormat(goFlyString("favorites.selectedCount"), selected.count)
                          : goFlyString("favorites.title")) {
-            Button {
-                if selecting { selecting = false; selected.removeAll() }
-                else { onDismiss() }
-            } label: {
-                Group {
-                    if selecting {
-                        Text(goFlyString("favorites.cancel"))
-                            .goFlyFont(GoFlyFont.subheadlineEmphasis)
-                    } else {
-                        GoFlyIconLabel(title: goFlyString("common.back"), icon: .chevronLeft)
-                            .goFlyFont(GoFlyFont.subheadlineEmphasis)
-                    }
+            if selecting {
+                Button {
+                    selecting = false
+                    selected.removeAll()
+                } label: {
+                    Text(goFlyString("favorites.cancel"))
+                        .goFlyFont(GoFlyFont.subheadlineEmphasis)
+                        .foregroundStyle(GoFlyTextColor.accent)
+                        .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
-                .foregroundStyle(GoFlyTextColor.accent)
-                .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("favorites.dismiss")
+            } else {
+                GoFlyNavBackButton(title: goFlyString("common.back"), action: onDismiss, identifier: "favorites.dismiss")
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("favorites.dismiss")
         } trailing: {
             if selecting {
                 Button {
@@ -124,17 +122,16 @@ struct GoFlyFavoritesView: View {
                     Text(goFlyString("favorites.select"))
                         .goFlyFont(GoFlyFont.subheadlineEmphasis)
                         .foregroundStyle(GoFlyTextColor.accent)
-                        .frame(minWidth: 44, minHeight: 44)
+                        .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(goFlyString("favorites.select"))
-                .disabled(!favorites.canMutate)
+                .disabled(!favorites.canMutate || favorites.favorites.isEmpty)
                 .accessibilityIdentifier("favorites.select")
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
+        .padding(.horizontal, 16)
     }
 
     @ViewBuilder private var failureNotice: some View {
@@ -214,12 +211,19 @@ struct GoFlyFavoritesView: View {
         .foregroundStyle(GoFlyTextColor.primary)
     }
 
-    /// A coordinate favorite already shows its coordinate as the title; the
-    /// Figma list shows one subtitle, never the same line twice.
+    /// Shows one distinct subtitle line without repeating the title (e.g. matching address or coordinate).
     private func favoriteSubtitle(_ favorite: FavoritePlace) -> String? {
-        if let address = favorite.place.address, !address.isEmpty { return address }
-        let coordinate = favorite.place.coordinate.displayText
-        return favorite.displayTitle == coordinate ? nil : coordinate
+        if let address = favorite.place.address, !address.isEmpty, address != favorite.displayTitle {
+            return address
+        }
+        let coordinate = favorite.place.coordinate
+        let title = favorite.displayTitle
+        if title == coordinate.displayText
+            || title == coordinate.shortDisplayText
+            || title == FavoriteLabelDefaults.simplifiedCoordinate(coordinate) {
+            return nil
+        }
+        return coordinate.displayText
     }
 
     private func toggleSelection(_ key: FavoritePlaceKey) {

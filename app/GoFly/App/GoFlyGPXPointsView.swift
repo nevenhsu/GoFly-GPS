@@ -101,15 +101,7 @@ struct GoFlyGPXPointsView: View {
     var body: some View {
         VStack(spacing: 0) {
             GoFlySheetNavBar(title: goFlyString("imports.points.title")) {
-                Button { dismiss() } label: {
-                    GoFlyIconLabel(title: goFlyString("common.back"), icon: .chevronLeft)
-                        .goFlyFont(GoFlyFont.subheadlineEmphasis)
-                        .frame(minWidth: 44, minHeight: 44, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(GoFlyTextColor.accent)
-                .accessibilityLabel(goFlyString("common.back"))
-                .accessibilityIdentifier("imports.points.back")
+                GoFlyNavBackButton(title: goFlyString("common.back"), identifier: "imports.points.back")
             } trailing: {
                 EmptyView()
             }

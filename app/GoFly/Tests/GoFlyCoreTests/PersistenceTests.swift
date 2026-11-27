@@ -2,15 +2,66 @@ import Foundation
 import Testing
 @testable import GoFlyCore
 @Suite @MainActor struct PersistenceTests {
-    @Test func favoriteLabelFallbackUsesReadableDateAnd24HourTime() throws {
-        let timeZone = try #require(TimeZone(secondsFromGMT: 0))
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone
-        let date = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 10, hour: 15, minute: 22)))
-        let fallback = FavoriteLabelDefaults.defaultName(at: date, timeZone: timeZone)
-        #expect(fallback == "10 Oct 2026 15:22")
-        #expect(FavoriteLabelDefaults.resolved(" \n\t", fallback: fallback) == fallback)
+    @Test func favoritePlaceDefaultNameSupportsInternationalPlacesAddressesAndSimplifiedCoordinates() throws {
+        let taipei = try #require(GeoCoordinate(latitude: 25.033964, longitude: 121.564468))
+        let poi = MapPlace(id: .mapKit("poi"), title: "台北 101", coordinate: taipei, address: "110台灣台北市信義區信義路五段7號")
+        #expect(FavoriteLabelDefaults.defaultName(for: poi) == "台北 101")
+
+        let usAddress = MapPlace(
+            id: .coordinate(taipei),
+            title: "1 Apple Park Way, Cupertino, CA 95014, United States",
+            coordinate: taipei,
+            address: "1 Apple Park Way, Cupertino, CA 95014, United States"
+        )
+        #expect(FavoriteLabelDefaults.defaultName(for: usAddress) == "1 Apple Park Way")
+
+        let jpAddress = MapPlace(
+            id: .coordinate(taipei),
+            title: "〒100-0005 日本東京都千代田区丸の内",
+            coordinate: taipei,
+            address: "〒100-0005 日本東京都千代田区丸の内"
+        )
+        #expect(FavoriteLabelDefaults.defaultName(for: jpAddress) == "日本東京都千代田区丸の内")
+
+        let ukPostalFirst = MapPlace(
+            id: .coordinate(taipei),
+            title: taipei.displayText,
+            coordinate: taipei,
+            address: "SW1A 2AA, 10 Downing Street, London, United Kingdom"
+        )
+        #expect(FavoriteLabelDefaults.defaultName(for: ukPostalFirst) == "10 Downing Street")
+
+        let ocean = MapPlace(id: .coordinate(taipei), title: taipei.displayText, coordinate: taipei)
+        #expect(FavoriteLabelDefaults.defaultName(for: ocean) == "25.0340, 121.5645")
+
+        let fallback = FavoriteLabelDefaults.defaultName(for: poi)
+        #expect(FavoriteLabelDefaults.resolved(" \n\t", fallback: fallback) == "台北 101")
         #expect(FavoriteLabelDefaults.resolved("Weekend route", fallback: fallback) == "Weekend route")
+    }
+
+    @Test func favoriteRouteDefaultNameUsesGPXFilenameOrEndpoints() throws {
+        let start = try #require(GeoCoordinate(latitude: 25.0478, longitude: 121.5170))
+        let end = try #require(GeoCoordinate(latitude: 25.1678, longitude: 121.4456))
+        let manual = try FavoriteRouteRecord(
+            id: UUID(), label: nil, sourceKind: .manual, count: 2,
+            start: start, end: end, startTitle: "台北車站", endTitle: "淡水老街",
+            displayFilename: nil, byteCount: 64, sha256: String(repeating: "a", count: 64)
+        )
+        #expect(FavoriteLabelDefaults.defaultName(for: manual) == "台北車站 → 淡水老街")
+
+        let coordManual = try FavoriteRouteRecord(
+            id: UUID(), label: nil, sourceKind: .manual, count: 2,
+            start: start, end: end, startTitle: start.displayText, endTitle: end.displayText,
+            displayFilename: nil, byteCount: 64, sha256: String(repeating: "b", count: 64)
+        )
+        #expect(FavoriteLabelDefaults.defaultName(for: coordManual) == "25.0478, 121.5170 → 25.1678, 121.4456")
+
+        let gpx = try FavoriteRouteRecord(
+            id: UUID(), label: nil, sourceKind: .gpx, count: 12,
+            start: start, end: end, startTitle: nil, endTitle: nil,
+            displayFilename: "Morning Walk.gpx", byteCount: 64, sha256: String(repeating: "c", count: 64)
+        )
+        #expect(FavoriteLabelDefaults.defaultName(for: gpx) == "Morning Walk")
     }
 
     private func directory() throws -> URL {

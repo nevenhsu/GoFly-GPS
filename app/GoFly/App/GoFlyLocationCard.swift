@@ -171,15 +171,11 @@ struct GoFlyLocationCard: View {
 }
 
 /// Resolves the shared location title for cards and the collapsed Teleport position summary.
+/// Uses the favorite label first, then the shared international default place naming order.
 enum GoFlyLocationTitle {
     static func resolve(label: String? = nil, for place: MapPlace) -> String {
         if let label = nonEmpty(label) { return label }
-
-        let name = nonEmpty(place.title)
-        let address = nonEmpty(place.address)
-        if let name, name != address, name != place.coordinate.displayText { return name }
-        if let address { return address }
-        return place.coordinate.displayText
+        return FavoriteLabelDefaults.defaultName(for: place)
     }
 
     private static func nonEmpty(_ value: String?) -> String? {

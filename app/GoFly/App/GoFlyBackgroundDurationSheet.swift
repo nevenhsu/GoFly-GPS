@@ -40,17 +40,23 @@ struct GoFlyBackgroundDurationSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                GoFlyNavActionButton(title: goFlyString("common.cancel"), identifier: "settings.background.duration.cancel") {
+            GoFlySheetNavBar(title: nil) {
+                Button {
                     cancel()
+                } label: {
+                    Text(goFlyString("common.cancel"))
+                        .goFlyFont(GoFlyFont.subheadlineEmphasis)
+                        .foregroundStyle(GoFlyTextColor.primary)
+                        .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
-                Spacer()
-                GoFlyNavActionButton(title: goFlyString("common.done"), isProminent: true, identifier: "settings.background.duration.done") {
-                    onDismiss()
-                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.background.duration.cancel")
+            } trailing: {
+                EmptyView()
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.top, 12)
 
             timePickerWheel
                 .padding(.top, 16)

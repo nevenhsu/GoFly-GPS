@@ -31,7 +31,7 @@ struct GoFlyVPNHelpPage: View {
         .background(GoFlyStyle.canvas)
         .goFlyPushedFullScreen()
         .navigationBarBackButtonHidden()
-        .goFlyToastOverlay(topInset: 48) {
+        .goFlyToastOverlay(topInset: 54) {
             if externalOpenFailed {
                 GoFlyStatusBanner(tone: .danger, title: goFlyIssueTitle(for: externalOpenFailureKey), message: goFlyString(externalOpenFailureKey),
                                   identifier: "onboarding.vpn.help.externalOpenFailed")
@@ -44,36 +44,14 @@ struct GoFlyVPNHelpPage: View {
     }
 
     private var navigationHeader: some View {
-        HStack {
-            Button(action: returnToPreviousPage) {
-                HStack(spacing: 5) {
-                    GoFlyIcon(GoFlySymbols.back)
-                        .goFlyIconSize(size: 16, maximum: 18)
-                        .accessibilityHidden(true)
-                    Text(goFlyString("common.back"))
-                        .goFlyFont(GoFlyFont.body)
-                }
-                .foregroundStyle(GoFlyTextColor.accent)
-                .frame(minWidth: 44, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .frame(width: 88, height: 45, alignment: .leading)
-            .accessibilityLabel(goFlyString("common.back"))
-            .accessibilityIdentifier("onboarding.vpn.help.back")
-
-            Text(goFlyString("onboarding.vpn.help"))
-                .goFlyFont(GoFlyFont.headline)
-                .foregroundStyle(GoFlyTextColor.primary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .accessibilityAddTraits(.isHeader)
-
-            Color.clear.frame(width: 88, height: 44)
+        GoFlySheetNavBar(title: goFlyString("onboarding.vpn.help")) {
+            GoFlyNavBackButton(title: goFlyString("common.back"),
+                               action: returnToPreviousPage,
+                               identifier: "onboarding.vpn.help.back")
+        } trailing: {
+            EmptyView()
         }
         .padding(.horizontal, 16)
-        .frame(maxWidth: .infinity, minHeight: 44)
     }
 
     private var instructionCard: some View {

@@ -40,21 +40,13 @@ struct GoFlyRouteListView: View {
 
     private var header: some View {
         GoFlySheetNavBar(title: goFlyString("route.list.title")) {
-            Button(action: onDismiss) {
-                GoFlyIconLabel(title: goFlyString("common.back"), icon: .chevronLeft)
-                    .goFlyFont(GoFlyFont.body)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(GoFlyTextColor.accent)
-            .accessibilityIdentifier("route.list.back")
+            GoFlyNavBackButton(title: goFlyString("mode.route"), action: onDismiss, identifier: "route.list.back")
         } trailing: {
             Button { _ = controller.clearRoute() } label: {
                 Text(goFlyString("route.list.clear"))
-                    .goFlyFont(GoFlyFont.body)
+                    .goFlyFont(GoFlyFont.subheadlineEmphasis)
                     .foregroundStyle(GoFlyTextColor.danger)
-                    .frame(minHeight: 44)
+                    .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

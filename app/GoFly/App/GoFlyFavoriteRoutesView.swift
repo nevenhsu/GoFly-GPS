@@ -67,19 +67,13 @@ struct GoFlyFavoriteRoutesView: View {
                             }
                         }
                         .padding(.horizontal, 8)
-                        .background(GoFlyStyle.cardSurface,
-                                    in: RoundedRectangle(cornerRadius: GoFlyStyle.cardRadius, style: .continuous))
-                        .clipShape(RoundedRectangle(cornerRadius: GoFlyStyle.cardRadius, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: GoFlyStyle.cardRadius, style: .continuous)
-                                .strokeBorder(GoFlyStyle.border, lineWidth: 0.5)
-                        }
+                        .goFlyCard(radius: GoFlyStyle.cardRadius)
                         .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("favoriteRoutes.card")
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 10)
+                .padding(.top, GoFlyStyle.favoriteListTopSpacing)
             }
             .scrollDismissesKeyboard(.immediately)
             .goFlyDismissesKeyboardOnTap()
@@ -115,26 +109,25 @@ struct GoFlyFavoriteRoutesView: View {
         GoFlySheetNavBar(title: selecting
                          ? goFlyLocalizedFormat(goFlyString("favorites.selectedCount"), selected.count)
                          : goFlyString("favoriteRoutes.title")) {
-            Button {
-                if selecting { selecting = false; selected.removeAll() }
-                else {
+            if selecting {
+                Button {
+                    selecting = false
+                    selected.removeAll()
+                } label: {
+                    Text(goFlyString("favorites.cancel"))
+                        .goFlyFont(GoFlyFont.subheadlineEmphasis)
+                        .foregroundStyle(GoFlyTextColor.accent)
+                        .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("favoriteRoutes.dismiss")
+            } else {
+                GoFlyNavBackButton(title: goFlyString("mode.route"), action: {
                     invalidateLoad()
                     onDismiss()
-                }
-            } label: {
-                Group {
-                    if selecting {
-                        Text(goFlyString("favorites.cancel"))
-                    } else {
-                        GoFlyIconLabel(title: goFlyString("mode.route"), icon: .chevronLeft)
-                            .goFlyFont(GoFlyFont.subheadlineEmphasis)
-                    }
-                }
-                .frame(minHeight: 44)
+                }, identifier: "favoriteRoutes.dismiss")
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(GoFlyTextColor.accent)
-            .accessibilityIdentifier("favoriteRoutes.dismiss")
         } trailing: {
             if selecting {
                 Button {
@@ -145,7 +138,7 @@ struct GoFlyFavoriteRoutesView: View {
                     Text(goFlyString("favorites.selectAll"))
                         .goFlyFont(GoFlyFont.subheadlineEmphasis)
                         .foregroundStyle(GoFlyTextColor.accent)
-                        .frame(minHeight: 44)
+                        .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -159,7 +152,7 @@ struct GoFlyFavoriteRoutesView: View {
                     Text(goFlyString("favorites.select"))
                         .goFlyFont(GoFlyFont.subheadlineEmphasis)
                         .foregroundStyle(GoFlyTextColor.accent)
-                        .frame(minHeight: 44)
+                        .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -330,11 +323,12 @@ func goFlyFavoriteRouteEndpoints(_ record: FavoriteRouteRecord) -> String {
     (record.startTitle ?? record.start.displayText) + " → " + (record.endTitle ?? record.end.displayText)
 }
 
-/// D19 subtitle: endpoints (when a label is the title) joined with the point count.
+/// D19 subtitle: endpoints (when a distinct label is the title) joined with the point count.
 @MainActor
 func goFlyFavoriteRouteSubtitle(_ record: FavoriteRouteRecord) -> String {
     let count = goFlyLocalizedFormat(goFlyString(record.sourceKind == .gpx
         ? "favoriteRoutes.pointCount" : "favoriteRoutes.placeCount"), record.count)
-    guard record.label != nil else { return count }
-    return goFlyFavoriteRouteEndpoints(record) + "・" + count
+    let endpoints = goFlyFavoriteRouteEndpoints(record)
+    guard let label = record.label, label != endpoints else { return count }
+    return endpoints + "・" + count
 }

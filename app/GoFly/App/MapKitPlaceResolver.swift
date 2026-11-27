@@ -32,13 +32,38 @@ final class MapKitPlaceResolver: PlaceResolving {
             let items = try await operation.items()
             try Task.checkCancellation()
             guard let item = items.first else { return nil }
-            let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines)
             let address = item.address?.fullAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-            let title = [name, address].compactMap { $0 }.first { !$0.isEmpty } ?? coordinate.displayText
+            let title = item.goFlyPlaceTitle(fallbackCoordinate: coordinate)
             return MapPlace(id: .coordinate(coordinate), title: title, coordinate: coordinate, address: address)
         } onCancel: {
             Task { @MainActor in operation.cancel() }
         }
+    }
+}
+
+extension MKMapItem {
+    /// International-aware concise place title:
+    /// POI / landmark / store name → country-formatted short address (street/road) →
+    /// city/district with context → city → region → full address → coordinate.
+    func goFlyPlaceTitle(fallbackCoordinate: GeoCoordinate) -> String {
+        let fullAddress = address?.fullAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawName = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let distinctName = (rawName?.isEmpty == false && rawName != fullAddress) ? rawName : nil
+        let candidates: [String?] = [
+            distinctName,
+            address?.shortAddress,
+            addressRepresentations?.cityWithContext(.short),
+            addressRepresentations?.cityName,
+            addressRepresentations?.regionName,
+            rawName,
+            fullAddress
+        ]
+        for candidate in candidates {
+            if let cleaned = candidate?.trimmingCharacters(in: .whitespacesAndNewlines), !cleaned.isEmpty {
+                return cleaned
+            }
+        }
+        return fallbackCoordinate.displayText
     }
 }
 

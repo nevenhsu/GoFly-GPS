@@ -13,7 +13,7 @@ struct GoFlyFavoriteEditorSheet: View {
     var onDelete: (() -> Void)? = nil
     var allowsDelete = true
     @State private var draft: String
-    @State private var fallbackLabel = FavoriteLabelDefaults.defaultName()
+    @State private var fallbackLabel: String
     @FocusState private var focused: Bool
 
     init(place: MapPlace, initialLabel: String? = nil, allowsDelete: Bool = true,
@@ -23,6 +23,7 @@ struct GoFlyFavoriteEditorSheet: View {
         self.onDismiss = onDismiss
         self.onDelete = onDelete
         _draft = State(initialValue: initialLabel ?? "")
+        _fallbackLabel = State(initialValue: FavoriteLabelDefaults.defaultName(for: place))
     }
 
     var body: some View {
@@ -36,7 +37,7 @@ struct GoFlyFavoriteEditorSheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             TextField(goFlyString("favorites.label"), text: $draft,
-                                      prompt: Text(goFlyString("favorites.label")))
+                                      prompt: Text(fallbackLabel))
                                 .goFlyFont(GoFlyFont.body)
                                 .focused($focused).submitLabel(.done)
                                 .onSubmit { focused = false }
@@ -92,6 +93,15 @@ struct GoFlyFavoriteEditorSheet: View {
         .onAppear {
             if draft.isEmpty, let fav = favorites.favorite(for: place), let l = fav.label {
                 draft = l
+            }
+        }
+        .task(id: place.coordinate) {
+            guard fallbackLabel == FavoriteLabelDefaults.simplifiedCoordinate(place.coordinate) else { return }
+            if let resolved = try? await MapKitPlaceResolver().resolve(at: place.coordinate) {
+                let candidate = FavoriteLabelDefaults.defaultName(for: resolved)
+                if !candidate.isEmpty {
+                    fallbackLabel = candidate
+                }
             }
         }
     }
