@@ -832,6 +832,9 @@ class PinnedXcodeProcessAdapter:
                 # Apple's per-team phone limit needs the user's action, not a retry.
                 if b"maximum number of registered iPhone devices" in output:
                     raise SetupBridgeError("device-limit-reached")
+                lowered = output.lower()
+                if b"no space left on device" in lowered or b"enospc" in lowered:
+                    raise SetupBridgeError("ipa-resign-space-insufficient")
                 raise SetupBridgeError("operation-failed")
             output = transaction / f"{TARGET_NAME}.app"
             if output.is_symlink() or not output.is_dir():
@@ -839,7 +842,9 @@ class PinnedXcodeProcessAdapter:
             return output
         except SetupBridgeError:
             raise
-        except OSError:
+        except OSError as error:
+            if getattr(error, "errno", None) == errno.ENOSPC:
+                raise SetupBridgeError("ipa-resign-space-insufficient") from None
             raise SetupBridgeError("storage-unavailable") from None
 
 

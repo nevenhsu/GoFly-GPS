@@ -11,7 +11,7 @@
 一般使用者只需要：
 
 1. 下載 GoFly Mac 的 DMG 並開啟。
-2. 照 GoFly 的畫面，在**全新的 Mac** 上準備好 macOS、Xcode、iOS 平台，並在 Xcode 登入**自己的** Apple 帳號（免費帳號即可）。
+2. 照 GoFly 的畫面，在**全新的 Mac** 上準備好 macOS、Xcode（含內建 iOS 裝置 SDK），並在 Xcode 登入**自己的** Apple 帳號（免費帳號即可）。
 3. 在 GoFly Mac 取得要安裝的 IPA（§5.5）：預設已帶入 GitHub 最新 Release 的 IPA 網址，按「下載並驗證」即可；也可以改貼其他版本的網址，或切到「選擇檔案」分別選擇已下載的 `.ipa` 與 `.ipa.sig`。
 4. 用 USB 連接 iPhone，按一次「安裝 GoFly」。GoFly 驗證 IPA 來源，用使用者自己的 Team 重新簽名，並完成配對交接。
 5. 之後不需要再插線：Mac App 開著時，簽名剩不到 4 天會自動延長（USB 或同一個 Wi‑Fi）；也可以手動按「延長簽名」。
@@ -26,7 +26,7 @@ Mac producer 安裝的 App 必須是 `GoFlyRequiresMacSetup=true`，安裝／ren
 
 | iOS App 需要的東西 | 由誰提供 | 使用者要做什麼 |
 | --- | --- | --- |
-| 用使用者 Team 簽名的 GoFly.app（`com.neven.gofly.<teamid>`） | 現行：Mac App 內附 iOS 專案原始碼與預編譯的 `libidevice_ffi.a`，在本機用 `xcodebuild` 建置並自動簽名。新規格（§5.5）：使用者選擇的已簽章 IPA，Mac 驗證後以使用者 Team 重新簽名；描述檔由內建的簽名用空殼專案經 `xcodebuild` 取得 | 安裝 Xcode、下載 iOS 平台、登入 Apple 帳號 |
+| 用使用者 Team 簽名的 GoFly.app（`com.neven.gofly.<teamid>`） | 使用者選擇的已簽章 IPA，Mac 驗證後以使用者 Team 重新簽名；描述檔與憑證由內建的簽名用空殼專案經 `xcodebuild` 取得 | 安裝 Xcode（含內建 iPhoneOS SDK）、登入 Apple 帳號 |
 | 開發憑證與描述檔（免費 Team 7 天） | Xcode 自動管理（`-allowProvisioningUpdates`），需要連網 | 第一次簽名時，在鑰匙圈視窗輸入 Mac 登入密碼並點「永遠允許」 |
 | 配對資料（GoFly 連 `10.7.0.1` 上的 remotepairingd 用；連接埠每次以 Bonjour `_remotepairing._tcp` 自動探索，不寫死） | 首次安裝時由 Mac 透過 USB 建立並交付 | 在 iPhone 點「信任」並輸入 iPhone 密碼 |
 | 裝置支援檔（26.0–26.3 用 personalized DDI，26.4 起用 cryptex） | Mac 依實際 iOS 版本準備並交付；手機不自行下載 | 無 |
@@ -60,17 +60,19 @@ DMG 內含 `GoFly.app`、`install.sh` 與 `THIRD-PARTY-NOTICES.md`。建置器�
 | 畫面 | 檢查／步驟 | 使用者要做的事 | 會用到的密碼 |
 | --- | --- | --- | --- |
 | E00 啟動畫面（loading） | 每次開啟時的唯讀檢查 | 等待 | — |
-| E01 準備這部 Mac | 第一次開啟且 Xcode 未安裝時的總覽：macOS 版本、可用空間、Xcode、Xcode 元件、iOS 平台、Apple 帳號、開發團隊；預估時間約 1 小時，需要約 40 GB 可用空間 | 點「開始準備」 | — |
+| E01 準備這部 Mac | 第一次開啟且 Xcode 未安裝時的總覽：macOS 版本、可用空間（安裝 Xcode 提示）、Xcode、Xcode 元件、iOS 裝置 SDK、Apple 帳號、開發團隊；首次安裝 Xcode 約需 30–60 分鐘 | 點「開始準備」 | — |
 | E02 更新 macOS | macOS 版本低於 Xcode 的最低需求時才出現 | 系統設定 › 一般 › 軟體更新 › 立即更新 | Mac 登入密碼 |
 | E03 取得 Xcode | 未安裝 Xcode | 開啟 App Store → 尚未登入 App Store 時先登入 → 點「取得」→「安裝」 | Apple 帳號密碼 |
 | E04 等待 Xcode 安裝 | 偵測 `/Applications/Xcode.app` 出現 | 等待（約 3 GB 下載、30–60 分鐘）；期間可以先在 iPhone 安裝 LocalDevVPN | — |
 | E05 第一次開啟 Xcode | 未同意授權條款或元件未安裝 | 點「開啟 Xcode」→ 授權條款點「同意」→ 輸入 Mac 登入密碼 → 等元件安裝完 | Mac 登入密碼 |
-| E06 下載 iOS 平台 | 沒有 iOS 平台 | Xcode 平台視窗勾選 iOS → 點「下載並安裝」（約 8 GB）；或 Xcode › Settings › Components。 | — |
+| E06 取得 iOS 裝置 SDK | 僅在 `xcrun --sdk iphoneos --show-sdk-path` 失敗時才出現 | 修復與下載指引：點「開啟 Xcode」在平台視窗或 Xcode › Settings › Components 下載 iOS 元件（或於 App Store 確認 Xcode 完整安裝），完成後回到 GoFly 自動偵測或點「重新檢查」（GoFly 不自動呼叫 `xcodebuild -downloadPlatform iOS`） | — |
 | E07 在 Xcode 登入 Apple 帳號 | Xcode 沒有 Apple 帳號 | Xcode › Settings › Apple Accounts › + › Apple Account → 登入、雙重認證；沒有帳號時提供「免費建立 Apple 帳號」連結 | Apple 帳號密碼、雙重認證碼 |
 | E08 選擇開發團隊 | 有多個 Team 時才出現；只有 1 個時自動選取 | 選一個，各項標示「個人（免費・7 天）」或「團隊」 | — |
 | E09 Mac 環境（檢查結果） | 從側欄底部打開，不在啟動流程中 | 查看結果、重新檢查、更換 Team | — |
 
-唯讀 `environment` 依序回報 macOS 版本、可用空間、Xcode 安裝、Xcode 初次啟動／授權、iOS 平台及 Apple 帳號六項檢查，另回報 Team 清單。檢查狀態為通過、未通過或未知；無法讀取時不得當成通過。E01 是否第一次開啟以本機偏好旗標判斷。macOS 最低版本取已安裝 Xcode 的 `LSMinimumSystemVersion`；尚未安裝時依目前規劃的 Xcode 27.1（最低 macOS 26.6）判斷。可用空間以 `/Applications` 所在磁碟為準，至少 40 GB。只讀檢查不執行 `-runFirstLaunch`、不接受授權、不下載平台。若 GoFly 內建資源驗證失敗，只顯示「GoFly 無法啟動，請重新安裝」。
+唯讀 `environment` 依序回報 macOS 版本、可用空間、Xcode 安裝、Xcode 初次啟動／授權、iOS 裝置 SDK 及 Apple 帳號六項檢查，另回報 Team 清單。檢查狀態為通過、未通過或未知；無法讀取時不得當成通過。E01 是否第一次開啟以本機偏好旗標判斷。macOS 最低版本取已安裝 Xcode 的 `LSMinimumSystemVersion`；尚未安裝時依目前規劃的 Xcode 27.1（最低 macOS 26.6）判斷。iOS 裝置 SDK 以選定 Xcode 的 `DEVELOPER_DIR` 執行 `xcrun --sdk iphoneos --show-sdk-path` 檢查（iPhoneOS SDK 隨 Xcode 提供，用於 IPA 重新簽名；模擬器 runtime 不需要，不可呼叫 `xcodebuild -downloadPlatform iOS`），通過即直接前往下一個未完成步驟。可用空間以 `/Applications` 所在磁碟為準：**取消固定 40 GB 的全域阻擋**——未安裝 Xcode 時，低於 40 GB 僅作為安裝提示（不鎖住 E01「開始準備」）；Xcode 與 iOS 裝置 SDK 已可用且其他條件通過時，即使可用空間低於 40 GB，`environment.ready` 仍為 `true` 並可進入裝置頁。IPA 匯入或重新簽名實際遇到磁碟空間不足（`ENOSPC`）時，在對應步驟分別回報 `ipa-import-space-insufficient`（D16）與 `ipa-resign-space-insufficient`（安裝／續簽錯誤頁）。只讀檢查不執行 `-runFirstLaunch`、不接受授權、不下載平台。若 GoFly 內建資源驗證失敗，只顯示「GoFly 無法啟動，請重新安裝」。
+
+> **Figma 設計稿已同步（2026-11-28）**：`05 · Mac Redesign（新版）` 的 Light／Dark E01、E03、E05、E06、E09 已同步更新為「iOS 裝置 SDK」、移除 E06「設計待驗證」標籤與「約 8 GB」舊文案，並將 E01 可用空間改為安裝 Xcode 提示。
 
 Bridge、Python 與 iOS 專案都打包在 DMG 內，沒有「App 資源」或「Python 環境」的設定步驟。新規格（§5.5）中 DMG 改為內建 Bridge、Python、簽名用空殼專案與 IPA 簽章公鑰，不再內建 iOS 原始碼或 `libidevice_ffi.a`。萬一 App 內建檔案被修改或刪除，只顯示通用錯誤視窗「GoFly 無法啟動，請重新安裝」，不另外設計畫面。
 
@@ -223,12 +225,13 @@ IPA 不可含 App Extension 或額外 entitlements；未來若加入，須先更
 #### 實作狀態（2026-11-28）
 
 - 打包：`app/GoFly/scripts/package-ipa.sh` → `package_ipa.py` 檢查 `GoFlyMacProtocol`（`GoFly-Info.plist` 整數 1），呼叫 `sign_ipa.py` 以 OpenSSL 3（Homebrew）與 `~/.ssh/gofly-ipa-signing.pem` 產生 `.ipa.sig`；私鑰不符內建公鑰或找不到時打包失敗。
-- Bridge：`Bridge/Setup/ipa_store.py`（驗簽、結構檢查、保存與原子替換、GitHub Release 查詢與下載）、`Bridge/Setup/ipa_resign.py`（`IpaResignProcessAdapter`：建置 `SigningStub` 取得描述檔與憑證後重新簽名）；新動作 `ipaRelease`、`ipaImport`，`environment` 回報 `ipa`。錯誤碼：`ipa-missing`、`ipa-invalid`、`ipa-signature-missing`、`ipa-signature-invalid`、`ipa-protocol-unsupported`、`ipa-downgrade`、`ipa-download-failed`、`release-unavailable`。
+- Bridge：`Bridge/Setup/ipa_store.py`（驗簽、結構檢查、保存與原子替換、GitHub Release 查詢與下載）、`Bridge/Setup/ipa_resign.py`（`IpaResignProcessAdapter`：建置 `SigningStub` 取得描述檔與憑證後重新簽名）；新動作 `ipaRelease`、`ipaImport`，`environment` 回報 `ipa`。錯誤碼：`ipa-missing`、`ipa-invalid`、`ipa-signature-missing`、`ipa-signature-invalid`、`ipa-protocol-unsupported`、`ipa-downgrade`、`ipa-download-failed`、`release-unavailable`、`ipa-import-space-insufficient`、`ipa-resign-space-insufficient`。
 - Mac App：D15（網址）／D15b（`.ipa` 與 `.ipa.sig` 兩個欄位，支援拖放）／D16／D17、D04/D08/D09 的「選擇其他 IPA…」、24 小時檢查的 macOS 新版通知。DMG 不再含 `iOSProject/` 與 `native/`，並移除執行時不載入的 Tk/Tcl、pip、jedi、IPython、Pillow：開發產物由 282 MB 降到約 144 MB。
 - 已驗證（模擬 iPhone，不連 Apple、不連手機）：`Bridge/Setup/Tests/test_ipa_e2e.py` 以真的簽章、保存、xcodebuild 空殼、重新簽名、嚴格成品驗證與 producer 交易，跑完首次安裝 → 刪除原檔後延長簽名 → 拒絕竄改／降版／缺簽章 → 新版取代並更新；同一測試也以打包後的精簡 Python 執行通過。Bridge 106 項與 Swift 78 項單元測試通過；示範模式截圖確認 D15、D15b、D16、D17、D04、D09 與「選擇其他 IPA…」流程（淺／深色、中英文）。
 - E2E 複驗：以現有 App bundle 的 Python 與 Swift `ProcessBridge`，在隔離的本機狀態中完成模擬 USB 首次安裝、刪除來源檔後延長簽名、讀回完成交易，以及已保存副本缺失時回傳 `ipa-missing`。GitHub Release 查詢與下載使用模擬回應，覆蓋查詢只下載 `.sig`、更新再下載 IPA 並重新簽名。另修正匯入與讀取並行時可能誤清除匯入暫存檔，並補上回歸測試。
 - 實機複驗：iOS 27.2.1（`iPhone16,1`）使用 1.0.14 build 5 的已簽章 IPA，完成 USB 首次安裝、USB 覆蓋續簽及拔線後的純 Wi‑Fi 覆蓋續簽。USB 確認安裝、配對匯入和裝置支援，Wi‑Fi 核對並沿用既有配對。各流程均讀到完成的啟用回報。測試使用內含本次 Bridge 修正的隔離 bundle 副本與現有本機描述檔。
-- 未驗證：`allowProvisioningUpdates` 連 Apple 建立描述檔，以及 GitHub 上真正含 `.sig` 的 Release。
+- v1.1 發布驗證：從發行 DMG 內的 Bridge 查到 GitHub 最新已簽章 IPA，Swift 選擇畫面模型帶入 `GoFly-GPS-1.1.ipa` 的下載網址，並以隔離狀態下載及驗證了 IPA 與 `.ipa.sig`。
+- 未驗證：`allowProvisioningUpdates` 連 Apple 建立描述檔。
 
 ## 6. 畫面清單（Figma V1）
 
@@ -270,6 +273,7 @@ IPA 不可含 App Extension 或額外 entitlements；未來若加入，須先更
 ## 7. 驗收條件
 
 - 每次開啟都先顯示 E00 啟動畫面（或 500 ms 內完成而略過），畫面上不出現檢查清單或打勾。全部通過時直接進入裝置頁；有未完成時直接跳到第一個未完成的步驟，只有全新 Mac 第一次開啟時才先顯示 E01。
+- Xcode 與 iPhoneOS SDK（`xcrun --sdk iphoneos --show-sdk-path`）可用、其他條件也通過時，即使可用空間低於 40 GB，仍可進入裝置頁。缺少 SDK 時顯示 E06 修復指引，重新檢查通過後直接往下走，過程不下載模擬器。缺少 Xcode、尚未完成初次設定或沒有可用 Team 時，仍停在對應步驟。IPA 匯入或重新簽名遇到空間不足時，分別回報 `ipa-import-space-insufficient` 與 `ipa-resign-space-insufficient`，可明確辨識是哪一步失敗。
 - 全新 Mac：照畫面能完成所有步驟；每一步都能自動偵測完成，不需要手動重新啟動 GoFly。
 - 環境已就緒的 Mac：開啟後直接看到裝置頁。只有 1 個 Team 時不出現 E08。全程沒有 Python 或命令列工具步驟。
 - 首次安裝從插上 USB 到開始安裝，使用者在 Mac 上只按一個按鈕。

@@ -29,6 +29,7 @@ SAFE_ERROR_CODES = frozenset({
     "developer-untrusted",
     "ipa-missing", "ipa-invalid", "ipa-signature-missing", "ipa-signature-invalid",
     "ipa-protocol-unsupported", "ipa-downgrade", "ipa-download-failed", "release-unavailable",
+    "ipa-import-space-insufficient", "ipa-resign-space-insufficient",
 })
 
 

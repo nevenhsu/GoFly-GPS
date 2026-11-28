@@ -8,6 +8,7 @@ entitlements and certificate are then applied to GoFly.app from the saved IPA.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import os
 import plistlib
@@ -28,15 +29,24 @@ except ImportError:  # script execution from the packaged Setup directory
 CODESIGN = "/usr/bin/codesign"
 
 
+def _is_no_space_output(output: bytes) -> bool:
+    lowered = output.lower()
+    return b"no space left on device" in lowered or b"enospc" in lowered or b"not enough space" in lowered
+
+
 def _run(arguments: list[str], *, timeout: int = 300, code: str = "signing-required") -> bytes:
     try:
         result = subprocess.run(arguments, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
         raise SetupBridgeError("timeout") from None
-    except OSError:
+    except OSError as error:
+        if getattr(error, "errno", None) == errno.ENOSPC:
+            raise SetupBridgeError("ipa-resign-space-insufficient") from None
         raise SetupBridgeError(code) from None
     if result.returncode:
+        if _is_no_space_output(result.stdout + result.stderr):
+            raise SetupBridgeError("ipa-resign-space-insufficient")
         raise SetupBridgeError(code)
     return result.stdout or result.stderr
 
@@ -144,6 +154,8 @@ class IpaResignProcessAdapter(PinnedXcodeProcessAdapter):
             resign(app, stub_app, work)
         except SetupBridgeError:
             raise
-        except OSError:
+        except OSError as error:
+            if getattr(error, "errno", None) == errno.ENOSPC:
+                raise SetupBridgeError("ipa-resign-space-insufficient") from None
             raise SetupBridgeError("storage-unavailable") from None
         return app

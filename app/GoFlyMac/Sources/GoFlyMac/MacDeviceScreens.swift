@@ -846,6 +846,7 @@ private struct IpaChooserPage: View {
         case "ipa-download-failed", "release-unavailable": return deviceText("ipa.failure.download")
         case "ipa-protocol-unsupported": return deviceText("ipa.failure.protocol")
         case "ipa-downgrade": return deviceText("ipa.failure.downgrade")
+        case "ipa-import-space-insufficient", "storage-unavailable": return deviceText("ipa.failure.noSpace")
         case "ipa-invalid", "invalid-request": return deviceText("ipa.failure.invalid")
         default: return deviceText("ipa.failure.generic")
         }

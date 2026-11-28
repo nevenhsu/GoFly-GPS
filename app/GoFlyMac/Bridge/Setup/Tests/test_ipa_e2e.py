@@ -328,6 +328,25 @@ class IpaInstallEndToEnd(unittest.TestCase):
             self.assertIsNotNone(pending_read.result(timeout=5))
         self.assertEqual(store.current()["sourceName"], "replacement")
 
+    def test_space_insufficient_is_distinguished_between_import_and_resign(self) -> None:
+        import errno as _errno
+
+        # 1. IPA import hitting ENOSPC reports ipa-import-space-insufficient.
+        store_module = bridge._ipa_store_module()
+        with mock.patch.object(store_module.shutil, "copyfile", side_effect=OSError(_errno.ENOSPC, "No space left on device")):
+            failed_import = self.bridge_call(action="ipaImport", ipaPath=str(self.ipa), sigPath=str(self.ipa) + ".sig")
+        self.assertEqual(failed_import.get("status"), "error")
+        self.assertEqual(failed_import.get("code"), "ipa-import-space-insufficient")
+
+        # 2. After a valid import, IPA re-sign hitting ENOSPC reports ipa-resign-space-insufficient.
+        saved = self.bridge_call(action="ipaImport", ipaPath=str(self.ipa), sigPath=str(self.ipa) + ".sig")
+        self.assertEqual(saved["status"], "ok", saved)
+        with mock.patch.object(ipa_store.IpaStore, "extract_current",
+                               side_effect=SetupBridgeError("ipa-resign-space-insufficient")):
+            with self.assertRaises(SetupBridgeError) as failed_resign:
+                self.apply("install")
+        self.assertEqual(failed_resign.exception.code, "ipa-resign-space-insufficient")
+
 
 if __name__ == "__main__":
     unittest.main()

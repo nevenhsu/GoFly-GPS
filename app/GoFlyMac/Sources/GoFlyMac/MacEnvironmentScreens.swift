@@ -80,14 +80,6 @@ struct MacEnvironmentScreen: View {
             HStack(alignment: .center) {
                 Text(crumb).font(GoFlyStyle.font(12)).foregroundStyle(GoFlyStyle.muted)
                 Spacer(minLength: 12)
-                if step == .iosPlatform {
-                    Text(macText("env.e06.badge"))
-                        .font(GoFlyStyle.font(10, bold: true))
-                        .foregroundStyle(MacColorSystem.annotation)
-                        .padding(.horizontal, 12).padding(.vertical, 5)
-                        .background(MacColorSystem.warningSurface, in: Capsule())
-                        .overlay(Capsule().strokeBorder(MacColorSystem.warningBorder, lineWidth: 0.75))
-                }
             }
             Text(title).font(GoFlyStyle.font(28, bold: true)).padding(.top, 8)
             Text(subtitle).font(GoFlyStyle.font(14)).foregroundStyle(GoFlyStyle.muted)
@@ -144,7 +136,7 @@ struct MacEnvironmentScreen: View {
         case .iosPlatform:
             EnvironmentGuideColumns(rows: [
                 .init(title: "env.e06.step1", detail: "env.e06.step1.detail"),
-                .init(title: "env.e06.step2"),
+                .init(title: "env.e06.step2", detail: "env.e06.step2.detail"),
                 .init(title: "env.e06.step3", detail: "env.e06.step3.detail"),
                 .init(title: "env.e06.step4", detail: "env.e06.step4.detail"),
             ]) {

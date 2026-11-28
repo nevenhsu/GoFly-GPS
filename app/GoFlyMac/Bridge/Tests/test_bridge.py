@@ -343,6 +343,55 @@ class BridgeTests(unittest.TestCase):
             self.assertEqual(bridge.Bridge(self.config())._available_space_kib(), 500000)
         self.assertEqual(process.call_args.args[0], ["/bin/df", "-Pk", "/Applications"])
 
+    def test_environment_is_ready_under_40gb_when_xcode_and_sdk_are_available(self):
+        instance = bridge.Bridge(self.config(), self.device([]))
+        instance._check_xcode_installed = lambda: "passed"
+        instance._xcode_version = lambda: "27.2"
+        instance._macos_version = lambda: "27.0.1"
+        instance._xcode_minimum_macos_version = lambda _installed: "26.6"
+        instance._available_space_kib = lambda: 12 * 1024 * 1024
+        instance._check_first_launch = lambda _installed: "passed"
+        instance._ios_platform = lambda _installed: ("passed", "iPhoneOS27.2")
+        instance._teams = lambda: [{"teamID": TEAM_ID, "teamName": "Test Team", "isFreeProvisioningTeam": True}]
+
+        result = instance.environment()
+        rows = {row["id"]: row for row in result["checks"]}
+        self.assertTrue(result["ready"])
+        self.assertEqual(rows["available-space"]["status"], "passed")
+        self.assertEqual(rows["ios-platform"]["status"], "passed")
+
+    def test_ios_sdk_check_uses_xcrun_show_sdk_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sdk = Path(directory) / "iPhoneOS27.2.sdk"
+            sdk.mkdir()
+            instance = bridge.Bridge(self.config())
+            is_file = Path.is_file
+
+            def fake_is_file(path):
+                if path == Path("/usr/bin/xcrun"):
+                    return True
+                return is_file(path)
+
+            with mock.patch.object(bridge.Path, "is_file", autospec=True, side_effect=fake_is_file), \
+                 mock.patch.object(bridge, "_safe_process", return_value=(0, f"{sdk}\n".encode("utf-8"))) as process:
+                status, name = instance._ios_platform(True)
+            self.assertEqual((status, name), ("passed", "iPhoneOS27.2"))
+            self.assertEqual(process.call_args.args[0], ["/usr/bin/xcrun", "--sdk", "iphoneos", "--show-sdk-path"])
+            self.assertEqual(process.call_args.kwargs["env"]["DEVELOPER_DIR"], str(instance.config.developer_directory))
+
+    def test_ios_sdk_check_fails_when_xcrun_cannot_resolve_sdk(self):
+        instance = bridge.Bridge(self.config())
+        is_file = Path.is_file
+
+        def fake_is_file(path):
+            if path == Path("/usr/bin/xcrun"):
+                return True
+            return is_file(path)
+
+        with mock.patch.object(bridge.Path, "is_file", autospec=True, side_effect=fake_is_file), \
+             mock.patch.object(bridge, "_safe_process", return_value=(1, b"")):
+            self.assertEqual(instance._ios_platform(True), ("failed", None))
+
 
 if __name__ == "__main__":
     unittest.main()

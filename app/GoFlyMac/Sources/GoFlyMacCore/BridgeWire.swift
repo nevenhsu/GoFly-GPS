@@ -420,7 +420,7 @@ public enum ResponseDecoder {
                     "device-values-unavailable", "runtime-api-mismatch", "timeout", "configuration-invalid",
                     "invalid-config", "storage-unavailable", "ipa-missing", "ipa-invalid",
                     "ipa-signature-missing", "ipa-signature-invalid", "ipa-protocol-unsupported", "ipa-downgrade",
-                    "ipa-download-failed", "release-unavailable"]
+                    "ipa-download-failed", "release-unavailable", "ipa-import-space-insufficient"]
                 guard let code = envelope.code, safeCodes.contains(code) else { throw CheckFailure.invalidResponse }
                 throw CheckFailure.service(code)
             }
@@ -617,7 +617,8 @@ public enum MacSetupResponseDecoder {
         "pairing-unknown", "pairing-rejected", "handoff-unknown", "commit-unknown",
         "transaction-unknown", "transaction-conflict", "busy", "cancelled", "timeout",
         "storage-unavailable", "operation-failed", "device-limit-reached", "developer-untrusted",
-        "ipa-missing", "ipa-invalid", "ipa-signature-invalid", "ipa-protocol-unsupported"
+        "ipa-missing", "ipa-invalid", "ipa-signature-invalid", "ipa-protocol-unsupported",
+        "ipa-resign-space-insufficient"
     ]
 
     public static func decode(_ data: Data, for request: MacSetupRequest) throws -> MacSetupSnapshot {

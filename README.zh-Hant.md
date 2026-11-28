@@ -6,7 +6,7 @@
 
 GoFly GPS 是一個讓你在自己的 iPhone 上選擇並移動模擬 GPS 位置的 App。**GoFly GPS for Mac** 使用你在 Xcode 登入的 Apple 帳號，透過 USB 安裝 iPhone App，並可更新簽名，讓 App 持續可用。
 
-[**下載最新版 GoFly GPS for Mac（DMG）**](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12)
+[**下載最新版 GoFly GPS for Mac（DMG）**](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.1.0)
 
 **開發狀態（2026-11-02）：GoFly GPS iOS App 已開發完成。** 可透過 GoFly GPS for Mac 安裝，或使用 SideStore／AltStore 安裝 IPA。已知限制與尚待驗證項目見下方說明。
 
@@ -58,11 +58,11 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
 
 ## 安裝（DMG）
 
-1. 到[最新版 Release](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12)，把 `GoFly-GPS-<版本>-arm64.dmg` 與 `GoFly-GPS-<版本>-arm64.dmg.sha256` 下載到同一個資料夾。
+1. 到[最新版 Mac Release](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.1.0)，把 `GoFly-GPS-<版本>-arm64.dmg` 與 `GoFly-GPS-<版本>-arm64.dmg.sha256` 下載到同一個資料夾。
 2. 核對下載檔案，結果必須是 `OK`：
 
    ```sh
-   shasum -a 256 -c GoFly-GPS-1.0.6-arm64.dmg.sha256
+   shasum -a 256 -c GoFly-GPS-1.1.0-arm64.dmg.sha256
    ```
 3. 開啟 DMG，然後**在「終端機」執行安裝腳本**（macOS 會擋下雙擊 `install.sh`）：
 
@@ -71,7 +71,7 @@ GoFly GPS for Mac 不是定位工具。它用**你的** Xcode 簽名 Team 建置
    ```
 
    它只會安裝 `/Applications/GoFly.app`，已有舊版時會先詢問，並移除該 App 的下載隔離屬性後開啟。不使用 `sudo`、不更動 Gatekeeper、不動 GoFly GPS 的資料。出現提示時輸入 `y` 並按 **Enter**。
-4. 在 GoFly GPS for Mac 依畫面步驟準備 Xcode，然後用 USB 連接 iPhone、信任這部 Mac、開啟開發者模式，按**安裝 GoFly GPS**。
+4. 在 GoFly GPS for Mac 依畫面步驟準備 Xcode，然後用 USB 連接 iPhone、信任這部 Mac、開啟開發者模式。選取 GitHub 最新版，或選擇本機 IPA 與對應的 `.ipa.sig`。驗證通過後即可安裝 GoFly GPS。
 5. 在 iPhone 上信任開發者（設定 › 一般 › VPN 與裝置管理）、安裝並允許 LocalDevVPN，再開啟 GoFly GPS。Mac App 讀回 iPhone 的確認後才算完成。
 
 這個 App 使用 ad-hoc 簽署、**未經公證**，所以不能直接雙擊開啟，請用上面的安裝腳本。若你自己拖曳 App，請執行 `xattr -dr com.apple.quarantine /Applications/GoFly.app`。

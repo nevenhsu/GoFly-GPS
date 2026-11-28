@@ -59,6 +59,7 @@ and implementation specification have not been selected yet.
 - **不要自動升版號或 build。** 只有使用者明確要求時才修改；重新建置、打包 DMG、合併或發布不代表升版授權。**例外（2026-11-17 使用者指定）：使用者每次要求「打包 IPA」時，先將 iOS `CURRENT_PROJECT_VERSION` 自動 +1 再打包**；`MARKETING_VERSION` 與 Mac 版號仍須明確指示。獲授權後遵循 [升版規則](docs/VERSIONING.md)：iOS 與 Mac 新的對外版本都可從 build 1 開始，同版 build 遞增。
 
 - GitHub Release 說明遵循 [Release 撰寫規格](docs/RELEASE-NOTES.md)：英文在前、繁中在後，不加語言標籤；開頭的版本／build 摘要只出現一次，中英文同步更新並在發布後讀回核對。
+- 每次發布 GitHub Release 都要在建立版本標籤前同步更新並提交根目錄的 `README.md`、`README.zh-Hant.md`、`README.zh-Hans.md`。三種語言的下載連結、檔名、校驗指令與安裝步驟須和該次實際發布的資產一致。發布後逐一核對三份 README 的下載連結可開啟對應的 Release 或資產。
 
 ## GoFly 打包與開發產物（2026-11-03）
 

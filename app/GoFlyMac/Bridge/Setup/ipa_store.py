@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import binascii
 import datetime as dt
+import errno
 import fcntl
 import hashlib
 import json
@@ -206,6 +207,17 @@ def inspect_ipa(ipa: Path, signature: IpaSignature) -> dict[str, Any]:
     }
 
 
+def _is_no_space(error: BaseException) -> bool:
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if getattr(current, "errno", None) == errno.ENOSPC:
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def extract_app(ipa: Path, destination: Path, expected_sha256: str) -> Path:
     """Unpack Payload/GoFly.app into ``destination``/GoFly.app."""
     if file_sha256(ipa) != expected_sha256:
@@ -230,7 +242,11 @@ def extract_app(ipa: Path, destination: Path, expected_sha256: str) -> Path:
                 os.chmod(target, 0o755 if mode & 0o111 or relative == "GoFly" else 0o644)
     except SetupBridgeError:
         raise
-    except (OSError, zipfile.BadZipFile, ValueError, EOFError):
+    except OSError as error:
+        if _is_no_space(error):
+            raise SetupBridgeError("ipa-resign-space-insufficient") from None
+        raise SetupBridgeError("ipa-invalid") from None
+    except (zipfile.BadZipFile, ValueError, EOFError):
         raise SetupBridgeError("ipa-invalid") from None
     if not (app / "Info.plist").is_file() or not (app / "GoFly").is_file():
         raise SetupBridgeError("ipa-invalid")
@@ -261,7 +277,9 @@ class IpaStore:
                     raise SetupBridgeError("storage-unavailable")
                 path.mkdir(mode=0o700, exist_ok=True)
                 os.chmod(path, 0o700)
-        except OSError:
+        except OSError as error:
+            if _is_no_space(error):
+                raise SetupBridgeError("ipa-import-space-insufficient") from None
             raise SetupBridgeError("storage-unavailable") from None
 
     @contextmanager
@@ -324,7 +342,9 @@ class IpaStore:
             with self._locked():
                 self._recover()
                 return extract_app(self.current_dir / IPA_NAME, destination, expected_sha256)
-        except OSError:
+        except OSError as error:
+            if _is_no_space(error):
+                raise SetupBridgeError("ipa-resign-space-insufficient") from None
             raise SetupBridgeError("storage-unavailable") from None
 
     def import_files(self, ipa: Path, signature_data: bytes, *, source: str, source_name: str,
@@ -335,7 +355,9 @@ class IpaStore:
             self._ensure_root()
             with self._locked():
                 return self._replace(ipa, signature_data, signature, source, source_name, minimum)
-        except OSError:
+        except OSError as error:
+            if _is_no_space(error):
+                raise SetupBridgeError("ipa-import-space-insufficient") from None
             raise SetupBridgeError("storage-unavailable") from None
 
     def _replace(self, ipa: Path, signature_data: bytes, signature: IpaSignature, source: str,
@@ -415,7 +437,13 @@ def download(url: str, destination: Path, *, max_bytes: int, missing_code: str =
                     output.write(chunk)
     except SetupBridgeError:
         raise
-    except (OSError, requests.RequestException):
+    except OSError as error:
+        if _is_no_space(error):
+            raise SetupBridgeError("ipa-import-space-insufficient") from None
+        raise SetupBridgeError("ipa-download-failed") from None
+    except requests.RequestException as error:
+        if _is_no_space(error):
+            raise SetupBridgeError("ipa-import-space-insufficient") from None
         raise SetupBridgeError("ipa-download-failed") from None
 
 
@@ -483,34 +511,39 @@ def import_from_sources(store: IpaStore, *, ipa_url: str | None = None, ipa_path
     """Fetch or read the IPA and its signature, then verify and save them."""
     if (ipa_url is None) == (ipa_path is None) or (sig_url is not None and sig_path is not None):
         raise SetupBridgeError("invalid-request")
-    with tempfile.TemporaryDirectory(prefix="gofly-ipa-") as temporary:
-        work = Path(temporary)
-        if sig_path is not None:
-            candidate = Path(sig_path)
-            if not candidate.is_absolute() or candidate.is_symlink() or not candidate.is_file():
-                raise SetupBridgeError("ipa-signature-missing")
-            if candidate.stat().st_size > MAX_SIGNATURE_BYTES:
-                raise SetupBridgeError("ipa-signature-invalid")
-            signature_data = candidate.read_bytes()
-        else:
-            if sig_url is None:
-                if ipa_url is None:
+    try:
+        with tempfile.TemporaryDirectory(prefix="gofly-ipa-") as temporary:
+            work = Path(temporary)
+            if sig_path is not None:
+                candidate = Path(sig_path)
+                if not candidate.is_absolute() or candidate.is_symlink() or not candidate.is_file():
                     raise SetupBridgeError("ipa-signature-missing")
-                sig_url = ipa_url + ".sig" if not urlsplit(ipa_url).query else None
+                if candidate.stat().st_size > MAX_SIGNATURE_BYTES:
+                    raise SetupBridgeError("ipa-signature-invalid")
+                signature_data = candidate.read_bytes()
+            else:
                 if sig_url is None:
-                    raise SetupBridgeError("ipa-signature-missing")
-            download(_https(sig_url), work / "download.sig", max_bytes=MAX_SIGNATURE_BYTES,
-                     missing_code="ipa-signature-missing")
-            signature_data = (work / "download.sig").read_bytes()
-        # Check the signature itself before spending time on a large download.
-        verify_signature(parse_signature(signature_data))
-        if ipa_url is not None:
-            ipa = work / "download.ipa"
-            download(_https(ipa_url), ipa, max_bytes=MAX_IPA_BYTES)
-            source, name = "url", ipa_url
-        else:
-            ipa = Path(ipa_path)
-            if not ipa.is_absolute() or ipa.suffix != ".ipa" or ipa.is_symlink() or not ipa.is_file():
-                raise SetupBridgeError("ipa-invalid")
-            source, name = "file", ipa.name
-        return store.import_files(ipa, signature_data, source=source, source_name=name, minimum=minimum)
+                    if ipa_url is None:
+                        raise SetupBridgeError("ipa-signature-missing")
+                    sig_url = ipa_url + ".sig" if not urlsplit(ipa_url).query else None
+                    if sig_url is None:
+                        raise SetupBridgeError("ipa-signature-missing")
+                download(_https(sig_url), work / "download.sig", max_bytes=MAX_SIGNATURE_BYTES,
+                         missing_code="ipa-signature-missing")
+                signature_data = (work / "download.sig").read_bytes()
+            # Check the signature itself before spending time on a large download.
+            verify_signature(parse_signature(signature_data))
+            if ipa_url is not None:
+                ipa = work / "download.ipa"
+                download(_https(ipa_url), ipa, max_bytes=MAX_IPA_BYTES)
+                source, name = "url", ipa_url
+            else:
+                ipa = Path(ipa_path)
+                if not ipa.is_absolute() or ipa.suffix != ".ipa" or ipa.is_symlink() or not ipa.is_file():
+                    raise SetupBridgeError("ipa-invalid")
+                source, name = "file", ipa.name
+            return store.import_files(ipa, signature_data, source=source, source_name=name, minimum=minimum)
+    except OSError as error:
+        if _is_no_space(error):
+            raise SetupBridgeError("ipa-import-space-insufficient") from None
+        raise SetupBridgeError("storage-unavailable") from None

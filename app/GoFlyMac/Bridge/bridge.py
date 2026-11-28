@@ -545,26 +545,35 @@ class Bridge:
     def _ios_platform(self, xcode_installed: bool) -> tuple[str, str | None]:
         if not xcode_installed:
             return "unknown", None
-        sdk_root = self.config.developer_directory / "Platforms/iPhoneOS.platform/Developer/SDKs"
-        try:
-            sdk_root.stat()
-        except FileNotFoundError:
-            return "failed", None
-        except OSError:
+        if not Path("/usr/bin/xcrun").is_file():
             return "unknown", None
-        if sdk_root.is_symlink() or not sdk_root.is_dir():
-            return "unknown", None
+        env = os.environ.copy()
+        env["DEVELOPER_DIR"] = str(self.config.developer_directory)
         try:
-            sdks = sorted(
-                child.name[:-4]
-                for child in sdk_root.iterdir()
-                if child.name.startswith("iPhoneOS") and child.name.endswith(".sdk") and child.is_dir()
+            status, data = _safe_process(
+                ["/usr/bin/xcrun", "--sdk", "iphoneos", "--show-sdk-path"], env=env, timeout=20
             )
+        except BridgeError:
+            return "unknown", None
+        if status != 0:
+            return "failed", None
+        try:
+            raw_path = data.decode("utf-8", "strict").strip().splitlines()[0].strip()
+        except (UnicodeDecodeError, IndexError):
+            return "failed", None
+        sdk_path = Path(raw_path)
+        try:
+            if not sdk_path.is_absolute() or not sdk_path.is_dir():
+                return "failed", None
+            resolved = sdk_path.resolve()
+            if not resolved.is_dir():
+                return "failed", None
+            name = resolved.name if resolved.name.endswith(".sdk") else sdk_path.name
         except OSError:
             return "unknown", None
-        if not sdks:
+        if not name.startswith("iPhoneOS") or not name.endswith(".sdk"):
             return "failed", None
-        return "passed", sdks[-1]
+        return "passed", name[:-4]
 
     @staticmethod
     def _macos_version() -> str | None:
@@ -613,8 +622,12 @@ class Bridge:
             space_detail = "無法確認可用儲存空間。"
         else:
             available_gb = available_kib / (1024 * 1024)
-            space_status = "passed" if available_kib >= MINIMUM_FREE_SPACE_GB * 1024 * 1024 else "failed"
-            space_detail = f"可用 {available_gb:.1f} GB；至少需要 {MINIMUM_FREE_SPACE_GB} GB。"
+            if xcode_installed:
+                space_status = "passed"
+                space_detail = f"可用 {available_gb:.1f} GB。"
+            else:
+                space_status = "passed" if available_kib >= MINIMUM_FREE_SPACE_GB * 1024 * 1024 else "failed"
+                space_detail = f"可用 {available_gb:.1f} GB；安裝 Xcode 建議至少 {MINIMUM_FREE_SPACE_GB} GB。"
         check("available-space", "可用空間", space_detail, space_status)
 
         xcode_detail = (f"已偵測到 Xcode {xcode}。" if xcode else "已偵測到 Xcode，版本未知。") if xcode_installed else (
@@ -632,11 +645,11 @@ class Bridge:
 
         platform_status, sdk_name = self._ios_platform(xcode_installed)
         platform_details = {
-            "passed": f"已安裝 iOS 平台 {sdk_name}。",
-            "failed": "尚未下載 iOS 平台。",
-            "unknown": "無法確認 iOS 平台狀態。",
+            "passed": f"已可用：{sdk_name}。",
+            "failed": "無法取得 iOS 裝置 SDK，請開啟 Xcode 檢查元件後重新檢查。",
+            "unknown": "無法確認 iOS 裝置 SDK 狀態。",
         }
-        check("ios-platform", "iOS 平台", platform_details[platform_status], platform_status)
+        check("ios-platform", "iOS 裝置 SDK", platform_details[platform_status], platform_status)
 
         teams = self._teams() if xcode_installed else None
         team_status = "unknown" if teams is None else ("passed" if teams else "failed")
@@ -647,7 +660,7 @@ class Bridge:
         }
         check("apple-account", "Apple 帳號", team_details[team_status], team_status)
 
-        ready = all(item["status"] == "passed" for item in checks)
+        ready = all(item["status"] == "passed" for item in checks if item["id"] != "available-space")
         saved = self._saved_ipa()
         ipa = None
         if saved is not None:

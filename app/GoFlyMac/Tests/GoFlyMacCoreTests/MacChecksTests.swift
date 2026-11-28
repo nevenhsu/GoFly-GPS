@@ -59,7 +59,7 @@ private struct RouteChecker: MacChecking {
         if let error { throw error }
         let checks = routeChecks(failingID)
         let payload: [String: Any] = request.action == .environment
-            ? ["ready": checks.allSatisfy { $0["passed"] as? Bool == true },
+            ? ["ready": checks.allSatisfy { ($0["id"] as? String) == "available-space" || ($0["passed"] as? Bool == true) },
                "checks": checks,
                "teams": [["teamID": "ABCDE12345", "teamName": "Test Team", "isFreeProvisioningTeam": true]],
                "xcodeVersion": "27.1"]
@@ -177,12 +177,15 @@ private actor HeldChecker: MacChecking {
     #expect(model.route == .environment(.getXcode))
 }
 
-@Test @MainActor func overviewDoesNotContinueWhenRequiredStorageIsUnavailable() async throws {
-    let model = MacAppModel(live: RouteChecker(failingID: "available-space"))
+@Test @MainActor func lowAvailableSpaceDoesNotBlockReadyMacOrPreparation() async throws {
+    let suite = "gofly.tests.\(UUID().uuidString)"
+    let preferences = try #require(UserDefaults(suiteName: suite))
+    defer { preferences.removePersistentDomain(forName: suite) }
+    let model = MacAppModel(live: RouteChecker(failingID: "available-space"), preferences: preferences)
     model.beginLaunchCheck()
     try await settled(model)
-    #expect(model.route == .environment(.overview))
-    #expect(!model.canBeginEnvironmentPreparation)
+    #expect(model.canBeginEnvironmentPreparation)
+    #expect(model.route == .deviceList)
 }
 
 @Test @MainActor func environmentStepAdvancesWhenRecheckPassesAndXcodeWaitIsStable() async throws {

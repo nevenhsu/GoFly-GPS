@@ -6,7 +6,7 @@
 
 GoFly GPS is an iPhone app for choosing and moving a simulated GPS location on your own device. **GoFly GPS for Mac** installs the iPhone app over USB with your own Apple Account in Xcode and renews its signing so you can keep using it.
 
-[**Download the latest GoFly GPS for Mac (DMG)**](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12)
+[**Download the latest GoFly GPS for Mac (DMG)**](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.1.0)
 
 **Development status (2026-11-02): GoFly GPS iOS app development is complete.** It supports installation through GoFly GPS for Mac or as an IPA through SideStore / AltStore. Known limitations and remaining verification are listed below.
 
@@ -58,11 +58,11 @@ Free Personal Team signing normally expires after about seven days; keep the Mac
 
 ## Install (DMG)
 
-1. Download `GoFly-GPS-<version>-arm64.dmg` and `GoFly-GPS-<version>-arm64.dmg.sha256` from the [latest release](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.0.12) into the same folder.
+1. Download `GoFly-GPS-<version>-arm64.dmg` and `GoFly-GPS-<version>-arm64.dmg.sha256` from the [latest Mac release](https://github.com/nevenhsu/GoFly-GPS/releases/tag/v1.1.0) into the same folder.
 2. Verify the download. The result must be `OK`:
 
    ```sh
-   shasum -a 256 -c GoFly-GPS-1.0.6-arm64.dmg.sha256
+   shasum -a 256 -c GoFly-GPS-1.1.0-arm64.dmg.sha256
    ```
 3. Open the DMG, then **run the installer from Terminal** (double-clicking `install.sh` is blocked by macOS):
 
@@ -71,7 +71,7 @@ Free Personal Team signing normally expires after about seven days; keep the Mac
    ```
 
    It installs only `/Applications/GoFly.app`, asks before replacing an existing copy, removes the download quarantine from that app, and opens it. It does not use `sudo`, change Gatekeeper, or touch GoFly GPS data. Type `y` and press **Enter** when asked.
-4. In GoFly GPS for Mac, follow the on-screen steps to prepare Xcode, then connect the iPhone by USB, trust the Mac, enable Developer Mode, and press **Install GoFly GPS**.
+4. In GoFly GPS for Mac, follow the on-screen steps to prepare Xcode, then connect the iPhone by USB, trust the Mac, and enable Developer Mode. Select the latest IPA from GitHub or choose a local IPA with its matching `.ipa.sig`. After verification, install GoFly GPS.
 5. On the iPhone, trust the developer (Settings → General → VPN & Device Management), install and allow LocalDevVPN, then open GoFly GPS. The Mac app finishes when it reads back the iPhone's confirmation.
 
 The app is ad-hoc signed, **not notarized**, so macOS will not open it by double-click; use the installer above. If you copy the app yourself, run `xattr -dr com.apple.quarantine /Applications/GoFly.app`.

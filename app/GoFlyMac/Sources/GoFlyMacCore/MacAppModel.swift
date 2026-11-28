@@ -129,8 +129,7 @@ public final class MacAppModel {
 
     public var ready: Bool { environment?.ready == true && selectedTeam != nil && !busy }
     public var canBeginEnvironmentPreparation: Bool {
-        guard let check = environment?.checks.first(where: { $0.id == "available-space" }) else { return false }
-        return check.passed && check.status != .unknown && !busy
+        environment != nil && !busy
     }
     public var selectedTeam: MacTeam? {
         guard let environment, let selectedTeamID else { return nil }
@@ -426,7 +425,7 @@ public final class MacAppModel {
     private func firstIncompleteRoute(_ value: MacEnvironment?) -> MacRoute {
         guard let value else { return .environment(.overview) }
         let routes: [(String, MacEnvironmentStep)] = [
-            ("macos-version", .updateMacOS), ("available-space", .overview),
+            ("macos-version", .updateMacOS),
             ("xcode-installed", .getXcode), ("xcode-first-launch", .firstLaunch),
             ("ios-platform", .iosPlatform), ("apple-account", .appleAccount)
         ]
