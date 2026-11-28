@@ -421,7 +421,7 @@
 "settings.language" = "Language";
 "settings.helpSection" = "Help";
 "settings.location" = "Location permission";
-"settings.background" = "Background execution";
+"settings.background" = "Background Refresh";
 "settings.background.on" = "On";
 "settings.background.off" = "Off";
 "settings.vpn" = "VPN tunnel";
@@ -434,8 +434,9 @@
 "settings.status.unavailable" = "Unavailable";
 "settings.status.timedOut" = "Timed out";
 "settings.status.locationServicesOff" = "Off";
+"settings.status.always" = "Always";
 "settings.status.authorized" = "While Using";
-"settings.status.denied" = "Not allowed";
+"settings.status.denied" = "Denied";
 "settings.status.notDetermined" = "Not set";
 "settings.status.restricted" = "Restricted";
 "settings.openSystemSettings" = "Settings";
@@ -639,7 +640,7 @@
 "onboarding.location.continue" = "Skip";
 "onboarding.location.currentStatus" = "Current permission";
 "onboarding.location.status.notDetermined" = "Not set";
-"onboarding.location.status.denied" = "Not allowed";
+"onboarding.location.status.denied" = "Denied";
 "onboarding.location.status.authorized" = "Allowed";
 "onboarding.location.deniedTitle" = "Location permission is off";
 "onboarding.vpn.helpLink" = "Connection Guide";
@@ -817,7 +818,7 @@
 "onboarding.localNetwork.checkFailed" = "Connect to Wi‑Fi and tap Allow. In LiveContainer, enable Local Network in Settings.";
 "onboarding.localNetwork.status.unknown" = "Not set";
 "onboarding.localNetwork.status.granted" = "Allowed";
-"onboarding.localNetwork.status.denied" = "Not allowed";
+"onboarding.localNetwork.status.denied" = "Denied";
 "settings.network" = "Network";
 "settings.localNetwork" = "Local Network";
 "settings.localNetwork.allowed" = "Allowed";
@@ -896,6 +897,10 @@
 "wander.search.destination" = "Set Destination";
 "wander.search.relocated" = "Moved to %@. Wander range updated.";
 "import.liveContainerHint" = "LiveContainer: turn on “Fix File Picker”";
+"settings.liveContainer.step.iosSettings" = "iOS Settings";
+"settings.liveContainer.step.iosPath" = "Settings → Apps → %@";
+"settings.liveContainer.step.iosBackgroundPath" = "Settings → Apps → %@ → Background App Refresh";
+"settings.liveContainer.step.containerBackgroundPath" = "Long-press GoFly → Settings → Fix Background Processing Tasks";
 
 /* Settings › Pairing file row and status pill */
 "settings.pairingFile" = "Pairing file";

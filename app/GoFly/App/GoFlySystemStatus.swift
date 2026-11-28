@@ -21,6 +21,7 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
     private var servicesQueryTask: Task<Void, Never>?
     private var pairingReadyQueryTask: Task<Void, Never>?
     private var misagentQueryTask: Task<Void, Never>?
+    private var backgroundRefreshCancellable: AnyCancellable?
 
     override init() {
         locationManager = CLLocationManager()
@@ -30,6 +31,12 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
         pairingReady = nil
         super.init()
         locationManager.delegate = self
+        backgroundRefreshCancellable = NotificationCenter.default
+            .publisher(for: UIApplication.backgroundRefreshStatusDidChangeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.backgroundRefreshStatus = UIApplication.shared.backgroundRefreshStatus
+            }
         refresh()
     }
 
@@ -43,8 +50,8 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
         guard let locationServicesEnabled else { return "settings.status.unknown" }
         guard locationServicesEnabled else { return "settings.status.locationServicesOff" }
         switch locationAuthorization {
-        // Precise and approximate access both read "While Using"; the accuracy is not shown.
-        case .authorizedAlways, .authorizedWhenInUse: return "settings.status.authorized"
+        case .authorizedAlways: return "settings.status.always"
+        case .authorizedWhenInUse: return "settings.status.authorized"
         case .denied: return "settings.status.denied"
         case .restricted: return "settings.status.restricted"
         case .notDetermined: return "settings.status.notDetermined"
@@ -59,6 +66,17 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
         case .restricted: return "settings.status.restricted"
         @unknown default: return "settings.status.unknown"
         }
+    }
+
+    /// UIKit's `backgroundRefreshStatus` queries by `Bundle.main.bundleIdentifier`.
+    /// When LiveContainer spoofs the guest bundle ID, avoid displaying a misleading
+    /// On/Off value from another bundle and show the host container name instead.
+    var backgroundStatusText: String {
+        if GoFlyLiveContainerHost.usesSpoofedBundleIdentifier,
+           let containerName = GoFlyLiveContainerHost.hostDisplayName {
+            return containerName
+        }
+        return goFlyString(backgroundStatusKey)
     }
 
     func refresh() {
@@ -315,9 +333,7 @@ final class GoFlySystemStatus: NSObject, ObservableObject, CLLocationManagerDele
     /// spoof the guest app bundle, while preserving the host bundle on
     /// `+[NSUserDefaults lcMainBundle]`.
     nonisolated private static func liveContainerHostBundle() -> Bundle? {
-        let selector = NSSelectorFromString("lcMainBundle")
-        guard UserDefaults.responds(to: selector) else { return nil }
-        return UserDefaults.perform(selector)?.takeUnretainedValue() as? Bundle
+        GoFlyLiveContainerHost.hostBundle()
     }
 
     /// Fallback for containerized hosts whose own frameworks/dylibs are loaded

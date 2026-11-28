@@ -434,6 +434,7 @@
 "settings.status.unavailable" = "無法連線";
 "settings.status.timedOut" = "檢查逾時";
 "settings.status.locationServicesOff" = "已關閉";
+"settings.status.always" = "永遠";
 "settings.status.authorized" = "使用期間";
 "settings.status.denied" = "未允許";
 "settings.status.notDetermined" = "尚未設定";
@@ -896,6 +897,10 @@
 "wander.search.destination" = "指定地點";
 "wander.search.relocated" = "已瞬移至 %@，漫步範圍已更新";
 "import.liveContainerHint" = "LiveContainer 請開啟「Fix File Picker」";
+"settings.liveContainer.step.iosSettings" = "iOS 設定";
+"settings.liveContainer.step.iosPath" = "設定 → App → %@";
+"settings.liveContainer.step.iosBackgroundPath" = "設定 → App → %@ → 背景 App 重新整理";
+"settings.liveContainer.step.containerBackgroundPath" = "長按 GoFly → Settings → Fix Background Processing Tasks";
 
 /* Settings › 配對檔列與狀態 pill */
 "settings.pairingFile" = "配對檔";

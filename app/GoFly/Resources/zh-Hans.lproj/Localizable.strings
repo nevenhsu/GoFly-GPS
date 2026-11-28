@@ -421,7 +421,7 @@
 "settings.language" = "语言";
 "settings.helpSection" = "帮助";
 "settings.location" = "定位权限";
-"settings.background" = "后台运行";
+"settings.background" = "后台 App 刷新";
 "settings.background.on" = "已开启";
 "settings.background.off" = "已关闭";
 "settings.vpn" = "VPN 通道";
@@ -434,6 +434,7 @@
 "settings.status.unavailable" = "无法连接";
 "settings.status.timedOut" = "检查超时";
 "settings.status.locationServicesOff" = "已关闭";
+"settings.status.always" = "始终";
 "settings.status.authorized" = "使用期间";
 "settings.status.denied" = "未允许";
 "settings.status.notDetermined" = "尚未设置";
@@ -896,6 +897,10 @@
 "wander.search.destination" = "指定地点";
 "wander.search.relocated" = "已瞬移至 %@，漫步范围已更新";
 "import.liveContainerHint" = "LiveContainer 请开启“Fix File Picker”";
+"settings.liveContainer.step.iosSettings" = "iOS 设置";
+"settings.liveContainer.step.iosPath" = "设置 → App → %@";
+"settings.liveContainer.step.iosBackgroundPath" = "设置 → App → %@ → 后台 App 刷新";
+"settings.liveContainer.step.containerBackgroundPath" = "长按 GoFly → Settings → Fix Background Processing Tasks";
 
 /* Settings › 配对文件列与状态 pill */
 "settings.pairingFile" = "配对文件";

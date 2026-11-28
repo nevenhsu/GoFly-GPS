@@ -191,7 +191,7 @@ struct ServiceSettingsView: View {
         let key = systemStatus.locationStatusKey
         return key == "settings.status.notDetermined" || key == "settings.status.denied" ? nil : goFlyString(key)
     }
-    private var backgroundSummary: String { goFlyString(systemStatus.backgroundStatusKey) }
+    private var backgroundSummary: String { systemStatus.backgroundStatusText }
 
     @ViewBuilder
     private func settingsSection<Content: View>(

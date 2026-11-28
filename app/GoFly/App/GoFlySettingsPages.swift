@@ -68,6 +68,80 @@ private struct GoFlySettingsRow<Content: View>: View {
     }
 }
 
+private struct GoFlyLiveContainerGuideCard: View {
+    enum Scope {
+        case permission
+        case background
+    }
+
+    var scope: Scope = .permission
+
+    var body: some View {
+        if let containerName = GoFlyLiveContainerHost.hostDisplayName {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(containerName)
+                    .goFlyFont(GoFlyFont.subheadlineEmphasis)
+                    .foregroundStyle(GoFlyTextColor.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .accessibilityAddTraits(.isHeader)
+
+                Divider()
+
+                switch scope {
+                case .permission:
+                    stepRow(
+                        number: nil,
+                        title: goFlyString("settings.liveContainer.step.iosSettings"),
+                        detail: goFlyLocalizedFormat(goFlyString("settings.liveContainer.step.iosPath"), containerName)
+                    )
+                case .background:
+                    stepRow(
+                        number: 1,
+                        title: goFlyString("settings.liveContainer.step.iosSettings"),
+                        detail: goFlyLocalizedFormat(goFlyString("settings.liveContainer.step.iosBackgroundPath"), containerName)
+                    )
+                    Divider().padding(.leading, 52)
+                    stepRow(
+                        number: 2,
+                        title: containerName,
+                        detail: goFlyString("settings.liveContainer.step.containerBackgroundPath")
+                    )
+                }
+            }
+            .goFlyCard(radius: GoFlyStyle.Radius.control)
+            .accessibilityIdentifier("settings.liveContainerGuideCard")
+        }
+    }
+
+    private func stepRow(number: Int?, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            if let number {
+                Text("\(number)")
+                    .goFlyFont(GoFlyFont.captionEmphasis)
+                    .foregroundStyle(GoFlyTextColor.inverse)
+                    .frame(width: 24, height: 24)
+                    .background(GoFlyStyle.primary, in: Circle())
+                    .padding(.top, 1)
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .goFlyFont(GoFlyFont.subheadlineEmphasis)
+                    .foregroundStyle(GoFlyTextColor.primary)
+                Text(detail)
+                    .goFlyFont(GoFlyFont.footnote)
+                    .foregroundStyle(GoFlyTextColor.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
 struct GoFlyLocationSettingsPage: View {
     @StateObject private var status = GoFlySystemStatus()
 
@@ -94,6 +168,8 @@ struct GoFlyLocationSettingsPage: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("settings.location.status")
             }
+
+            GoFlyLiveContainerGuideCard(scope: .permission)
         }
         .goFlyToastOverlay(topInset: 54) {
             if status.externalOpenFailed {
@@ -156,6 +232,8 @@ struct GoFlyNetworkSettingsPage: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("settings.network.localNetwork")
             }
+
+            GoFlyLiveContainerGuideCard(scope: .permission)
         }
         .goFlyToastOverlay(topInset: 54) {
             if status.externalOpenFailed {
@@ -230,6 +308,8 @@ struct GoFlyBackgroundSettingsPage: View {
                 }
             }
 
+            GoFlyLiveContainerGuideCard(scope: .background)
+
         }
         .sheet(isPresented: $showingDuration, onDismiss: continuation.backgroundDurationDidChange) {
             GoFlyBackgroundDurationSheet(
@@ -257,7 +337,7 @@ struct GoFlyBackgroundSettingsPage: View {
         }
     }
 
-    private var backgroundStatus: String { goFlyString(status.backgroundStatusKey) }
+    private var backgroundStatus: String { status.backgroundStatusText }
 }
 
 struct GoFlyVPNSettingsPage: View {
