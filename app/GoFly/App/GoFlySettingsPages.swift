@@ -43,19 +43,6 @@ private struct GoFlySettingsSectionHeader: View {
     }
 }
 
-private struct GoFlySettingsFooterNote: View {
-    let textKey: String
-
-    var body: some View {
-        Text(goFlyString(textKey))
-            .goFlyFont(GoFlyFont.caption)
-            .foregroundStyle(GoFlyTextColor.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 4)
-    }
-}
-
 private struct GoFlySettingsGroup<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
@@ -241,8 +228,6 @@ struct GoFlyBackgroundSettingsPage: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("settings.background.duration")
                 }
-
-                GoFlySettingsFooterNote(textKey: "settings.background.footerNote")
             }
 
         }
@@ -285,64 +270,58 @@ struct GoFlyVPNSettingsPage: View {
 
     var body: some View {
         GoFlySettingsPageContainer(titleKey: "settings.vpn", rootIdentifier: "settings.vpn.page") {
-            VStack(alignment: .leading, spacing: 8) {
-                GoFlySettingsSectionHeader(titleKey: "settings.vpn.statusSection")
-                GoFlySettingsGroup {
-                    GoFlySettingsRow {
-                        GoFlySettingsValueRow {
-                            Text(goFlyString("settings.vpn"))
-                                .goFlyFont(GoFlyFont.body)
-                                .foregroundStyle(GoFlyTextColor.primary)
-                        } value: {
-                            GoFlyStatusPill(text: goFlyString(recovery.connectionState.settingsStatusKey),
-                                            tone: vpnTone,
-                                            action: nil,
-                                            identifier: "settings.vpn.status")
-                        }
+            GoFlySettingsGroup {
+                GoFlySettingsRow {
+                    GoFlySettingsValueRow {
+                        Text(goFlyString("settings.vpn"))
+                            .goFlyFont(GoFlyFont.body)
+                            .foregroundStyle(GoFlyTextColor.primary)
+                    } value: {
+                        GoFlyStatusPill(text: goFlyString(recovery.connectionState.settingsStatusKey),
+                                        tone: vpnTone,
+                                        action: nil,
+                                        identifier: "settings.vpn.status")
                     }
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                GoFlySettingsSectionHeader(titleKey: "settings.vpn.actionsSection")
-                GoFlySettingsGroup {
-                    Button(action: { GoFlyExternalLinks.openStore { _ in } }) {
-                        GoFlySettingsRow {
-                            GoFlySettingsValueRow {
-                                Text(goFlyString("settings.vpn.downloadLocalDevVPN"))
-                                    .goFlyFont(GoFlyFont.body)
-                                    .foregroundStyle(GoFlyTextColor.primary)
-                            } value: {
-                                Text(goFlyString("settings.vpn.appStore"))
-                                    .goFlyFont(GoFlyFont.body)
-                                    .foregroundStyle(GoFlyTextColor.secondary)
-                            }
-                            GoFlyIcon(GoFlySymbols.disclosure)
-                                .goFlyIconSize(size: 13, maximum: 16)
-                                .foregroundStyle(GoFlyTextColor.secondary)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("settings.vpn.download")
-
-                    Divider().padding(.leading, 16)
-
-                    Button(action: status.openLocalDevVPN) {
-                        GoFlySettingsRow {
-                            Text(goFlyString("settings.vpn.openLocalDevVPN"))
+            GoFlySettingsGroup {
+                Button(action: { GoFlyExternalLinks.openStore { _ in } }) {
+                    GoFlySettingsRow {
+                        GoFlySettingsValueRow {
+                            Text(goFlyString("settings.vpn.downloadLocalDevVPN"))
                                 .goFlyFont(GoFlyFont.body)
                                 .foregroundStyle(GoFlyTextColor.primary)
-                            Spacer(minLength: 8)
-                            GoFlyIcon(GoFlySymbols.disclosure)
-                                .goFlyIconSize(size: 13, maximum: 16)
+                        } value: {
+                            Text(goFlyString("settings.vpn.appStore"))
+                                .goFlyFont(GoFlyFont.body)
                                 .foregroundStyle(GoFlyTextColor.secondary)
-                                .accessibilityHidden(true)
                         }
+                        GoFlyIcon(GoFlySymbols.disclosure)
+                            .goFlyIconSize(size: 13, maximum: 16)
+                            .foregroundStyle(GoFlyTextColor.secondary)
+                            .accessibilityHidden(true)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("settings.vpn.open")
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.vpn.download")
+
+                Divider().padding(.leading, 16)
+
+                Button(action: status.openLocalDevVPN) {
+                    GoFlySettingsRow {
+                        Text(goFlyString("settings.vpn.openLocalDevVPN"))
+                            .goFlyFont(GoFlyFont.body)
+                            .foregroundStyle(GoFlyTextColor.primary)
+                        Spacer(minLength: 8)
+                        GoFlyIcon(GoFlySymbols.disclosure)
+                            .goFlyIconSize(size: 13, maximum: 16)
+                            .foregroundStyle(GoFlyTextColor.secondary)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.vpn.open")
             }
 
             Button {
@@ -406,56 +385,143 @@ struct GoFlyDeviceSettingsPage: View {
     @ObservedObject var service: ServiceController
     let setupMetadata: GoFlySetupMetadata?
     @StateObject private var status = GoFlySystemStatus()
+    @State private var diagnosticsByteCount = 0
+    @State private var showingDiagnosticsActions = false
+    @State private var shareItem: DiagnosticsShareItem?
+    @State private var exportFailed = false
+    @State private var snackbar: GoFlySnackbarMessage?
 
     var body: some View {
         GoFlySettingsPageContainer(titleKey: "settings.device", rootIdentifier: "settings.device.page") {
             let snapshot = status.deviceSnapshot(service: service, setupMetadata: setupMetadata)
             VStack(alignment: .leading, spacing: 8) {
                 GoFlySettingsGroup {
-                    deviceField("settings.device.pairing", value: snapshot.pairingStatus, identifier: "settings.device.pairing")
-                    Divider().padding(.leading, 16)
-                    deviceField("settings.device.service", value: snapshot.serviceStatusDisplay, identifier: "settings.device.service")
-                    Divider().padding(.leading, 16)
+                    if GoFlyUITestOverrides.frame != "F9" {
+                        deviceField("settings.device.version", value: snapshot.appVersion, identifier: "settings.device.version")
+                        Divider().padding(.leading, 16)
+                    }
                     deviceField("settings.device.signingExpiry", value: snapshot.signingExpiryStatus, identifier: "settings.device.signingExpiry")
                     Divider().padding(.leading, 16)
                     deviceField("settings.device.daysLeft", value: snapshot.daysLeftStatus, identifier: "settings.device.daysLeft")
                     if GoFlyUITestOverrides.frame != "F9" {
                         Divider().padding(.leading, 16)
                         deviceField("settings.device.teamID", value: snapshot.teamIDStatus, identifier: "settings.device.teamID")
-                        Divider().padding(.leading, 16)
-                        deviceField("settings.device.version", value: snapshot.appVersion, identifier: "settings.device.version")
-                        Divider().padding(.leading, 16)
-                        deviceField("settings.device.system", value: "\(snapshot.deviceName) · \(snapshot.deviceModel) · \(snapshot.systemName) \(snapshot.systemVersion)", identifier: "settings.device.system")
                     }
                 }
-
             }
-            VStack(alignment: .leading, spacing: 8) {
-                GoFlySettingsGroup {
-                    NavigationLink {
-                        GoFlyPairingImportView(context: .settings)
-                    } label: {
-                        GoFlySettingsRow {
-                            Text(goFlyString("settings.device.reimportPairing"))
+
+            GoFlySettingsGroup {
+                Button {
+                    refreshDiagnosticsSize()
+                    showingDiagnosticsActions = true
+                } label: {
+                    GoFlySettingsRow {
+                        GoFlySettingsValueRow {
+                            Text(goFlyString("settings.diagnostics.title"))
                                 .goFlyFont(GoFlyFont.body)
                                 .foregroundStyle(GoFlyTextColor.primary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            GoFlyIcon(GoFlySymbols.disclosure)
-                                .goFlyIconSize(size: 13, maximum: 16)
+                        } value: {
+                            Text(diagnosticsSizeText)
+                                .goFlyFont(GoFlyFont.body)
                                 .foregroundStyle(GoFlyTextColor.secondary)
-                                .accessibilityHidden(true)
+                                .monospacedDigit()
                         }
+                        GoFlyIcon(GoFlySymbols.disclosure)
+                            .goFlyIconSize(size: 13, maximum: 16)
+                            .foregroundStyle(GoFlyTextColor.secondary)
+                            .accessibilityHidden(true)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("settings.device.reimportPairing")
                 }
-                GoFlySettingsFooterNote(textKey: "settings.device.reimportPairingNote")
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.device.diagnostics")
             }
         }
-        .onAppear { status.refresh() }
+        .overlay(alignment: .bottom) {
+            if showingDiagnosticsActions {
+                GoFlyActionSheet(
+                    title: goFlyString("settings.diagnostics.title"),
+                    detail: goFlyString("settings.diagnostics.sheetDetail"),
+                    items: [
+                        GoFlyActionSheetItem(
+                            title: goFlyString("settings.diagnostics.share"),
+                            icon: .asset(GoFlySymbols.externalLink),
+                            identifier: "settings.device.diagnostics.share",
+                            enabled: diagnosticsByteCount > 0,
+                            perform: {
+                                showingDiagnosticsActions = false
+                                shareDiagnostics()
+                            }
+                        ),
+                        GoFlyActionSheetItem(
+                            title: goFlyString("settings.diagnostics.clear"),
+                            icon: .asset(GoFlySymbols.delete),
+                            identifier: "settings.device.diagnostics.clear",
+                            enabled: diagnosticsByteCount > 0,
+                            isDestructive: true,
+                            perform: {
+                                showingDiagnosticsActions = false
+                                clearDiagnostics()
+                            }
+                        )
+                    ],
+                    cancelIdentifier: "settings.device.diagnostics.cancel",
+                    identifier: "settings.device.diagnostics.sheet",
+                    onCancel: { showingDiagnosticsActions = false }
+                )
+            }
+        }
+        .sheet(item: $shareItem) { item in
+            GoFlyShareSheet(url: item.url)
+        }
+        .goFlyTracksSystemPresentation(shareItem != nil, id: "settings.device.diagnostics.share")
+        .goFlySnackbar($snackbar)
+        .goFlyToastOverlay(topInset: 54) {
+            if exportFailed {
+                GoFlyStatusBanner(
+                    tone: .danger,
+                    title: goFlyIssueTitle(for: "settings.diagnostics.exportFailed"),
+                    message: goFlyString("settings.diagnostics.exportFailed"),
+                    identifier: "settings.device.diagnostics.exportFailed"
+                )
+            }
+        }
+        .onAppear {
+            status.refresh()
+            status.refreshDeviceSigningInfo(hasSetupMetadata: setupMetadata != nil)
+            refreshDiagnosticsSize()
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             status.refresh()
+            status.refreshDeviceSigningInfo(hasSetupMetadata: setupMetadata != nil)
+            refreshDiagnosticsSize()
         }
+    }
+
+    private var diagnosticsSizeText: String {
+        guard diagnosticsByteCount > 0 else { return "0 MB" }
+        let megabytes = max(0.01, Double(diagnosticsByteCount) / 1_048_576.0)
+        return String(format: "%.2f MB", megabytes)
+    }
+
+    private func refreshDiagnosticsSize() {
+        diagnosticsByteCount = Diagnostics.shared.fileByteCount
+    }
+
+    private func shareDiagnostics() {
+        exportFailed = false
+        do {
+            let url = try Diagnostics.shared.export()
+            shareItem = DiagnosticsShareItem(url: url)
+        } catch {
+            exportFailed = true
+        }
+    }
+
+    private func clearDiagnostics() {
+        exportFailed = false
+        Diagnostics.shared.clear()
+        diagnosticsByteCount = Diagnostics.shared.fileByteCount
+        snackbar = GoFlySnackbarMessage(text: goFlyString("settings.diagnostics.cleared"))
     }
 
     private func deviceField(_ titleKey: String, value: String, identifier: String) -> some View {
@@ -515,15 +581,16 @@ struct GoFlyDeviceSupportSettingsPage: View {
                     .multilineTextAlignment(.center)
                     .padding(.top, 16)
                     .accessibilityAddTraits(.isHeader)
-                Text(goFlyString(showsCompletion ? "settings.support.readyMessage" : "settings.support.cardMessage"))
-                    .goFlyFont(GoFlyFont.subheadline)
-                    .foregroundStyle(GoFlyTextColor.secondary)
-                    .multilineTextAlignment(.center)
-                    // Two lines are always reserved so the card keeps its height.
-                    .lineLimit(2, reservesSpace: true)
-                    .minimumScaleFactor(0.8)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 8)
+                if !showsCompletion {
+                    Text(goFlyString("settings.support.cardMessage"))
+                        .goFlyFont(GoFlyFont.subheadline)
+                        .foregroundStyle(GoFlyTextColor.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 8)
+                }
                 if showsProgress || showsCompletion {
                     GoFlySupportProgressSection(preparation: support, errorIdentifier: "settings.support.error")
                         .padding(.top, 24)
@@ -536,7 +603,7 @@ struct GoFlyDeviceSupportSettingsPage: View {
                 }
                 .buttonStyle(GoFlyButtonStyle(variant: .primary))
                 .disabled(isRunning)
-                .padding(.top, 24)
+                .padding(.top, (showsProgress || showsCompletion) ? 14 : 24)
                 .accessibilityIdentifier("settings.support.action")
             }
             .padding(.top, GoFlyStyle.Spacing.xxl)
@@ -687,7 +754,7 @@ struct GoFlyLanguageSettingsPage: View {
                                 if preferences.language == language {
                                     GoFlyIcon(GoFlySymbols.selected)
                                         .goFlyIconSize(size: 18)
-                                        .foregroundStyle(GoFlyTextColor.accent)
+                                        .foregroundStyle(GoFlyThemeColor.iconAccent)
                                         .accessibilityHidden(true)
                                 }
                             }
@@ -723,7 +790,7 @@ struct GoFlyAppearanceSettingsPage: View {
                                 if preferences.appearance == appearance {
                                     GoFlyIcon(GoFlySymbols.selected)
                                         .goFlyIconSize(size: 18)
-                                        .foregroundStyle(GoFlyTextColor.accent)
+                                        .foregroundStyle(GoFlyThemeColor.iconAccent)
                                         .accessibilityHidden(true)
                                 }
                             }
@@ -760,7 +827,7 @@ struct GoFlyPreferencesSettingsPage: View {
                                 if preferences.language == language {
                                     GoFlyIcon(GoFlySymbols.selected)
                                         .goFlyIconSize(size: 18)
-                                        .foregroundStyle(GoFlyTextColor.accent)
+                                        .foregroundStyle(GoFlyThemeColor.iconAccent)
                                         .accessibilityHidden(true)
                                 }
                             }
@@ -789,7 +856,7 @@ struct GoFlyPreferencesSettingsPage: View {
                                 if preferences.appearance == appearance {
                                     GoFlyIcon(GoFlySymbols.selected)
                                         .goFlyIconSize(size: 18)
-                                        .foregroundStyle(GoFlyTextColor.accent)
+                                        .foregroundStyle(GoFlyThemeColor.iconAccent)
                                         .accessibilityHidden(true)
                                 }
                             }

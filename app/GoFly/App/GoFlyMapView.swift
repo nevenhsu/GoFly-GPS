@@ -177,10 +177,10 @@ final class GoFlyMovementModel: ObservableObject {
             let silentRepair = self.recovery.isSilentRepairInProgress
             let errors = SessionStatusErrors(connection: silentRepair ? .checking : self.recovery.connectionState,
                 service: silentRepair ? nil : self.service.error, route: self.route.error, joystick: self.joystick.error,
-                wander: self.joystick.wanderError,
+                wander: self.joystick.wanderError, pairingVerified: self.service.pairingVerified,
                 dataErrors: self.dataErrorKeys())
             let hasError = !errors.isEmpty
-            let connecting = self.service.movementConnection != .available
+            let connecting = self.service.movementConnection != .available || self.service.isCheckingStartupPairing
             let next = GoFlyMovementPresentation(
                 status: GoFlySessionStatus(hasError: hasError, connecting: connecting, running: running, paused: paused,
                     hasSimulated: self.service.hasSimulated),
@@ -310,6 +310,7 @@ struct GoFlyMapView: View {
     @State private var candidateHeight: CGFloat = 96
     @ScaledMetric(relativeTo: .body) private var goWidth: CGFloat = 68
     @State private var showingSettings = false
+    @State private var showingPairingImport = false
     @State private var notices = NoticeState()
     /// False while the scene is leaving or returning: the iOS app snapshot and
     /// the first frames back must not show a paused-state toast that the
@@ -398,7 +399,7 @@ struct GoFlyMapView: View {
                 mapContent(in: geometry)
                     .coordinateSpace(name: "mapRoot")
                     .accessibilityHidden(presentedSheet != nil || showingSearch || showingImportedRoutes
-                        || showingAllImportedPoints || route.picker != nil)
+                        || showingAllImportedPoints || route.picker != nil || showingPairingImport)
             }
             // Destinations must sit inside the stack; on the stack itself SwiftUI ignores them.
             .navigationDestination(isPresented: $showingSettings) {
@@ -408,6 +409,12 @@ struct GoFlyMapView: View {
                     continuation: continuation,
                     recovery: recovery,
                     setupMetadata: setupMetadata
+                )
+            }
+            .sheet(isPresented: $showingPairingImport) {
+                GoFlyPairingImportView(
+                    context: .mapRecovery, service: service,
+                    onImported: { service.verifiedPairingImported() }
                 )
             }
             .navigationDestination(isPresented: $showingRouteList) {
@@ -487,7 +494,7 @@ struct GoFlyMapView: View {
                 wander.attach(wanderPlanningHost)
                 movement.attachMapAdmission {
                     !showingSettings && !showingSearch && !showingRouteList && !showingImportedRoutes
-                        && !showingAllImportedPoints && presentedSheet == nil && route.picker == nil
+                        && !showingAllImportedPoints && !showingPairingImport && presentedSheet == nil && route.picker == nil
                 }
                 location.start()
                 if cameraIntent == nil {
@@ -505,13 +512,24 @@ struct GoFlyMapView: View {
 #else
                 recovery.requestForegroundCheck()
 #endif
-                service.warmupSession()
                 if isTeleportHoldRecovery { sheetDetent = .collapsed }
                 if dynamicTypeSize.isAccessibilitySize { sheetDetent = .expanded }
             }
             .onChange(of: dynamicTypeSize) { _, size in
                 if size.isAccessibilitySize { sheetDetent = .expanded }
             }
+#if !targetEnvironment(simulator)
+            .onChange(of: recovery.connectionState, initial: true) { _, connection in
+                guard connection == .reachable else { return }
+                Task {
+                    await service.checkStartupPairing {
+                        await Task.detached(priority: .utility) {
+                            await PairingFileStore.verifyStoredPairingForStartup()
+                        }.value
+                    }
+                }
+            }
+#endif
             .onDisappear {
                 cancelSearchPasteConfirmation()
                 movement.detachMapAdmission()
@@ -1059,6 +1077,7 @@ struct GoFlyMapView: View {
                 wander: wander, notices: $notices,
                 searchPasteWarning: $searchPasteWarning,
                 showingSettings: $showingSettings,
+                openPairingImport: { showingPairingImport = true },
                 mode: mode, sceneSettled: sceneSettled, isResumeState: isResumeState)
         }
         .zIndex(50)
@@ -1952,8 +1971,7 @@ struct GoFlyMapView: View {
         Button { resetHeadingToNorth() } label: {
             ZStack {
                 Circle()
-                    .fill(.ultraThinMaterial)
-                    .overlay(Circle().fill(GoFlyStyle.cardSurface.opacity(0.65)))
+                    .fill(GoFlyStyle.cardSurface.opacity(0.5))
                     .frame(width: 44, height: 44)
                 GoFlyCompassIcon(headingDegrees: mapHeadingDegrees, size: 22)
                 Circle()

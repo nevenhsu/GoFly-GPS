@@ -234,6 +234,14 @@ public final class Diagnostics: @unchecked Sendable {
         queue.sync { lock.withLock { fileSink?.size ?? 0 } }
     }
 
+    /// Removes the on-device ring file and resets the tracked size to zero.
+    public func clear() {
+        queue.sync {
+            let sink = lock.withLock { fileSink }
+            sink?.clear()
+        }
+    }
+
     /// Copies the ring file plus a short header into a shareable temporary file.
     public func export(directory: URL? = nil) throws -> URL {
         queue.sync {}
@@ -354,6 +362,12 @@ final class DiagnosticsFileSink: @unchecked Sendable {
     func load() -> Data? {
         try? AtomicFile(directory: directory, filename: filename, maximumBytes: maximumBytes)
             .loadData()
+    }
+
+    func clear() {
+        close()
+        try? FileManager.default.removeItem(at: url)
+        byteCount = 0
     }
 
     private func writeAll(_ data: Data) -> Int {

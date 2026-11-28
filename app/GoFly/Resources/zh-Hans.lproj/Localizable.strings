@@ -41,9 +41,11 @@
 "location.disabled" = "定位服务已关闭，仍可使用不需要 GPS 授权的设备服务。";
 "location.permissionDenied" = "尚未允许 GPS 定位。可前往 iOS 设置开启，或继续使用不需要定位授权的 GoFly 功能。";
 "location.noFix" = "无法确认当前 GPS 位置，请在可接收 GPS 信号时重试。";
-"error.pairingRequired" = "缺少配对数据。请连接 Mac App 完成设备准备。";
+"error.pairingRequired" = "尚未导入配对文件。";
+"error.pairingRejected.title" = "需要重新导入配对文件";
+"error.pairingRejected" = "无法验证当前的配对文件。";
 "error.identityMismatch" = "配对数据属于其他设备。请在 Mac App 修复。";
-"error.devicePreparationRequired" = "请用 USB 连接 Mac，打开 Mac App 重新安装。";
+"error.devicePreparationRequired" = "请用 USB 连接 Mac，通过 Mac App 重装。";
 "error.serviceUnavailable" = "无法连接设备服务。请检查 VPN 通道。";
 "error.tunnelUnavailable" = "无法连接 VPN 通道。请重新连接 LocalDevVPN 后重试。";
 "error.operationTimedOut" = "设备未在时限内确认，请重试。";
@@ -53,11 +55,11 @@
 "onboarding.next" = "下一步";
 "onboarding.location.title" = "允许 GoFly 使用定位";
 "onboarding.location.title.authorized" = "已允许使用定位";
-"onboarding.location.message" = "在地图显示你的真实位置，并作为路线与漫步的起点。只需“使用 App 期间”。";
+"onboarding.location.message" = "显示真实位置并作为路线起点，只需“使用 App 期间”。";
 "onboarding.location.allow" = "允许定位";
 "onboarding.location.skip" = "跳过";
 "onboarding.location.authorized" = "已允许定位。";
-"onboarding.location.denied" = "定位权限已关闭。要在地图上显示真实位置，请到 iPhone 设置开启；也可以直接继续。";
+"onboarding.location.denied" = "仍可使用模拟定位；若要显示真实位置，可到系统设置开启。";
 "onboarding.location.openSettings" = "打开设置";
 "onboarding.vpn.title" = "连接 VPN 通道";
 "onboarding.vpn.stepsTitle" = "连接步骤";
@@ -70,7 +72,7 @@
 "onboarding.vpn.help.step3.title" = "LocalDevVPN 点 Connect";
 "onboarding.vpn.stepLocalNetwork" = "允许本地网络";
 "onboarding.vpn.help.troubleshooting" = "仍然无法连接？";
-"onboarding.vpn.help.reconnect" = "确认已连接 Wi‑Fi、允许本地网络，在 LocalDevVPN 中断后重新连接，再回来检查。";
+"onboarding.vpn.help.reconnect" = "确认已连 Wi‑Fi 并允许本地网络，在 LocalDevVPN 重连后再检查。";
 "onboarding.vpn.help.notChecked" = "尚未连接";
 "onboarding.vpn.help.notReachable" = "连接错误";
 "onboarding.vpn.disconnected" = "未连接";
@@ -96,7 +98,7 @@
 "search.placeDetails" = "地点详情";
 "teleport.moving" = "前往中…";
 "teleport.unconfirmed" = "位置待确认";
-"teleport.positionUnconfirmed" = "位置更改尚未确认，请先停止服务，再使用 Go。";
+"teleport.positionUnconfirmed" = "位置尚未确认，请先停止服务再点 Go。";
 "teleport.failure.toast.title" = "瞬移失败";
 "teleport.failure.toast.message" = "无法更新模拟位置。请检查“设置 › VPN 通道”。";
 "figma.fixture.b2.position" = "中山北路二段 45 号";
@@ -399,8 +401,8 @@
 "background.routePaused" = "路线已暂停";
 "background.routePaused.message" = "后台任务已停止，点“继续”接续路线。";
 "background.rejected" = "后台运行被拒绝";
-"background.rejected.message" = "如果在 LiveContainer 内使用，请在 GoFly 的单独设置中开启“修复后台处理任务”。";
-"background.rejected.settingsFailed" = "请手动打开 iOS 的 App 设置。在 LiveContainer 内，长按 GoFly 并开启“修复后台处理任务”。";
+"background.rejected.message" = "在 LiveContainer 请开启 GoFly 的“修复后台处理任务”。";
+"background.rejected.settingsFailed" = "请手动打开 iOS 设置；LiveContainer 请长按 GoFly 开启“修复后台处理任务”。";
 "background.registrationLimit" = "后台运行暂时不可用，请打开 GoFly 查看。";
 "background.unsupported" = "此系统不支持后台运行。";
 "background.activity.finiteRoute" = "GoFly 路线";
@@ -431,10 +433,10 @@
 "settings.status.available" = "可用";
 "settings.status.unavailable" = "无法连接";
 "settings.status.timedOut" = "检查超时";
-"settings.status.locationServicesOff" = "定位服务已关闭";
+"settings.status.locationServicesOff" = "已关闭";
 "settings.status.authorized" = "使用期间";
 "settings.status.denied" = "未允许";
-"settings.status.notDetermined" = "尚未决定";
+"settings.status.notDetermined" = "尚未设置";
 "settings.status.restricted" = "受限制";
 "settings.openSystemSettings" = "打开系统设置";
 "settings.externalOpenFailed" = "请手动打开，再返回 GoFly 重新检查。";
@@ -449,7 +451,7 @@
 "settings.vpn.downloadLocalDevVPN" = "下载 LocalDevVPN";
 "settings.vpn.appStore" = "App Store";
 "settings.vpn.openLocalDevVPN" = "打开 LocalDevVPN";
-"settings.vpn.externalOpenFailed" = "无法打开 LocalDevVPN。请手动打开并连接通道，再返回 GoFly。";
+"settings.vpn.externalOpenFailed" = "无法打开 LocalDevVPN，请手动连接后返回。";
 "settings.vpn.check" = "检查连接";
 "settings.device.pairing" = "配对状态";
 "settings.device.pairingReady" = "已配对";
@@ -483,31 +485,42 @@
 "setup.waiting.title" = "在 Mac 上继续设置";
 "setup.waiting.message" = "请在 GoFly Mac App 完成设置，再返回这部 iPhone。";
 "setup.mac.title" = "连接 Mac 完成配对";
-"setup.mac.message" = "请使用 USB 传输线连接 Mac，并在 Mac 端 GoFly 完成设备配对与签名授权。";
+"setup.mac.message" = "用 USB 连接 Mac，并在 GoFly Mac App 完成配对与签名。";
 "setup.mac.unpaired" = "尚未配对";
 "setup.pairingImport.title" = "导入配对文件";
-"setup.pairingImport.message" = "在电脑导出这台 iPhone 的配对文件，再点下方按钮导入。";
+"setup.pairingImport.message" = "先在电脑导出配对文件，再点下方导入。";
 "setup.pairingImport.notImported" = "尚未导入";
 "setup.pairingImport.action" = "导入配对文件";
-"setup.pairingImport.failed" = "请在电脑导出这台 iPhone 的配对文件后再试。";
-"setup.pairingImport.deviceVerificationFailed" = "请使用这台 iPhone 的远程配对文件。允许 GoFly 访问本地网络并连接 LocalDevVPN 后，再试一次。";
+"setup.pairingImport.failed" = "无法保存配对文件。请重试。";
+"setup.pairingImport.deviceVerificationFailed" = "无法验证此配对文件。";
+"setup.pairingImport.reimportRequired" = "需要重新导入";
+"setup.pairingImport.verified" = "已验证";
+"setup.pairingImport.verifying" = "正在验证…";
+"setup.pairingImport.invalidFormat" = "请选择这台 iPhone 的远程配对文件。";
+"setup.pairingImport.fileUnreadable" = "无法读取文件，请重新选择。";
+"setup.pairingImport.networkUnavailable" = "请连上 LocalDevVPN 并允许本地网络（LiveContainer 请允许其权限）。";
+"setup.pairingImport.pairingRejected" = "请在 idevice_pair 重建配对文件后再导入。";
 "setup.completed.title" = "设置完成";
 "setup.completed.message" = "GoFly 已准备就绪。";
 "setup.blocked.title" = "需要完成设置";
-"setup.blocked.identity" = "GoFly App 与套件不匹配。请将这台 iPhone 连接 Mac App，以修复设置。";
-"setup.blocked.pairing" = "配对资料缺失或与这次设置不符。请将这部 iPhone 连接 GoFly Mac App 修复设置。";
-"setup.blocked.artifact" = "设备支持套件不完整或与设置不符。请将这部 iPhone 连接 GoFly Mac App 修复设置。";
-"setup.blocked.input" = "设置套件无效。请将这部 iPhone 连接 GoFly Mac App 重试设置。";
-"setup.blocked.storage" = "GoFly 无法安全读取设置。请将这部 iPhone 连接 GoFly Mac App 重试设置。";
+"setup.blocked.identity" = "App 与设置套件不符，请连接 Mac App 修复。";
+"setup.blocked.pairing" = "配对数据缺失或不符，请连接 Mac App 修复。";
+"setup.blocked.artifact" = "设备支持套件异常，请连接 Mac App 修复。";
+"setup.blocked.input" = "设置套件无效，请连接 Mac App 重试。";
+"setup.blocked.storage" = "无法安全读取设置，请连接 Mac App 重试。";
 "setup.retry" = "重试";
 
 
-"recovery.coldClearPending" = "上次的模拟位置可能还在，请按“恢复 GPS”清除。";
+"recovery.coldClearPending" = "上次模拟位置可能还在，点“恢复”清除。";
 
 "settings.diagnostics.title" = "诊断记录";
 "settings.diagnostics.description" = "把连接、移动与后台运行记录保存为可分享的文件。坐标只保留三位小数，不含配对数据与设备标识符。";
 "settings.diagnostics.export" = "导出诊断记录";
 "settings.diagnostics.exportFailed" = "无法创建诊断记录文件。";
+"settings.diagnostics.sheetDetail" = "不含配对与设备标识符";
+"settings.diagnostics.share" = "分享记录";
+"settings.diagnostics.clear" = "清除记录";
+"settings.diagnostics.cleared" = "已清除诊断记录";
 
 "status.tone.neutral" = "等待中";
 "status.tone.active" = "执行中";
@@ -627,7 +640,7 @@
 "onboarding.location.currentStatus" = "当前权限";
 "onboarding.location.status.notDetermined" = "尚未设置";
 "onboarding.location.status.denied" = "未允许";
-"onboarding.location.status.authorized" = "使用 App 期间・已允许";
+"onboarding.location.status.authorized" = "已允许";
 "onboarding.location.deniedTitle" = "定位权限未开启";
 "onboarding.vpn.helpLink" = "连接说明";
 "onboarding.vpn.step1" = "连接 Wi‑Fi";
@@ -685,7 +698,7 @@
 "background.activity.routeProgress" = "路线进度 %ld%%";
 "background.durationCompleted" = "后台任务已完成";
 "background.positionPaused" = "瞬移模拟已暂停";
-"background.positionPaused.message" = "连接中断或后台中断，点选重试以恢复定位。";
+"background.positionPaused.message" = "连接或后台已中断，点重试以恢复。";
 "background.positionRetry" = "重试";
 "common.confirm" = "确认";
 "common.retry" = "重试";
@@ -741,7 +754,7 @@
 "wander.error.planningFailed" = "请在地图选点或重试。";
 "wander.planning" = "正在规划路线";
 "route.pausedToast.title" = "路线模拟已暂停";
-"route.pausedToast.message" = "任务意外中断，点选重试自中断点恢复行进。";
+"route.pausedToast.message" = "路线已中断，点重试从原处继续。";
 "route.paused.progress" = "路线已暂停 · %ld%%";
 "route.paused.remaining" = "剩余 %.1f km · 预计 %d 分钟";
 "route.heading.going" = "前往 %@";
@@ -752,6 +765,7 @@
 "issue.action.fix" = "修正";
 "issue.action.settings" = "设置";
 "issue.action.chooseFile" = "选档";
+"issue.action.importPairing" = "导入";
 
 "settings.background.duration" = "后台运行时间";
 "settings.background.duration.hours" = "小时";
@@ -797,10 +811,10 @@
 
 /* Local Network onboarding (R03.a), Network settings */
 "onboarding.localNetwork.title" = "允许 GoFly 使用本地网络";
-"onboarding.localNetwork.message" = "GoFly 需通过 LocalDevVPN 连到本机的设备服务，这需要“本地网络”权限。";
+"onboarding.localNetwork.message" = "通过 LocalDevVPN 连接设备服务需要“本地网络”权限。";
 "onboarding.localNetwork.allow" = "允许本地网络";
 "onboarding.localNetwork.checkFailed.title" = "无法确认本地网络权限";
-"onboarding.localNetwork.checkFailed" = "请连接 Wi-Fi，再点一次允许。如果在 LiveContainer 内使用 GoFly，请到 iOS 设置中确认 LiveContainer 的本地网络权限。";
+"onboarding.localNetwork.checkFailed" = "请连上 Wi‑Fi 后再点允许；LiveContainer 请在 iOS 设置中开启本地网络。";
 "onboarding.localNetwork.status.unknown" = "尚未设置";
 "onboarding.localNetwork.status.granted" = "已允许";
 "onboarding.localNetwork.status.denied" = "未允许";
@@ -840,8 +854,8 @@
 "support.modal.title.onboardingFailed" = "无法准备设备支持";
 "support.modal.title.map" = "启用设备支持";
 "support.modal.title.mapFailed" = "无法启用设备支持";
-"support.modal.message.onboarding" = "首次使用需下载设备支持（约 16 MB），让 GoFly 能在这台 iPhone 模拟定位。";
-"support.modal.message.map" = "iOS 更新后需要重新启用设备支持（约 16 MB）。完成后会自动重试刚才的操作。";
+"support.modal.message.onboarding" = "首次使用需下载设备支持以模拟定位。";
+"support.modal.message.map" = "iOS 更新后需重新启用设备支持，完成后将自动重试。";
 "support.modal.downloading" = "下载中…";
 "support.modal.activating" = "启用中…";
 "support.step.download" = "下载设备支持";
@@ -852,10 +866,10 @@
 "support.step.activating" = "启用中…";
 "support.step.done" = "完成";
 "support.step.failed" = "失败";
-"support.download.error.network" = "无法连接到下载服务器，请检查网络后重试。";
+"support.download.error.network" = "无法连接至服务器，请检查网络后重试。";
 "support.download.error.invalid" = "下载的文件不完整，请稍后再试。";
 "support.download.error.storage" = "存储空间不足，请释放空间后重试。";
-"support.activate.error.connection" = "无法连接到这台 iPhone，请确认 Wi‑Fi 与 LocalDevVPN 已连接后重试。";
+"support.activate.error.connection" = "无法连接至 iPhone，请确认 Wi‑Fi 与 LocalDevVPN 后重试。";
 "support.activate.error.rejected" = "iPhone 未能启用设备支持，请稍后重试。";
 
 /* Settings › Device support (F11) and pairing re-import (F9.a) */
@@ -866,7 +880,7 @@
 "settings.support.downloading" = "下载中";
 "settings.support.activating" = "启用中";
 "settings.support.cardTitle" = "重新下载设备支持";
-"settings.support.cardMessage" = "iOS 更新后若无法模拟定位，可重新下载并启用设备支持（约 16 MB）。";
+"settings.support.cardMessage" = "iOS 更新后无法定位时，请重新下载。";
 "settings.support.redownload" = "重新下载";
 "settings.device.reimportPairing" = "重新导入配对文件";
 "settings.device.reimportPairingNote" = "导入新的配对文件会取代这台 iPhone 当前的配对数据。";
@@ -882,3 +896,11 @@
 "wander.search.destination" = "指定地点";
 "wander.search.relocated" = "已瞬移至 %@，漫步范围已更新";
 "import.liveContainerHint" = "LiveContainer 请开启“Fix File Picker”";
+
+/* Settings › 配对文件列与状态 pill */
+"settings.pairingFile" = "配对文件";
+"settings.pairingFile.ready" = "就绪";
+"settings.pairingFile.invalid" = "失效";
+"setup.pairingImport.pill.ready" = "已就绪";
+"setup.pairingImport.pill.invalid" = "已失效";
+"setup.pairingImport.pill.missing" = "未导入";

@@ -65,6 +65,7 @@ and implementation specification have not been selected yet.
 
 - 目前只保留 IPA／DMG 打包所需的建置流程。不要自動執行獨立 host／UI／模擬器測試、批量截圖或建立 `.xcresult`；需要這類驗證時由使用者另行要求。歷史任務文件中的預設測試流程不再適用。
 - IPA／DMG 成品與 checksum 放在 `work/dist`。必要建置中間檔、工具鏈與下載依賴重用固定的 `work/gofly-ios`、`work/gofly-mac`，不要為每次任務、重跑或審查新增另一套 build／cache 目錄。
+- 使用者說「清理暫存」時，清除可確認由本專案產生且未在使用中的開發與打包暫存檔，並清空 `work/dist/ipa/archive` 內的舊 IPA、簽章及校驗檔。保留 `archive` 目錄、其他發布成品及其簽章與校驗檔、固定建置快取與工具鏈，以及安裝交易、配對和使用者資料。完成後核對清理結果並回報刪除數量與空間。
 - 保留打包必要的來源／ABI／簽章／產物完整性校驗。打包成功不代表測試或實機驗收通過；不要自動清除安裝交易、配對或使用者資料。
 
 ## iOS 實機測試安裝

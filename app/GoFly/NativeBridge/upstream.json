@@ -16,7 +16,8 @@
     "location_simulation",
     "mobile_image_mounter",
     "cryptexd",
-    "core_device"
+    "core_device",
+    "misagent"
   ],
   "components": [
     {

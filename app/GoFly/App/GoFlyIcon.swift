@@ -29,6 +29,7 @@ enum GoFlyIconAsset: String, CaseIterable, Identifiable {
     case history = "icon/history"
     case hourglass = "icon/hourglass"
     case joystick = "icon/joystick"
+    case key = "icon/key"
     case locate = "icon/locate"
     case mac = "icon/mac"
     case moon = "icon/moon"

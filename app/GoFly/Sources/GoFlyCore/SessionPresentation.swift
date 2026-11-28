@@ -55,7 +55,7 @@ public struct SessionStatusErrors: Equatable, Sendable {
 
     public init(connection: VPNCheckState, service: DeviceServiceFailure? = nil,
                 route: RouteExecutionFailure? = nil, joystick: JoystickFailure? = nil,
-                wander: WanderSelectionFailure? = nil,
+                wander: WanderSelectionFailure? = nil, pairingVerified: Bool = false,
                 dataErrors: [String] = []) {
         var messages: [String] = []
         switch connection {
@@ -72,6 +72,7 @@ public struct SessionStatusErrors: Equatable, Sendable {
             // Figma keeps the shared session pill at Started for this case.
             $0 != RouteExecutionFailure.planningFailed.localizationKey
                 && Self.reportsFailure($0) && !IssueCatalog.isValidation($0)
+                && !(pairingVerified && DeviceServiceFailure(rawValue: $0)?.requiresPairingImport == true)
                 && seen.insert($0).inserted
         }
     }

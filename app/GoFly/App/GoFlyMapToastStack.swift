@@ -21,6 +21,7 @@ struct GoFlyMapToastStack: View {
     @Binding var notices: NoticeState
     @Binding var searchPasteWarning: GoFlySearchPasteWarning?
     @Binding var showingSettings: Bool
+    let openPairingImport: () -> Void
     let mode: SessionMapMode
     let sceneSettled: Bool
     /// A paused or interrupted task the person can resume.
@@ -36,20 +37,27 @@ struct GoFlyMapToastStack: View {
 
     private var boardInputs: MapNoticeInputs {
         var preparedFailure: DeviceServiceFailure?
-        if case .failed(let failure)? = service.preparedOperation?.state { preparedFailure = failure }
+        if case .failed(let failure)? = service.preparedOperation?.state,
+           !service.pairingVerified || !failure.requiresPairingImport { preparedFailure = failure }
         return MapNoticeInputs(
             mode: mode, sceneSettled: sceneSettled, notices: notices,
             activeMovement: ActiveMovement(route: route, joystick: joystick, positionHold: positionHold),
             isResumeState: isResumeState, serviceError: service.error,
             unconfirmedID: unconfirmedID, unconfirmedFailure: service.pointState.unconfirmedFailure,
-            preparedFailure: preparedFailure, joystickErrorKey: joystick.error?.localizationKey,
+            preparedFailure: preparedFailure, joystickErrorKey: currentErrorKey(joystick.error?.localizationKey),
             wanderError: joystick.wanderError, canRetryWander: joystick.canRetryWander,
-            routeErrorKey: route.error?.localizationKey, isFixingRouteOrder: route.isFixingPlanningOrder,
+            routeErrorKey: currentErrorKey(route.error?.localizationKey), isFixingRouteOrder: route.isFixingPlanningOrder,
             recoveryNoticeKey: recovery.noticeKey, requiresColdConfirmation: recovery.requiresColdConfirmation,
             repairOwnsNotice: recovery.isSilentRepairInProgress || recovery.canRetryAutomaticRepair,
             isWiFiConnected: network.isWiFiConnected,
             localNetworkDenied: localNetwork.authorization == .denied,
             continuationNoticeKey: continuation.visibleNoticeKey)
+    }
+
+    private func currentErrorKey(_ key: String?) -> String? {
+        guard service.pairingVerified, let key,
+              DeviceServiceFailure(rawValue: key)?.requiresPairingImport == true else { return key }
+        return nil
     }
 
     private static let supportKey = DeviceServiceFailure.devicePreparationRequired.rawValue
@@ -94,7 +102,7 @@ struct GoFlyMapToastStack: View {
     private func issueButton(for key: String, retry: (() -> Void)? = nil,
                              fix: (() -> Void)? = nil) -> (title: String?, action: (() -> Void)?) {
         goFlyIssueButton(for: key, retry: retry ?? { retryInCurrentMode() }, fix: fix,
-                         settings: { showingSettings = true })
+                         settings: { showingSettings = true }, importPairing: openPairingImport)
     }
 
     private func retryInCurrentMode() {
@@ -184,13 +192,23 @@ struct GoFlyMapToastStack: View {
             )
         case .unconfirmedPosition(let key, let inTeleport):
             let id = unconfirmedID
+            let isPairingIssue = DeviceServiceFailure(rawValue: key)?.requiresPairingImport == true
+            let needsImport = isPairingIssue && !service.pairingVerified
+            let titleKey = if inTeleport && !needsImport {
+                "teleport.failure.toast.title"
+            } else if isPairingIssue && !needsImport {
+                "issue.title.device"
+            } else {
+                IssueCatalog.titleKey(for: key)
+            }
             GoFlyStatusBanner(
                 tone: .danger,
-                title: inTeleport ? goFlyString("teleport.failure.toast.title") : goFlyIssueTitle(for: key),
-                message: goFlyString(inTeleport ? "teleport.failure.toast.message" : "teleport.positionUnconfirmed"),
-                actionTitle: goFlyString(inTeleport ? "common.retry" : "operation.settings"),
+                title: goFlyString(titleKey),
+                message: goFlyString(needsImport ? key : inTeleport ? "teleport.failure.toast.message" : "teleport.positionUnconfirmed"),
+                actionTitle: goFlyString(needsImport ? "issue.action.importPairing" : inTeleport ? "common.retry" : "operation.settings"),
                 onAction: {
-                    if inTeleport { recovery.checkConnection() }
+                    if needsImport { openPairingImport() }
+                    else if inTeleport { recovery.checkConnection() }
                     else { showingSettings = true }
                 },
                 onDismiss: { notices.leaveUnconfirmed(id) },
@@ -198,13 +216,15 @@ struct GoFlyMapToastStack: View {
                 isFloating: true
             )
         case .preparedOperationFailed(let key):
+            let needsImport = DeviceServiceFailure(rawValue: key)?.requiresPairingImport == true
             GoFlyStatusBanner(
                 tone: .danger,
                 title: goFlyIssueTitle(for: key),
                 message: goFlyString(key),
-                actionTitle: goFlyString("operation.retry"),
+                actionTitle: goFlyString(needsImport ? "issue.action.importPairing" : "operation.retry"),
                 onAction: {
-                    if let id = service.preparedOperation?.id { _ = service.retryPreparedOperation(id: id) }
+                    if needsImport { openPairingImport() }
+                    else if let id = service.preparedOperation?.id { _ = service.retryPreparedOperation(id: id) }
                 },
                 onDismiss: {
                     if let id = service.preparedOperation?.id { _ = service.cancelPreparation(id: id) }

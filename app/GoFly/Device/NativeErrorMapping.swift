@@ -8,7 +8,7 @@ enum NativeErrorMapping {
     }
 
     static func failure(code: Int32, subcode: Int32, fallback: DeviceServiceFailure) -> DeviceServiceFailure {
-        if code == 103 && subcode == 5 { return .pairingRequired }
+        if code == 103 && subcode == 5 { return .pairingRejected }
         if code == 109 { return .operationTimedOut }
         if code == 24 && subcode == 0 { return .developerModeRequired }
         return fallback

@@ -60,19 +60,30 @@ private struct GoFlyNativeBackTitle: UIViewControllerRepresentable {
 extension View {
     /// For pushed full-screen pages that draw their own header: hide the system bar but keep UIKit's
     /// slide push/pop and the left-edge swipe back that Settings gets.
-    func goFlyPushedFullScreen() -> some View {
+    func goFlyPushedFullScreen(allowsBackSwipe: Bool = true) -> some View {
         toolbar(.hidden, for: .navigationBar)
-            .background(GoFlyEdgeSwipeBack().frame(width: 0, height: 0))
+            .background(GoFlyEdgeSwipeBack(allowsBackSwipe: allowsBackSwipe).frame(width: 0, height: 0))
     }
 
 }
 
 /// A hidden navigation bar disables `interactivePopGestureRecognizer`; re-enable it for pushed pages.
 struct GoFlyEdgeSwipeBack: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> Controller { Controller() }
-    func updateUIViewController(_ controller: Controller, context: Context) {}
+    var allowsBackSwipe = true
+
+    func makeUIViewController(context: Context) -> Controller {
+        let controller = Controller()
+        controller.allowsBackSwipe = allowsBackSwipe
+        return controller
+    }
+
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.allowsBackSwipe = allowsBackSwipe
+    }
 
     final class Controller: UIViewController, UIGestureRecognizerDelegate {
+        var allowsBackSwipe = true
+
         override func didMove(toParent parent: UIViewController?) {
             super.didMove(toParent: parent)
             enableSwipeBack()
@@ -96,7 +107,7 @@ struct GoFlyEdgeSwipeBack: UIViewControllerRepresentable {
         }
 
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-            (navigationController?.viewControllers.count ?? 0) > 1
+            allowsBackSwipe && (navigationController?.viewControllers.count ?? 0) > 1
         }
     }
 }

@@ -16,7 +16,7 @@ public enum IssueKind: Equatable, Sendable {
 /// Toast actions are explicit so route planning repair stays separate from
 /// connection retry, even though both appear in the same shared banner.
 public enum IssueAction: String, Equatable, Sendable, CaseIterable {
-    case retry, fix, settings, chooseFile
+    case retry, fix, settings, chooseFile, importPairing
 
     public var localizationKey: String { "issue.action.\(rawValue)" }
 }
@@ -31,7 +31,6 @@ public struct IssueInfo: Equatable, Sendable {
 /// docs/IOS-ERROR-TOAST-COPY.md.
 public enum IssueCatalog {
     private static let settingsKeys: Set<String> = [
-        DeviceServiceFailure.pairingRequired.rawValue,
         DeviceServiceFailure.identityMismatch.rawValue,
         DeviceServiceFailure.developerModeRequired.rawValue,
         DeviceServiceFailure.storageUnavailable.rawValue,
@@ -58,7 +57,10 @@ public enum IssueCatalog {
     private static let validationSuffixes = [".invalidLabel", ".noSelection", ".busy", ".nothingToUndo"]
 
     /// Keys with their own `.title` copy although they belong to a category.
-    private static let ownTitleKeys: Set<String> = [DeviceServiceFailure.devicePreparationRequired.rawValue]
+    private static let ownTitleKeys: Set<String> = [
+        DeviceServiceFailure.devicePreparationRequired.rawValue,
+        DeviceServiceFailure.pairingRejected.rawValue,
+    ]
     /// Category titles from docs/IOS-ERROR-TOAST-COPY.md §2, by key prefix.
     private static let categoryTitleKeys: [(prefix: String, titleKey: String)] = [
         ("error.", "issue.title.device"),
@@ -106,6 +108,7 @@ public enum IssueCatalog {
 
     private static func action(for key: String) -> IssueAction? {
         if kind(of: key) == .validation { return nil }
+        if DeviceServiceFailure(rawValue: key)?.requiresPairingImport == true { return .importPairing }
         if settingsKeys.contains(key) { return .settings }
         if fixKeys.contains(key) { return .fix }
         if retryKeys.contains(key) { return .retry }

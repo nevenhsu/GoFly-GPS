@@ -211,6 +211,57 @@ final class NativeDeviceSession: DeviceSession {
                   .serviceUnavailable, operation: "gofly_coredevice_location_clear")
     }
 
+    func copyProvisioningProfiles() throws -> [Data] {
+        var client: OpaquePointer?
+        defer { if let client { misagent_client_free(client) } }
+        try check(try ffi("misagent.connect") { misagent_connect_rsd(adapter, handshake, &client) },
+                  .serviceUnavailable, operation: "misagent_connect_rsd")
+        guard let client else { throw DeviceServiceFailure.serviceUnavailable }
+
+        var profilesPtr: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>?>?
+        var lensPtr: UnsafeMutablePointer<Int>?
+        var count: Int = 0
+        defer {
+            if let profilesPtr, let lensPtr, count > 0 {
+                misagent_free_profiles(profilesPtr, lensPtr, count)
+            }
+        }
+        try check(try ffi("misagent.copyAll") { misagent_copy_all(client, &profilesPtr, &lensPtr, &count) },
+                  .serviceUnavailable, operation: "misagent_copy_all")
+        guard let profilesPtr, let lensPtr, count > 0 else { return [] }
+
+        var result: [Data] = []
+        result.reserveCapacity(count)
+        for index in 0..<count {
+            guard let bytes = profilesPtr[index] else { continue }
+            let length = lensPtr[index]
+            guard length > 0, length <= 4 * 1_024 * 1_024 else { continue }
+            result.append(Data(bytes: bytes, count: length))
+        }
+        return result
+    }
+
+    /// Best-effort read of system-installed provisioning profiles over
+    /// LocalDevVPN (`misagent_copy_all`). Returns `nil` when LocalDevVPN or
+    /// pairing is unavailable, and always closes its ephemeral tunnel before
+    /// returning so it never interferes with an active location session.
+    static func fetchProvisioningProfiles(timeoutSeconds: UInt64 = 5) -> [Data]? {
+        guard PairingFileStore.isReady else { return nil }
+        guard (try? TunnelProbe.run()) != nil else { return nil }
+        let pairingURL = PairingFileStore.prepareURL()
+        guard FileManager.default.isReadableFile(atPath: pairingURL.path) else { return nil }
+        idevice_set_global_timeout(timeoutSeconds)
+        let deadline = DispatchTime.now().uptimeNanoseconds &+ timeoutSeconds * 1_000_000_000
+        guard let session = try? NativeDeviceSession(
+            pairingURL: pairingURL,
+            operationDeadlineNanoseconds: deadline
+        ) else {
+            return nil
+        }
+        defer { session.close() }
+        return try? session.copyProvisioningProfiles()
+    }
+
     private func mountMethod() throws -> SupportMountMethod {
         let components = try stringValue("ProductVersion").split(separator: ".")
         guard let major = components.first.flatMap({ Int($0) }),

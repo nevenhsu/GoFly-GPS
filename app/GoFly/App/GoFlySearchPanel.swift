@@ -297,16 +297,11 @@ struct GoFlySearchPanel: View {
                         .foregroundStyle(GoFlyTextColor.primary)
                         .frame(width: 20, height: 20)
                         .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(goFlyLocalizedFormat(goFlyString("search.goToCoordinate"),
-                                                  place.coordinate.shortDisplayText))
-                            .goFlyFont(GoFlyFont.bodyEmphasis)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(goFlyString("search.validCoordinate"))
-                            .goFlyFont(GoFlyFont.footnote)
-                            .foregroundStyle(GoFlyTextColor.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(goFlyLocalizedFormat(goFlyString("search.goToCoordinate"),
+                                              place.coordinate.shortDisplayText))
+                        .goFlyFont(GoFlyFont.bodyEmphasis)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)

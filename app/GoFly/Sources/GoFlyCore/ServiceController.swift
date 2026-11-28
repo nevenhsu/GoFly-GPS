@@ -16,7 +16,18 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
     private var connectionRecovery: MovementConnectionRecovery?
     private var failedConnectionRecovery: MovementConnectionRecovery?
     private var connectionRecoveryGate: PointDispatchGate?
-    @Published public private(set) var error: DeviceServiceFailure?
+    @Published public private(set) var error: DeviceServiceFailure? {
+        didSet {
+            if error?.requiresPairingImport == true {
+                pairingVerification = error
+                pairingVerified = false
+            }
+        }
+    }
+    @Published public private(set) var pairingVerification: DeviceServiceFailure?
+    @Published public private(set) var pairingVerified = false
+    @Published public private(set) var isCheckingStartupPairing = false
+    private var didCheckStartupPairing = false
     @Published public private(set) var clearState: ClearState = .unknown
     @Published public private(set) var clearConfirmedAt: Date?
     @Published public private(set) var realLocation: RealLocationObservation?
@@ -566,6 +577,43 @@ public final class ServiceController: ObservableObject, RouteCommanding, Joystic
             || (clearAttempted && clearState == .unknown)
         beginPreparation(.start)
         return true
+    }
+
+    /// Runs once for this runtime after the initial tunnel probe succeeds.
+    /// An explicit device command or a verified import owns newer results.
+    public func checkStartupPairing(
+        using verify: @Sendable () async -> Result<Void, DeviceServiceFailure>?
+    ) async {
+        guard !didCheckStartupPairing, !pairingVerified, error == nil,
+              movementConnection == .available, phase == .stopped, !nativeBusy else { return }
+        didCheckStartupPairing = true
+        isCheckingStartupPairing = true
+        let startedAtRevision = revision
+        defer { isCheckingStartupPairing = false }
+
+        guard let result = await verify(), !Task.isCancelled,
+              revision == startedAtRevision, phase == .stopped, !nativeBusy,
+              !pairingVerified, error == nil else { return }
+        switch result {
+        case .success:
+            pairingVerified = true
+        case .failure(let failure) where failure.requiresPairingImport:
+            error = failure
+        case .failure:
+            break
+        }
+    }
+
+    /// A verified replacement resolves pairing failures without dispatching a
+    /// location command or changing the status of an unconfirmed GPS position.
+    public func verifiedPairingImported() {
+        pairingVerification = nil
+        pairingVerified = true
+        if let operation = preparedOperation, case .failed(let failure) = operation.state,
+           failure.requiresPairingImport {
+            _ = cancelPreparation(id: operation.id)
+        }
+        if error?.requiresPairingImport == true { error = nil }
     }
 
     /// Warms up the device session in the background without affecting preparation UI or phase state,
@@ -1947,8 +1995,9 @@ extension ServiceController {
         }
     }
     private func failJoystickBeforeClaim(_ owner: JoystickOwner, failure: JoystickFailure) -> JoystickRecipeStepOutcome {
-        if case .device(let deviceFailure) = failure, requestConnectionRecovery(failure: deviceFailure) {
-            return .notSent(failure)
+        if case .device(let deviceFailure) = failure {
+            if requestConnectionRecovery(failure: deviceFailure) { return .notSent(failure) }
+            if deviceFailure.requiresPairingImport { error = deviceFailure }
         }
         owner.ended = true
         markSimulationPositionUnverified()

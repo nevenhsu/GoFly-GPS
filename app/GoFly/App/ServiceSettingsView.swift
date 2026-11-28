@@ -13,6 +13,7 @@ struct ServiceSettingsView: View {
     @ObservedObject private var network = GoFlyNetworkMonitor.shared
     @ObservedObject private var localNetwork = GoFlyLocalNetworkAuthorization.shared
     @State private var serviceNoticeDismissed = false
+    @State private var showingPairingImport = false
     /// The ✕ hides the continuation notice until a different notice appears.
     @State private var dismissedContinuationNotice: String?
 
@@ -36,6 +37,16 @@ struct ServiceSettingsView: View {
         .background(GoFlyStyle.canvas)
         .goFlyToastOverlay(topInset: 54) { topStatusToasts }
         .goFlyPushedFullScreen()
+        .navigationDestination(isPresented: $showingPairingImport) {
+            GoFlyPairingImportView(
+                context: .settings,
+                service: service,
+                onImported: {
+                    service.verifiedPairingImported()
+                    systemStatus.refresh()
+                }
+            )
+        }
         .onAppear {
             systemStatus.refresh()
             recovery.requestForegroundCheck()
@@ -51,7 +62,14 @@ struct ServiceSettingsView: View {
 
     @ViewBuilder
     private var topStatusToasts: some View {
-        if let failure = bannerFailure, !serviceNoticeDismissed, failure.isConnectionFailure,
+        if let failure = bannerFailure, !serviceNoticeDismissed, failure.requiresPairingImport {
+            GoFlyStatusBanner(
+                tone: .danger, title: goFlyIssueTitle(for: failure.rawValue), message: goFlyString(failure.rawValue),
+                actionTitle: goFlyString("issue.action.importPairing"), onAction: { showingPairingImport = true },
+                onDismiss: { serviceNoticeDismissed = true }, identifier: "service.error",
+                actionEnabled: !service.nativeBusy, isFloating: true
+            )
+        } else if let failure = bannerFailure, !serviceNoticeDismissed, failure.isConnectionFailure,
            let issue = ConnectionIssue.first(isWiFiConnected: network.isWiFiConnected, checkFailed: true,
                                              localNetworkDenied: localNetwork.authorization == .denied) {
             GoFlyConnectionIssueBanner(issue: issue, identifier: "service.error",
@@ -83,7 +101,7 @@ struct ServiceSettingsView: View {
         }
     }
 
-    /// Settings only surfaces real connection failures; a cancelled operation is never an error here.
+    /// A cancelled operation never raises a Settings notice.
     private var bannerFailure: DeviceServiceFailure? {
         let failure: DeviceServiceFailure?
         if case .failed(let preparedFailure)? = service.preparedOperation?.state {
@@ -93,6 +111,7 @@ struct ServiceSettingsView: View {
         } else {
             failure = nil
         }
+        if service.pairingVerified, failure?.requiresPairingImport == true { return nil }
         return failure == .operationCancelled ? nil : failure
     }
 
@@ -116,6 +135,18 @@ struct ServiceSettingsView: View {
                 settingsLink(title: "settings.vpn", value: goFlyString(recovery.connectionState.settingsStatusKey),
                              destination: { GoFlyVPNSettingsPage(recovery: recovery) })
                 settingsDivider
+                settingsLink(title: "settings.pairingFile", value: pairingFileSummary, identifier: "settings.pairingFile",
+                             destination: {
+                                 GoFlyPairingImportView(
+                                     context: .settings,
+                                     service: service,
+                                     onImported: {
+                                         service.verifiedPairingImported()
+                                         systemStatus.refresh()
+                                     }
+                                 )
+                             })
+                settingsDivider
                 settingsLink(title: "settings.backgroundTitle", value: backgroundSummary, identifier: "settings.background",
                              destination: { GoFlyBackgroundSettingsPage(continuation: continuation) })
             }
@@ -137,11 +168,18 @@ struct ServiceSettingsView: View {
     }
 
     private var networkNeedsAttention: Bool { !network.isWiFiConnected || localNetwork.authorization == .denied }
+    private var pairingFileNeedsAttention: Bool { service.pairingVerification == .pairingRejected }
     private var vpnNeedsAttention: Bool {
         switch recovery.connectionState {
         case .unavailable, .timedOut: true
         case .unknown, .checking, .reachable: false
         }
+    }
+    private var pairingFileSummary: String? {
+        if service.pairingVerification == .pairingRejected { return goFlyString("settings.pairingFile.invalid") }
+        if service.pairingVerification == .pairingRequired { return nil }
+        if service.pairingVerified || systemStatus.pairingReady == true { return goFlyString("settings.pairingFile.ready") }
+        return nil
     }
     private var networkSummary: String {
         if !network.isWiFiConnected { return goFlyString("settings.wifi.notConnected") }
@@ -208,6 +246,7 @@ struct ServiceSettingsView: View {
             } value: {
                 if let value {
                     if (titleKey == "settings.network" && networkNeedsAttention)
+                        || (titleKey == "settings.pairingFile" && pairingFileNeedsAttention)
                         || (titleKey == "settings.vpn" && vpnNeedsAttention) {
                         // The outlined toast glyph keeps its own colors and visible "!"; the template alert fills solid.
                         GoFlyIconLabel(title: value, icon: .toastWarning, iconSize: 22, spacing: 6)
@@ -238,6 +277,7 @@ struct ServiceSettingsView: View {
     private func settingsIconKind(for key: String) -> GoFlySettingsIconKind {
         switch key {
         case "settings.location": .location
+        case "settings.pairingFile": .pairingFile
         case "settings.background", "settings.backgroundTitle": .background
         case "settings.vpn": .vpn
         case "settings.network": .wifi
@@ -267,7 +307,7 @@ struct ServiceSettingsView: View {
     }
 
     private var statusPillTextKey: String {
-        if shouldReset { return "device.status.interrupted" }
+        if shouldReset { return "status.pill.disconnected" }
         if service.phase == .preparing { return "status.pill.connecting" }
         if movement.status == .started && service.phase != .ready { return "status.pill.stopped" }
         if GoFlyUITestOverrides.frame == "F1" { return "status.pill.started" }

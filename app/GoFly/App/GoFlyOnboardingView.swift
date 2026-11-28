@@ -151,18 +151,15 @@ struct GoFlyOnboardingView: View {
     @ViewBuilder private var locationStatus: some View {
         switch controller.locationAuthorization {
         case .notDetermined:
-            GoFlyStatusPill(text: goFlyLocalizedFormat(goFlyString("onboarding.location.statusFormat"),
-                                goFlyString("onboarding.location.status.notDetermined")),
+            GoFlyStatusPill(text: goFlyString("onboarding.location.status.notDetermined"),
                             tone: .neutral, identifier: "onboarding.location.status")
                 .padding(.top, 9)
         case .authorized:
-            GoFlyStatusPill(text: goFlyLocalizedFormat(goFlyString("onboarding.location.statusFormat"),
-                                goFlyString("onboarding.location.status.authorized")),
+            GoFlyStatusPill(text: goFlyString("onboarding.location.status.authorized"),
                             tone: .success, identifier: "onboarding.location.status")
                 .padding(.top, 9)
         case .denied:
-            GoFlyStatusPill(text: goFlyLocalizedFormat(goFlyString("onboarding.location.statusFormat"),
-                                goFlyString("onboarding.location.status.denied")),
+            GoFlyStatusPill(text: goFlyString("onboarding.location.status.denied"),
                             tone: .warning, identifier: "onboarding.location.status")
                 .padding(.top, 9)
         }
@@ -334,8 +331,7 @@ private struct GoFlyLocalNetworkOnboardingView: View {
                         .accessibilityIdentifier("onboarding.localNetwork")
                 }
                 .padding(.top, 4)
-                GoFlyStatusPill(text: goFlyLocalizedFormat(goFlyString("onboarding.location.statusFormat"),
-                                    goFlyString(statusKey)),
+                GoFlyStatusPill(text: goFlyString(statusKey),
                                 tone: tone, identifier: "onboarding.localNetwork.status")
                     .padding(.top, 9)
             }
@@ -440,11 +436,6 @@ private struct GoFlyVPNOnboardingView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 40)
                     .accessibilityIdentifier("onboarding.vpn.title")
-
-                Text(goFlyString("onboarding.vpn.stepsTitle"))
-                    .goFlyFont(GoFlyFont.footnoteEmphasis)
-                    .foregroundStyle(GoFlyTextColor.secondary)
-                    .padding(.bottom, 8)
 
                 VStack(spacing: 0) {
                     GoFlyVPNInstructionRow(number: 1, titleKey: "onboarding.vpn.step1",

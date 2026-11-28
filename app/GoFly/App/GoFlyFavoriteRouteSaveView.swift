@@ -37,13 +37,6 @@ struct GoFlySaveFavoriteRouteView: View {
                                 .accessibilityIdentifier("favoriteRoutes.save.working")
                         }
 
-                        if controller.draft.nodes.contains(where: { $0.value == .current }) {
-                            Text(goFlyString(currentLocationAvailable == true
-                                ? "favoriteRoutes.currentSnapshotHint" : "favoriteRoutes.currentOmittedHint"))
-                                .goFlyFont(GoFlyFont.footnote)
-                                .foregroundStyle(GoFlyTextColor.secondary)
-                        }
-
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 TextField(goFlyString("favoriteRoutes.label"), text: $label,

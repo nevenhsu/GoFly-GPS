@@ -273,7 +273,8 @@ func goFlyIssueTitle(for key: String) -> String { goFlyString(IssueCatalog.title
 @MainActor
 func goFlyIssueButton(for key: String, retry: (() -> Void)? = nil, fix: (() -> Void)? = nil,
                       settings: (() -> Void)? = nil,
-                      chooseFile: (() -> Void)? = nil) -> (title: String?, action: (() -> Void)?) {
+                      chooseFile: (() -> Void)? = nil,
+                      importPairing: (() -> Void)? = nil) -> (title: String?, action: (() -> Void)?) {
     guard let issue = IssueCatalog.info(for: key).action else { return (nil, nil) }
     let handler: (() -> Void)?
     switch issue {
@@ -281,6 +282,7 @@ func goFlyIssueButton(for key: String, retry: (() -> Void)? = nil, fix: (() -> V
     case .fix: handler = fix
     case .settings: handler = settings
     case .chooseFile: handler = chooseFile
+    case .importPairing: handler = importPairing
     }
     guard let handler else { return (nil, nil) }
     return (goFlyString(issue.localizationKey), handler)

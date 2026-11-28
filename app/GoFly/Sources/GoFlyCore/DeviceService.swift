@@ -25,6 +25,11 @@ public enum DeviceServiceFailure: String, Error, Sendable, Equatable {
         }
     }
 
+    public var requiresPairingImport: Bool {
+        self == .pairingRequired || self == .pairingRejected
+    }
+
+    case pairingRejected = "error.pairingRejected"
     case pairingRequired = "error.pairingRequired"
     case identityMismatch = "error.identityMismatch"
     case developerModeRequired = "error.developerModeRequired"

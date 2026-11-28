@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "setupSourceCommit": "734361bb9d03817ed8dd82cb27cf8b2b3792b458",
   "files": {
-    "app/GoFly/Setup/PairingFileStore.swift": "d1826f9de1edfbac0a4a77ead3e546708bd98b0d557e1e33a4955c2bd9c59713",
+    "app/GoFly/Setup/PairingFileStore.swift": "6b5c8a2960c0efcb5564527161b06e42cb0921c400c7a5019fe6980f21116fc8",
     "app/GoFly/Setup/LocalGoSetupProtocol.swift": "a1d35000c64ea376152d656866621c60601341d407663788426da11d0224853c",
     "app/GoFly/Setup/LocalGoSetupHandoff.swift": "caa0216ed1fcdc8cb125dfbe39d4bbe6b7e3aaa0e0d12ce5fbf21b84803568aa",
     "app/GoFly/Legal/AGPL-3.0.txt": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",

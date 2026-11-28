@@ -32,7 +32,7 @@ header = (bridge / "include/idevice.h").read_text()
 declarations = set(re.findall(
     r"\b([a-z][a-z0-9_]+)\s*\(", re.sub(r"//[^\n]*", "", header)
 ))
-if len(declarations) != 32 or "gofly_pairing_device_udid" not in declarations:
+if len(declarations) != 36 or "gofly_pairing_device_udid" not in declarations or "misagent_copy_all" not in declarations:
     fail(f"Swift shim declaration count changed: {len(declarations)}")
 
 project = (app / "GoFly.xcodeproj/project.pbxproj").read_text()
@@ -41,4 +41,4 @@ for excluded in ("JITEnableContext.swift", "IdeviceFFIBridge.swift",
     if excluded in project:
         fail("Forbidden prototype source in formal target: " + excluded)
 
-print("PASS: native patches applied and the 32-declaration Swift shim is present.")
+print("PASS: native patches applied and the 36-declaration Swift shim is present.")

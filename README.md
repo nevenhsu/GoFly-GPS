@@ -162,9 +162,10 @@ Fetch and save first, then check **Client Info** again after every fetch because
 
 ### 1. Create the Refresh All Apps shortcut manually (official steps)
 
-1. In the Shortcuts app, create a new shortcut.
-2. Tap **Search Actions** and search for **LiveContainer**.
-3. Add **Refresh All Apps**. If the action is missing, open SideStore from inside LiveContainer once and search again. [LiveContainer auto-refresh guide](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+1. Make sure you have already opened and signed in to the built-in SideStore inside LiveContainer (otherwise the **Refresh All Apps** action may not appear in Shortcuts).
+2. In the Shortcuts app, create a new shortcut.
+3. Tap **Search Actions**, search for **LiveContainer**, and add **Refresh All Apps**. If the action is still missing, open and sign in to built-in SideStore from inside LiveContainer, then search again. [LiveContainer auto-refresh guide](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+4. Tap the arrow on the **Refresh All Apps** action and turn off **Show When Run**.
 
 ### 2. Create the automation with a prompt
 

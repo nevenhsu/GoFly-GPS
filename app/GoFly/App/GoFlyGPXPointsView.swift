@@ -109,22 +109,14 @@ struct GoFlyGPXPointsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(title + " · " + goFlyLocalizedFormat(
-                            goFlyString("imports.pointsFormat"),
-                            document.pointCount.formatted(.number.locale(GoFlyPreferences.shared.locale))))
-                            .goFlyFont(GoFlyFont.footnote)
-                            .foregroundStyle(GoFlyTextColor.secondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(goFlyString("imports.points.readOnly"))
-                            .goFlyFont(GoFlyFont.footnote)
-                            .foregroundStyle(GoFlyTextColor.secondary)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .accessibilityIdentifier("imports.points.readOnly")
-                    }
+                    Text(title + " · " + goFlyLocalizedFormat(
+                        goFlyString("imports.pointsFormat"),
+                        document.pointCount.formatted(.number.locale(GoFlyPreferences.shared.locale))))
+                        .goFlyFont(GoFlyFont.footnote)
+                        .foregroundStyle(GoFlyTextColor.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     GoFlyGPXPointList(points: document.segments.flatMap { $0 }, onFocus: { coordinate in
                         dismiss()
                         onFocus(coordinate)

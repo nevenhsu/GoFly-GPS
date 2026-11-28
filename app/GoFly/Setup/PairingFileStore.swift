@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import GoFlyCore
 import GoFlyTransport
 import UniformTypeIdentifiers
 
@@ -31,6 +32,10 @@ enum PairingFileStore {
     private static let storageLock = NSRecursiveLock()
 
     enum PickerError: Error {
+        case invalidFormat
+        case fileUnreadable
+        case networkUnavailable
+        case pairingRejected
         case deviceVerificationFailed
     }
 
@@ -140,28 +145,90 @@ enum PairingFileStore {
     /// Initial and replacement imports share the same device binding check.
     /// Raw RPPairing exports have no device UDID, so read it from the local
     /// handset over a verify-only session before the file can become active.
-    static func importPickedPairing(_ sourceURL: URL, fileManager: FileManager = .default) async throws {
-        let data = try readPickedFile(sourceURL, fileManager: fileManager)
+    static func importPickedPairing(
+        _ sourceURL: URL,
+        requireDeviceVerification: Bool,
+        fileManager: FileManager = .default
+    ) async throws {
+        let data: Data
+        do { data = try readPickedFile(sourceURL, fileManager: fileManager) }
+        catch { throw PickerError.fileUnreadable }
+
         guard let dictionary = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] else {
-            throw StoreError.invalidPairingFile
+            throw PickerError.invalidFormat
         }
-        let udid: String
-        if let declaredUDID = dictionary["UDID"] {
-            guard let value = declaredUDID as? String else { throw StoreError.invalidPairingFile }
-            udid = value
+        let declaredUDID: String?
+        if let declaredValue = dictionary["UDID"] {
+            guard let value = declaredValue as? String, let normalized = try? normalizedTargetOrThrow(value) else {
+                throw PickerError.invalidFormat
+            }
+            declaredUDID = normalized
         } else {
             guard let identifier = dictionary["identifier"] as? String,
                   !identifier.isEmpty, identifier.utf8.count <= 256 else {
-                throw StoreError.invalidPairingFile
+                throw PickerError.invalidFormat
             }
-            udid = try await verifyDeviceForPairing(data, fileManager: fileManager)
+            declaredUDID = nil
         }
-        try importPairingData(
-            data, expectedDeviceUDID: udid, matchStoredBinding: true, fileManager: fileManager
-        )
+        let udid: String
+        if let declaredUDID, !requireDeviceVerification {
+            udid = declaredUDID
+        } else {
+            udid = try await verifyDeviceForPairing(data, fileManager: fileManager)
+            if let declaredUDID, declaredUDID != udid { throw PickerError.deviceVerificationFailed }
+        }
+        do {
+            try importPairingData(
+                data, expectedDeviceUDID: udid, matchStoredBinding: true, fileManager: fileManager
+            )
+        } catch StoreError.nativeValidationFailed {
+            throw PickerError.invalidFormat
+        } catch StoreError.invalidPairingFile {
+            throw PickerError.deviceVerificationFailed
+        }
     }
 
-    private static func verifyDeviceForPairing(_ data: Data, fileManager: FileManager) async throws -> String {
+    /// The tunnel was already probed. Validate a private snapshot of the active
+    /// record without repairing, importing or otherwise touching active files.
+    static func verifyStoredPairingForStartup() async -> Result<Void, DeviceServiceFailure>? {
+        #if canImport(idevice) && !targetEnvironment(simulator)
+        let fileManager = FileManager.default
+        let record: StoredRecord
+        do {
+            record = try storageLock.withLock { try readEnvelopeRecord() }
+        } catch StoreError.storedRecordUnavailable {
+            return .failure(.pairingRequired)
+        } catch {
+            return nil
+        }
+
+        let result: Result<Void, DeviceServiceFailure>
+        do {
+            let udid = try await verifyDeviceForPairing(record.pairingData, fileManager: fileManager, checkTunnel: false)
+            result = udid == record.expectedDeviceUDID ? .success(()) : .failure(.pairingRejected)
+        } catch PickerError.pairingRejected {
+            result = .failure(.pairingRejected)
+        } catch PickerError.invalidFormat {
+            result = .failure(.pairingRequired)
+        } catch {
+            return nil
+        }
+
+        return storageLock.withLock {
+            guard let current = try? readEnvelopeRecord(),
+                  current.digest == record.digest, current.expectedDeviceUDID == record.expectedDeviceUDID else { return nil }
+            return result
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    private static func verifyDeviceForPairing(
+        _ data: Data,
+        fileManager: FileManager,
+        checkTunnel: Bool = true
+    ) async throws -> String {
         #if canImport(idevice) && !targetEnvironment(simulator)
         // The candidate is a protected, app-private temporary file. Repairs
         // of the active store cannot touch it during permission or VPN checks.
@@ -171,16 +238,17 @@ enum PairingFileStore {
         try protectDirectory(at: directory, fileManager: fileManager)
         let candidate = directory.appendingPathComponent(fileName)
         try writeProtected(data, to: candidate, fileManager: fileManager)
-        try validateNativePairingFile(at: candidate)
-        do {
-            try await NetworkTunnelProbe().check()
-            return try await withCheckedThrowingContinuation { continuation in
-                DispatchQueue.global(qos: .userInitiated).async {
-                    continuation.resume(with: Result { try readPairingDeviceUDID(at: candidate) })
-                }
+        do { try validateNativePairingFile(at: candidate) }
+        catch StoreError.nativeValidationFailed { throw PickerError.invalidFormat }
+        if checkTunnel {
+            do { try await NetworkTunnelProbe().check() }
+            catch { throw PickerError.networkUnavailable }
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continuation.resume(with: Result { try readPairingDeviceUDID(at: candidate) })
             }
-        } catch {
-            throw PickerError.deviceVerificationFailed
         }
         #else
         throw StoreError.nativeValidationUnavailable
@@ -190,7 +258,9 @@ enum PairingFileStore {
     #if canImport(idevice) && !targetEnvironment(simulator)
     private static func readPairingDeviceUDID(at file: URL) throws -> String {
         try withNativePairingFile(at: file) { pairingFile in
-            var address = try localTunnelAddress()
+            var address: sockaddr_in
+            do { address = try localTunnelAddress() }
+            catch { throw PickerError.networkUnavailable }
             var value: plist_t?
             defer { plist_free(value) }
             let error = withUnsafePointer(to: &address) {
@@ -199,16 +269,25 @@ enum PairingFileStore {
                 }
             }
             if let error {
+                let code = error.pointee.code
+                let subcode = error.pointee.sub_code
+                let failure = NativeErrorMapping.failure(code: code, subcode: subcode, fallback: .serviceUnavailable)
                 idevice_error_free(error)
-                throw StoreError.nativeValidationFailed
+                Diagnostics.shared.record("pairing.verificationFailed", category: .device, level: .notice, [
+                    "code": .code(code), "subcode": .code(subcode)
+                ])
+                throw failure == .pairingRejected ? PickerError.pairingRejected : PickerError.deviceVerificationFailed
             }
             var count: UInt64 = 0
             guard let value, plist_get_node_type(value) == PLIST_STRING,
                   let bytes = plist_get_string_ptr(value, &count), count > 0, count <= 256,
                   let udid = String(bytes: UnsafeRawBufferPointer(start: bytes, count: Int(count)), encoding: .utf8) else {
-                throw StoreError.invalidTargetBinding
+                throw PickerError.deviceVerificationFailed
             }
-            return try normalizedTargetOrThrow(udid)
+            guard let normalized = try? normalizedTargetOrThrow(udid) else {
+                throw PickerError.deviceVerificationFailed
+            }
+            return normalized
         }
     }
     #endif
@@ -315,7 +394,7 @@ enum PairingFileStore {
 
         let normalizedTarget = try normalizedTargetOrThrow(expectedDeviceUDID)
         if matchStoredBinding, fileManager.fileExists(atPath: envelopeURL.path) {
-            let record = try readEnvelopeRecord(fileManager: fileManager)
+            let record = try readEnvelopeRecord()
             guard record.expectedDeviceUDID == normalizedTarget else { throw StoreError.invalidPairingFile }
         }
         try validatePropertyListDictionary(data)
@@ -438,7 +517,7 @@ enum PairingFileStore {
             return
         }
 
-        let record = try readEnvelopeRecord(fileManager: fileManager)
+        let record = try readEnvelopeRecord()
         if fileManager.fileExists(atPath: url.path),
            let rawData = try? Data(contentsOf: url, options: [.mappedIfSafe]),
            rawData == record.pairingData {
@@ -452,7 +531,7 @@ enum PairingFileStore {
         fileManager: FileManager,
         validateNative: Bool
     ) throws -> StoredRecord {
-        let record = try readEnvelopeRecord(fileManager: fileManager)
+        let record = try readEnvelopeRecord()
 
         guard fileManager.fileExists(atPath: url.path) else {
             throw StoreError.storedRecordUnavailable
@@ -477,21 +556,19 @@ enum PairingFileStore {
         return record
     }
 
-    private static func readEnvelopeRecord(fileManager: FileManager) throws -> StoredRecord {
-        guard fileManager.fileExists(atPath: envelopeURL.path) else {
-            throw StoreError.storedRecordUnavailable
-        }
-
+    private static func readEnvelopeRecord() throws -> StoredRecord {
         let envelopeData: Data
         do {
             envelopeData = try Data(contentsOf: envelopeURL, options: [.mappedIfSafe])
-        } catch {
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile || error.code == .fileNoSuchFile {
             throw StoreError.storedRecordUnavailable
+        } catch {
+            throw StoreError.storageUnavailable
         }
         guard envelopeData.count <= maximumEnvelopeBytes else {
             throw StoreError.pairingFileTooLarge
         }
-        try verifyProtectedFile(at: envelopeURL, fileManager: fileManager)
+        try verifyProtectedFile(at: envelopeURL, fileManager: FileManager.default)
 
         let object: Any
         do {

@@ -19,6 +19,7 @@ typedef struct ImageMounterHandle ImageMounterHandle;
 typedef struct Cryptex1AssetsHandle Cryptex1AssetsHandle;
 typedef struct RemoteServerHandle RemoteServerHandle;
 typedef struct LocationSimulationHandle LocationSimulationHandle;
+typedef struct MisagentClientHandle MisagentClientHandle;
 typedef struct IdeviceFfiError {
     int32_t code;
     int32_t sub_code;
@@ -73,6 +74,10 @@ void location_simulation_free(struct LocationSimulationHandle *handle);
 struct IdeviceFfiError *location_simulation_clear(struct LocationSimulationHandle *handle);
 struct IdeviceFfiError *location_simulation_set(struct LocationSimulationHandle *client, double latitude, double longitude);
 struct IdeviceFfiError *gofly_coredevice_location_clear(struct AdapterHandle *provider, struct RsdHandshakeHandle *handshake);
+struct IdeviceFfiError *misagent_connect_rsd(struct AdapterHandle *provider, struct RsdHandshakeHandle *handshake, struct MisagentClientHandle **client);
+struct IdeviceFfiError *misagent_copy_all(struct MisagentClientHandle *client, uint8_t ***out_profiles, size_t **out_profiles_len, size_t *out_count);
+void misagent_free_profiles(uint8_t **profiles, size_t *lens, size_t count);
+void misagent_client_free(struct MisagentClientHandle *handle);
 void plist_free(plist_t plist);
 plist_type plist_get_node_type(plist_t node);
 const char* plist_get_string_ptr(plist_t node, uint64_t* length);

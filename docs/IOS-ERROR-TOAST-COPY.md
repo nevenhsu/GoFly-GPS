@@ -1,6 +1,6 @@
 # GoFly iOS 錯誤 Toast 文案、按鈕與處理架構
 
-2026-10-25 基線；2026-10-30 依 Figma D8／票 11 更新路線規劃失敗文案與 action。對應 [IOS-STATUS-ERRORS.md](IOS-STATUS-ERRORS.md) 的 77 項。按鈕 `—` 表示不放主按鈕，只留關閉（×）。
+2026-10-25 基線；2026-10-30 依 Figma D8／票 11 更新路線規劃失敗文案與 action。對應 [IOS-STATUS-ERRORS.md](IOS-STATUS-ERRORS.md)。按鈕 `—` 表示不放主按鈕，只留關閉（×）。
 
 ## 1. Toast action
 
@@ -8,7 +8,8 @@
 | --- | --- | --- | --- |
 | **重試** | 重試 | Retry | 共用的「重設工作階段並重試」：重建 VPN 通道與裝置連線（既有 `ServiceController.resetTunnel`／`rebuildClientConnection`），成功後自動重跑剛才失敗的操作 |
 | **修正** | 修正 | Fix | 僅用於路線規劃失敗；在固定搜尋上限內重排全部地點（含起點）並重新規劃，成功採用新順序，失敗保留原順序 |
-| 設定 | 設定 | Settings | 只用於需要使用者親自在實機或 Mac App 處理的事（配對、開發者模式、儲存空間） |
+| 匯入 | 匯入 | Import | 缺少配對檔或 iPhone 拒絕配對驗證時，直接開啟 F9.a 的重新匯入介面。驗證並儲存後返回原畫面，由使用者重新發起定位操作。 |
+| 設定 | 設定 | Settings | 用於開發者模式、儲存空間及需在 Mac App 處理的裝置不符。 |
 | 選檔 | 選檔 | Choose | 開檔案選擇器；GPX 錯誤與保存檔損壞（需重新匯入）共用 |
 
 **連線類失敗（`error.tunnelUnavailable`、`error.serviceUnavailable`、`error.operationTimedOut`）不再有自己的 toast**：地圖、操作面板與服務設定頁一律只顯示連線檢查的那一張（Wi‑Fi／區域網路／VPN，依序判斷），同時間不再出現其他錯誤 toast；操作面板只保留「連線無法使用」標題與重試／取消。下表這三筆文案目前沒有畫面使用，保留供內部錯誤碼與日誌。未在真機驗證。
@@ -21,16 +22,17 @@
 
 ## 2. 文案表
 
-**所有 toast 同一格式：標題＋第二行＋按鈕（可無）**（2026-11-03）。標題用各節的類別標題，第二行就是下表文案，兩者都用短句；通用的「設定 › VPN 通道」修復指引不再當第二行。例外：`error.devicePreparationRequired` 標題「需要啟用裝置支援／Device support needs activation」；`wander.error.planningFailed` 標題「無法規劃路線」、第二行「請在地圖選點或重試。」；座標輸入錯誤（`search.coordinateFormat`、`search.latitudeRange`、`search.longitudeRange`）標題「座標無效／Invalid coordinates」。不在下表的 toast 各有 `<key>.title`：無法開啟系統設定、無法開啟 App Store、無法匯入配對檔、已儲存（最愛路線未含目前位置）、貼上搜尋（無效經緯度、找不到位置、搜尋失敗）。實作在 `IssueCatalog.titleKey(for:)`；尚未在真機驗證。範圍欄：**A**＝App 級（全域），**P**＝頁面／資料級，**M**＝模式級。
+**所有 toast 同一格式：標題＋第二行＋按鈕（可無）**（2026-11-03）。標題用各節的類別標題，第二行就是下表文案，兩者都用短句；通用的「設定 › VPN 通道」修復指引不再當第二行。例外：`error.pairingRejected` 標題「需要重新匯入配對檔／Re-import pairing file」；`error.devicePreparationRequired` 標題「需要啟用裝置支援／Device support needs activation」；`wander.error.planningFailed` 標題「無法規劃路線」、第二行「請在地圖選點或重試。」；座標輸入錯誤（`search.coordinateFormat`、`search.latitudeRange`、`search.longitudeRange`）標題「座標無效／Invalid coordinates」。不在下表的 toast 各有 `<key>.title`：無法開啟系統設定、無法開啟 App Store、無法匯入配對檔、已儲存（最愛路線未含目前位置）、貼上搜尋（無效經緯度、找不到位置、搜尋失敗）。實作在 `IssueCatalog.titleKey(for:)`；尚未在真機驗證。範圍欄：**A**＝App 級（全域），**P**＝頁面／資料級，**M**＝模式級。
 
 ### 連線與裝置服務（A，類別標題：裝置連線問題／Device connection issue）
 
 | 代碼 | 繁體中文 | English | 按鈕 zh／en |
 | --- | --- | --- | --- |
-| `error.pairingRequired` | 缺少配對資料。請連接 Mac App 完成裝置準備。 | Pairing data is missing. Connect to the Mac app to prepare. | 設定／Settings |
+| `error.pairingRequired` | 尚未匯入配對檔。 | No pairing file imported. | 匯入／Import |
+| `error.pairingRejected` | 無法驗證目前的配對檔。 | Couldn’t verify pairing file. | 匯入／Import |
 | `error.identityMismatch` | 配對資料屬於其他裝置。請在 Mac App 修復。 | Pairing is for another device. Repair it in the Mac app. | 設定／Settings |
 | `error.developerModeRequired` | 請開啟開發者模式，再連接 Mac App 完成準備。 | Turn on Developer Mode, then finish setup in the Mac app. | 設定／Settings |
-| `error.devicePreparationRequired` | 請用 USB 連接 Mac，打開 Mac App 重新安裝。（標題：需要啟用裝置支援） | Connect your iPhone to your Mac with USB and reinstall using your Mac app. (Title: Device support needs activation) | 重試／Retry |
+| `error.devicePreparationRequired` | 請用 USB 連接 Mac，透過 Mac App 重裝。（標題：需要啟用裝置支援） | Connect via USB and reinstall with the Mac app. (Title: Device support needs activation) | 重試／Retry |
 | `error.serviceUnavailable` | 無法連接裝置服務。請檢查 VPN 通道。 | Can't reach the device service. Check the VPN tunnel. | 重試／Retry |
 | `error.tunnelUnavailable` | 無法連接 VPN 通道。請重新連接 LocalDevVPN 後再試。 | Can't reach the VPN tunnel. Reconnect LocalDevVPN, then try again. | 重試／Retry |
 | `error.operationTimedOut` | 裝置未在時限內確認，請重試。 | The device didn't confirm in time. Try again. | 重試／Retry |
@@ -185,13 +187,13 @@ struct GoFlyIssue: Identifiable {
 | --- | --- | --- |
 | `support.modal.title.onboarding`／`.onboardingFailed` | 準備裝置支援／無法準備裝置支援 | Preparing device support／Couldn't prepare device support |
 | `support.modal.title.map`／`.mapFailed` | 啟用裝置支援／無法啟用裝置支援 | Activate device support／Couldn't activate device support |
-| `support.modal.message.onboarding` | 首次使用需下載裝置支援（約 16 MB），讓 GoFly 能在這支 iPhone 模擬定位。 | First use downloads device support (about 16 MB) so GoFly can simulate location on this iPhone. |
-| `support.modal.message.map` | iOS 更新後需要重新啟用裝置支援（約 16 MB）。完成後會自動重試剛才的動作。 | Device support needs to be reactivated after an iOS update (about 16 MB). Your last action retries when it finishes. |
+| `support.modal.message.onboarding` | 首次使用需下載裝置支援以模擬定位。 | First use downloads device support to simulate location. |
+| `support.modal.message.map` | iOS 更新後需重新啟用裝置支援，完成後將自動重試。 | Reactivate device support after an iOS update. Your action will retry. |
 | `support.step.download` | 下載裝置支援（唯一步驟列；下載後的啟用顯示在同列右側「啟用中…」，2026-11-11 移除獨立啟用列） | Download device support |
 | `support.step.*` 狀態 | 等待中、下載中…、啟用中…、完成、失敗；下載中顯示「8.2 / 16 MB」 | Waiting, Downloading…, Activating…, Done, Failed |
 | 按鈕 | 下載中…／啟用中…（停用）；失敗為「重試」 | Downloading…／Activating… (disabled); Retry on failure |
-| `support.download.error.network` | 無法連線到下載伺服器，請檢查網路後重試。 | Couldn't reach the download server. Check your internet connection and try again. |
+| `support.download.error.network` | 無法連線至伺服器，請檢查網路後重試。 | Couldn't reach server. Check your internet and retry. |
 | `support.download.error.invalid` | 下載的檔案不完整，請稍後再試。 | The downloaded files were incomplete. Try again later. |
-| `support.download.error.storage` | 儲存空間不足，請釋放空間後重試。 | Not enough storage to save device support. Free up space and try again. |
-| `support.activate.error.connection` | 無法連線到這支 iPhone，請確認 Wi‑Fi 與 LocalDevVPN 已連線後重試。 | Couldn't reach this iPhone. Make sure Wi‑Fi and LocalDevVPN are connected, then try again. |
+| `support.download.error.storage` | 儲存空間不足，請釋放空間後重試。 | Not enough storage. Free up space and retry. |
+| `support.activate.error.connection` | 無法連線至 iPhone，請確認 Wi‑Fi 與 LocalDevVPN 後重試。 | Couldn't reach iPhone. Check Wi‑Fi and LocalDevVPN, then retry. |
 | `support.activate.error.rejected` | iPhone 未能啟用裝置支援，請稍後重試。 | This iPhone didn't activate device support. Try again in a moment. |

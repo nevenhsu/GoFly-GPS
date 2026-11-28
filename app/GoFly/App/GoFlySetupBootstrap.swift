@@ -656,9 +656,10 @@ private struct GoFlySetupHeroPage: View {
 /// R07.s.a: a Mac-installed build opens onboarding with the same page in its
 /// imported state; the button is 「下一步」 and `onImported` continues.
 struct GoFlyPairingImportView: View {
-    enum Context { case onboarding, settings, macSetup }
+    enum Context { case onboarding, settings, mapRecovery, macSetup }
 
     var context: Context = .onboarding
+    var service: ServiceController?
     var onImported: () -> Void = {}
     @State private var showingImporter = false
     @State private var isImporting = false
@@ -666,11 +667,17 @@ struct GoFlyPairingImportView: View {
     @State private var hasPairing = PairingFileStore.isReady
     @Environment(\.dismiss) private var dismiss
 
+    private var isReimport: Bool { context == .settings || context == .mapRecovery }
+
     var body: some View {
-        if context == .settings {
+        if isReimport {
             VStack(spacing: 0) {
                 GoFlySheetNavBar(title: nil) {
-                    GoFlyNavBackButton(title: goFlyString("settings.device"), identifier: "setup.pairingImport.back")
+                    GoFlyNavBackButton(
+                        title: goFlyString(context == .mapRecovery ? "settings.backToMap" : "settings.title"),
+                        identifier: "setup.pairingImport.back"
+                    )
+                    .disabled(isImporting)
                 } trailing: {
                     EmptyView()
                 }
@@ -678,18 +685,33 @@ struct GoFlyPairingImportView: View {
                 page(topPadding: 92)
             }
             .background(GoFlyStyle.canvas.ignoresSafeArea())
-            .goFlyPushedFullScreen()
+            .goFlyPushedFullScreen(allowsBackSwipe: !isImporting)
+            .interactiveDismissDisabled(isImporting)
+            .onAppear { hasPairing = PairingFileStore.isReady }
         } else {
             page(topPadding: 136)
+                .onAppear { hasPairing = PairingFileStore.isReady }
+        }
+    }
+
+    private var pairingStatus: (key: String, tone: GoFlyStatusTone) {
+        switch service?.pairingVerification {
+        case .pairingRejected: return ("setup.pairingImport.pill.invalid", .danger)
+        case .pairingRequired: return ("setup.pairingImport.pill.missing", .neutral)
+        default:
+            if service?.pairingVerified == true || hasPairing {
+                return ("setup.pairingImport.pill.ready", .success)
+            }
+            return ("setup.pairingImport.pill.missing", .neutral)
         }
     }
 
     private func page(topPadding: CGFloat) -> some View {
         GoFlySetupHeroPage(icon: .phone, titleKey: "setup.pairingImport.title",
                            messageKey: context == .macSetup ? "setup.pairingImport.message.mac" : "setup.pairingImport.message",
-                           statusKey: hasPairing ? "setup.pairingImport.imported" : "setup.pairingImport.notImported",
+                           statusKey: pairingStatus.key,
                            statusIdentifier: "setup.pairingImport.status",
-                           statusTone: hasPairing ? .success : .neutral,
+                           statusTone: pairingStatus.tone,
                            topPadding: topPadding)
         .goFlyToastOverlay(topInset: 64) {
             if let importFailureMessage {
@@ -711,7 +733,8 @@ struct GoFlyPairingImportView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isImporting { ProgressView() }
-                    Text(goFlyString(context == .macSetup ? "onboarding.next" : "setup.pairingImport.action"))
+                    Text(goFlyString(isImporting ? "setup.pairingImport.verifying"
+                                       : context == .macSetup ? "onboarding.next" : "setup.pairingImport.action"))
                 }
             }
             .buttonStyle(GoFlyButtonStyle(variant: .primary))
@@ -726,22 +749,34 @@ struct GoFlyPairingImportView: View {
         }
         .fileImporter(isPresented: $showingImporter,
                       allowedContentTypes: PairingFileStore.supportedContentTypes) { result in
-            // Cancelling the picker keeps this page unchanged.
-            guard case .success(let url) = result else { return }
-            importPairing(from: url)
+            switch result {
+            case .success(let url): importPairing(from: url)
+            case .failure(let error):
+                let fileError = error as NSError
+                if fileError.domain != NSCocoaErrorDomain || fileError.code != NSUserCancelledError {
+                    importFailureMessage = "setup.pairingImport.fileUnreadable"
+                }
+            }
         }
         .accessibilityIdentifier("setup.pairingImport")
     }
 
     private func importPairing(from url: URL) {
         isImporting = true
+        let verifyDevice = isReimport
         Task {
             let failureMessage = await Task.detached(priority: .userInitiated) { () -> String? in
                 do {
-                    try await PairingFileStore.importPickedPairing(url)
+                    try await PairingFileStore.importPickedPairing(url, requireDeviceVerification: verifyDevice)
                     return nil
-                } catch PairingFileStore.PickerError.deviceVerificationFailed {
-                    return "setup.pairingImport.deviceVerificationFailed"
+                } catch let failure as PairingFileStore.PickerError {
+                    switch failure {
+                    case .invalidFormat: return "setup.pairingImport.invalidFormat"
+                    case .fileUnreadable: return "setup.pairingImport.fileUnreadable"
+                    case .networkUnavailable: return "setup.pairingImport.networkUnavailable"
+                    case .pairingRejected: return "setup.pairingImport.pairingRejected"
+                    case .deviceVerificationFailed: return "setup.pairingImport.deviceVerificationFailed"
+                    }
                 } catch {
                     return "setup.pairingImport.failed"
                 }
@@ -753,7 +788,7 @@ struct GoFlyPairingImportView: View {
             }
             hasPairing = true
             onImported()
-            if context == .settings { dismiss() }
+            if isReimport { dismiss() }
         }
     }
 }

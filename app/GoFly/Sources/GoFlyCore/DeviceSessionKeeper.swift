@@ -145,7 +145,7 @@ public final class DeviceSessionKeeper {
         switch failure {
         case .serviceUnavailable, .tunnelUnavailable, .operationTimedOut:
             return true
-        case .pairingRequired, .identityMismatch, .developerModeRequired,
+        case .pairingRequired, .pairingRejected, .identityMismatch, .developerModeRequired,
              .devicePreparationRequired, .deviceRequired, .storageUnavailable,
              .operationCancelled:
             return false

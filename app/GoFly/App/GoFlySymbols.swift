@@ -176,11 +176,12 @@ struct GoFlyCheckboxIcon: View {
 }
 
 enum GoFlySettingsIconKind {
-    case location, vpn, wifi, background, language, appearance, device, support
+    case location, pairingFile, vpn, wifi, background, language, appearance, device, support
 
     var asset: GoFlyIconAsset {
         switch self {
         case .location: .nav
+        case .pairingFile: .key
         case .vpn: .shield
         case .wifi: .wifi
         case .background: .terminal

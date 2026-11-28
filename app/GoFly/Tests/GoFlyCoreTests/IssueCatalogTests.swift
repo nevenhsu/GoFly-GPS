@@ -23,11 +23,15 @@ struct IssueCatalogTests {
     }
 
     @Test func setupErrorsOpenSettings() {
-        for key in ["error.pairingRequired", "error.identityMismatch", "error.developerModeRequired",
+        for key in ["error.identityMismatch", "error.developerModeRequired",
                     "error.storageUnavailable"] {
             #expect(IssueCatalog.info(for: key).action == .settings, "\(key)")
         }
         #expect(IssueCatalog.info(for: "error.deviceRequired").action == nil)
+        for key in ["error.pairingRequired", "error.pairingRejected"] {
+            #expect(IssueCatalog.info(for: key).action == .importPairing, "\(key)")
+        }
+        #expect(IssueCatalog.titleKey(for: "error.pairingRejected") == "error.pairingRejected.title")
     }
 
     @Test func storeReadWriteFailuresRetryAndCorruptionHasNoButton() {

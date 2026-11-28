@@ -162,9 +162,10 @@ GoFly 維護者在內建 SideStore 登入時先遇到 HTTP 403，接著遇到 HT
 
 ### 1. 先按照官方說明手動建立 Refresh All Apps 捷徑
 
-1. 在「捷徑」App 建立新捷徑。
-2. 點 **搜尋動作**，搜尋 **LiveContainer**。
-3. 加入 **Refresh All Apps**。若找不到這個動作，先從 LiveContainer 內開啟一次 SideStore 再搜尋。[LiveContainer 自動刷新說明](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+1. 請先從 LiveContainer 內開啟並登入內建的 SideStore（未登入前，捷徑中可能不會出現 **Refresh All Apps** 動作）。
+2. 在「捷徑」App 建立新捷徑。
+3. 點 **搜尋動作**，搜尋 **LiveContainer** 並加入 **Refresh All Apps**。若仍找不到這個動作，請確認已在 LiveContainer 內開啟並登入內建 SideStore 後再重新搜尋。[LiveContainer 自動刷新說明](https://livecontainer.github.io/docs/installation/lc_sidestore#auto-refresh-shortcut)
+4. 展開 **Refresh All Apps** 動作的選項，關閉 **Show When Run**（執行時顯示）。
 
 ### 2. 用 prompt 建立自動化
 

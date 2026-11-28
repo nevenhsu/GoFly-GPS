@@ -156,8 +156,8 @@ struct GoFlySupportProgressSection: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 36, maxHeight: 36, alignment: .top)
-                .padding(.top, 12)
+                .frame(maxWidth: .infinity, minHeight: 20, alignment: .center)
+                .padding(.top, 10)
                 .accessibilityHidden(errorText.isEmpty)
                 .accessibilityIdentifier(errorIdentifier)
         }
@@ -293,7 +293,7 @@ struct GoFlySupportStepRow: View {
             GoFlyIcon(.supportStepDone, size: 24).goFlyIconSize(size: 24, maximum: 24)
         case .failed:
             GoFlyIcon(.alert, size: 22).goFlyIconSize(size: 22, maximum: 22)
-                .foregroundStyle(GoFlyTextColor.danger)
+                .foregroundStyle(GoFlyThemeColor.iconDanger)
         }
     }
 
@@ -301,8 +301,8 @@ struct GoFlySupportStepRow: View {
     private func progressColor(_ tone: Progress.Tone) -> Color {
         switch tone {
         case .active: GoFlyStyle.primary
-        case .done: GoFlyTextColor.success
-        case .failed: GoFlyTextColor.danger
+        case .done: GoFlyThemeColor.iconSuccess
+        case .failed: GoFlyThemeColor.iconDanger
         }
     }
 }

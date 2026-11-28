@@ -24,6 +24,29 @@ struct SessionRefreshTests {
         #expect(SessionStatusErrors(connection: .reachable).isEmpty)
     }
 
+    @Test func startupPairingRejectionSurfacesBeforeAnyDeviceCommand() async {
+        let device = RefreshDevice(), service = ServiceController(service: device)
+        await service.checkStartupPairing { .failure(.pairingRejected) }
+        #expect(service.error == nil)
+
+        service.setMovementConnectionAvailable(true)
+        await service.checkStartupPairing { .failure(.pairingRejected) }
+        #expect(service.error == .pairingRejected)
+        #expect(service.pairingVerification == .pairingRejected)
+        #expect(service.phase == .stopped)
+        #expect(await device.operations.isEmpty)
+    }
+
+    @Test func inconclusiveStartupVerificationDoesNotRequestReimportOrRepeat() async {
+        let service = ServiceController(service: RefreshDevice())
+        service.setMovementConnectionAvailable(true)
+        await service.checkStartupPairing { nil }
+        await service.checkStartupPairing { .failure(.pairingRejected) }
+        #expect(service.error == nil)
+        #expect(!service.pairingVerified)
+        #expect(!service.isCheckingStartupPairing)
+    }
+
     /// A teleport hold's resume, like every resume, drops the session iOS may
     /// have closed while the app was suspended before it writes; a plain
     /// teleport keeps reusing it.

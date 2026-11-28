@@ -44,6 +44,7 @@
 
 - 正常探測、送點 pending 與使用者取消不新增狀態或造成 pill 閃動。錯誤來源詳見 [IOS-STATUS-ERRORS.md](IOS-STATUS-ERRORS.md)。關閉 Toast 不清除仍存在的底層錯誤。
 - 自動探測間隔為上輪完成後 5 秒；啟動、回前景及手動檢查可立即排程，探測不重疊。已知故障不等待下次輪詢才處理。
+- 每次冷啟動進入地圖後，首次探測 VPN 可用時自動唯讀驗證當前配對與 iPhone 身分一次，期間共用「連接中」pill。有效時設定「配對檔」列維持「就緒／Ready」、內頁 pill 顯示「已就緒／Ready」（綠）；配對遭拒時在按 Go 前顯示既有「需要重新匯入配對檔」Toast，設定「配對檔」列同步顯示警示圖示＋「失效／Invalid」、內頁 pill 顯示「已失效／Invalid」（紅）。只在 VPN／身分查詢未完成時保留未驗證狀態。回前景沿用既有 VPN 檢查，配對驗證維持每次冷啟動一次。啟動驗證不掛載裝置支援、不送出定位，也不覆寫配對資料。
 - 執行中斷線的修復維持紅色錯誤與未確認箭頭；原任務未被暫停／停止且執行資格有效時，重建通道／session，取得新 ACK 後接續原進度。probe 成功不能冒充定位成功；冷啟動歷史不能自行恢復任務，已釋放的搖桿手勢不能重播。
 - 暫停／停止優先於自動恢復。正常模式切換以先暫停路線／漫步為前提，切回仍待使用者明確繼續。
 - 短暫 heartbeat 忙碌不讓操作按鈕閃爍；不可用持續超過 1 秒才呈現停用，實際操作仍由核心准入判斷。
@@ -92,12 +93,12 @@
 - LiveContainer 內從 Apps 清單啟動 GoFly，權限探測使用宿主可用的 Bonjour 類型，只認本次 GoFly 探測發布的服務。實機驗收需覆蓋已允許、拒絕後設定放行、無關 Bonjour 服務、配對匯入、VPN 檢查及 DDI 就緒。前景引導相容性修正已打包於 1.0.12 build 3，實機與容器內背景運行仍待驗證。
 - 配對檔與裝置支援（DDI）是兩個獨立前提：R07.s 只提供配對檔；側載版的 DDI 由 DDI modal 下載（`Documents/DDI`，來源為社群 DeveloperDiskImage 鏡像 `raw.githubusercontent.com/doronz88/DeveloperDiskImage`，與 Mac 端 pymobiledevice3 相同）。掛載時由原生層向 Apple TSS 為本機個人化簽署，因此同一份檔案在 iOS 更新後仍可重新掛載；鏡像的 BuildManifest 變更時才重新下載。SideStore 本身不會掛載 DDI（2026-11-11 實機確認）。
 - DDI 下載進度以 URLSession 回報的實際接收位元組更新，已顯示的接收位元組不得倒退。驗收需在一般安裝與 LiveContainer 內，以可控制速度的傳輸確認大型映像檔完成前會更新多次；下載完成後才進入啟用。此進度修正已收錄於 1.0.12 build 5，尚待實機驗收。
-- R07.s 與 F9.a 支援 idevice_pair 的 Remote Pairing 匯出，可選取 `.plist` 或 `.pairfile`。驗收時，含 UDID 的既有格式可離線匯入；未含 UDID 的有效 RPPairing 檔需允許區域網路並連上 LocalDevVPN，GoFly 透過既有配對驗證通道讀回本機 UDID 後才儲存。Lockdown-only、無效檔案、驗證失敗及裝置不符皆不得覆寫配對資料。連線驗證失敗沿用共用錯誤 Toast 並提示重試。每次裝置操作仍經 `VerifiedDeviceSession` 讀回手機 UDID 比對。此格式相容性已打包於 1.0.12 build 2，尚待實機驗收。
+- R07.s 與 F9.a 支援 idevice_pair 的 Remote Pairing 匯出，可選取 `.plist` 或 `.pairfile`。R07.s 仍可離線匯入附有效 UDID 的既有格式。未附 UDID 的匯入，以及 F9.a 所有重新匯入，都需允許區域網路並連上 LocalDevVPN，由配對驗證通道讀回本機 UDID；檔案若附 UDID，須與讀回的值相符。Lockdown-only、無效檔案、驗證失敗及裝置不符皆不得覆寫現用配對檔。每次裝置操作仍經 `VerifiedDeviceSession` 比對手機身分。
 - 原紀錄：2026-11-02 側載版曾在 iPhone 15 Pro 驗證配對匯入、瞬移與路線背景移動，使用者回報重開機後可定位；不代表後續版面修訂或漫步背景穩定性已全面驗收。現行開發狀態見 [App README](../app/GoFly/README.md)，正式實機安裝流程見 [AI-INSTALL.md](AI-INSTALL.md)。
 
 ## B · 地圖、搜尋與地點卡
 
-- 一般地圖頂部為兩張獨立浮動卡：搜尋輸入 301 × 50 pt、設定外框 50 × 50 pt、間距 10 pt，總參考寬 361 pt；Dark 輸入內層高 48 pt、Settings 內層 48 × 48 pt。下方左側放狀態 pill、右側常駐顯示 `44 × 44` 半透明圓形浮動指北針按鈕（毛玻璃＋半透明底色、右緣 16 pt 對齊，紅／灰指針隨地圖鏡頭即時旋轉指示正北，點擊僅將地圖鏡頭重置朝北、不移動位置與縮放；2026-11-28 使用者確認，Figma `B1` `411:17991` 已更新，其餘地圖頁待同步，App 已實作、待實機驗收），頂部不放啟停。
+- 一般地圖頂部為兩張獨立浮動卡：搜尋輸入 301 × 50 pt、設定外框 50 × 50 pt、間距 10 pt，總參考寬 361 pt；Dark 輸入內層高 48 pt、Settings 內層 48 × 48 pt。下方左側放狀態 pill、右側常駐顯示 `44 × 44` 半透明圓形浮動指北針按鈕（無毛玻璃、`cardSurface` 50% 半透明底色直接透出地圖、右緣 16 pt 對齊，實色紅／灰指針隨地圖鏡頭即時旋轉指示正北，點擊僅將地圖鏡頭重置朝北、不移動位置與縮放；2026-11-28 使用者確認，Figma `B1` `411:17991` 已更新，其餘地圖頁待同步，App 已實作、待實機驗收），頂部不放啟停。
 - 底部瞬移／路線／搖桿三個等寬 tab；選中加深線框及文字，不使用 filled selection。最愛由內容入口開啟。執行模式與全螢幕頁隱藏一般搜尋列與 tabs；E5 恢復態保留 tabs。
 - B1 預設收合，顯示目前位置摘要、收藏與複製；B2 半開加分隔線與前兩筆最愛、「查看全部」，不放最近搜尋。面板依內容自適應，標準收合最小 120 pt、半開最多約 305 pt；不以新增 ScrollView 干擾拖曳。
 - 標題依有效最愛標籤 → 地名（景點／店家）→ 馬路名／精簡地址 → 地區名 → 簡化 4 位小數經緯度取值（與最愛地點預設名稱共用規則，支援各國地址格式；空白標籤視為無標籤）。搜尋結果座標顯示 5 位小數。
@@ -171,7 +172,7 @@
 - D11 已匯入路線為全螢幕清單，導覽列左上角統一使用 `GoFlyNavBackButton` 顯示 `< 路線`／`< Route`（`body` 17 pt、`GoFlyTextColor.accent`、返回語意），不再依動作選單或錯誤狀態切換為「關閉／Dismiss」；其餘全螢幕推入分頁（收藏路線、收藏地點、路線點位列表、GPX 點位頁、VPN 說明頁）一併統一改用 `GoFlyNavBackButton`（路線點位列表同步顯示 `< 路線`／`< Route`），導覽列右側文字動作（選取／全選／清除）統一為 `subheadlineEmphasis`＋`44×44` 靠右熱區，頂部 Toast 統一使用 `.goFlyToastOverlay(topInset: 54)`；表單 sheet（儲存路線、編輯收藏路線、背景執行時間）頂部列統一使用 `GoFlySheetNavBar(title: nil)` 比照收藏地點編輯 sheet（`subheadlineEmphasis`、`primary`/`danger`、44×44 熱區，背景執行時間移除右上重複「完成」僅保留底部「完成設定」）（2026-11-28 使用者指定，App 已實作，未實機驗收；Figma 04 尚未同步更新）。底部列比照 R07.s 使用 `.goFlyBottomActionPadding()` 與 `ignoresSafeArea(edges: .bottom)`：分隔線、置中小字「LiveContainer 請開啟「Fix File Picker」」、主要按鈕「匯入」；LiveContainer 安裝時若未開啟該選項，系統選檔可能無法把檔案交給 GoFly（2026-11-26 使用者指定，App 已實作並於模擬器截圖確認，未實機驗收；Figma D11／R07.s／F9.a 尚未加入小字）。驗收時，成功匯入的路線應出現在清單頂端並被選取，不顯示成功 Toast。點列開 D12 底部動作卡：載入、查看全部點位、匯出、刪除、取消，背後匯入 CTA 隱藏並停用，不用左滑動作。
 - ActionSheet 元件（D12／E6 共用）2026-11-26 Figma 重新設計（Figma Light／Dark D12 與 E6 已完成，App 已實作，待實機驗收）：實機回報標題與選項難以區分。新版：卡片與獨立「取消」皆採 16 pt 圓角、同底色（`color/surface/control/floating`：Light `color/surface/card`、Dark `color/surface/control` 100% 不透明）、0.5 pt `lineSeparator` 內描邊與柔和陰影，兩者間距 8 pt，卡片底部無多餘內距。標題區靠左（左右 20 pt、上 14／下 12 pt；無說明時上 13／下 12 pt）：有說明時標題 `subheadlineEmphasis` 15 pt 主文字色＋說明 `footnote` 13 pt 次要文字色（間距 2 pt）；無說明時標題採 `footnoteEmphasis` 13 pt 次要文字色以區隔選項；標題下方整寬 0.5 pt `lineSeparator` 分隔線。選項列 52 pt 高、靠左（左右 20 pt），20 pt 圖示（`icon/secondary`）＋14 pt 間距＋`body` 17 pt 主文字色，列間 0.5 pt 分隔線左內縮 54 pt、右內縮 20 pt；破壞性選項圖示與文字皆用 `text/danger` 色。獨立「取消」按鈕 52 pt 高、`bodyEmphasis` 17 pt 主文字色置中。圖示：載入為線框 play、查看全部點位 `icon/route-list`、匯出 `icon/external-link`、刪除 `icon/trash`、瞬移 `icon/pin`、指定地點 `icon/flag`。驗收：標題不置中、不使用選項字級，選項皆有同筆畫風格前置圖示，標題與選項間有可見分隔線，卡片與取消按鈕圓角／材質一致，Light／Dark 皆無透字或穿幫藍邊。
 - 匯入使用原生檔案選擇器，GPX／XML 上限 2 MiB；成功置頂、D17 Snackbar 帶關閉（無載入 action）、距匯入按鈕 16 pt；失敗 D18 頂部浮動錯誤、原清單不變。匯出分享原始檔案，刪除可復原。
-- D13 唯讀可捲動點位頁，「唯讀」放資訊列而非導覽列。D15 載入後不可編輯，不顯示拖曳／刪點／新增／反轉；≤10 點全列出，更多時顯示起點、第 2 點、中間 N 點、終點與查看全部入口，另保留清空路線。
+- D13 唯讀可捲動點位頁，資訊列僅顯示檔名與點數（不額外顯示「唯讀」小字）。D15 載入後不可編輯，不顯示拖曳／刪點／新增／反轉；≤10 點全列出，更多時顯示起點、第 2 點、中間 N 點、終點與查看全部入口，另保留清空路線。
 - GPX 按原始點順序連線，不查道路；只標起終點，中間點用約 7 pt 白底／路線色外環圓點，密集時略過，不加 ①②。取消與開始皆為 Large 56 pt，取消寬 120 pt、開始填剩餘寬。
 
 ## E · 搖桿與自動漫步
@@ -206,7 +207,7 @@
 
 | 頁面 | 規格 |
 | --- | --- |
-| F1 首頁 | 置中導覽標題，不再放大字設定。權限與連線依序為定位權限、網路、VPN 通道、背景；偏好為語言、外觀；裝置獨立分組。選單使用藍底白圖示徽章，背景圖示為 terminal |
+| F1 首頁 | 置中導覽標題，不再放大字設定。權限與連線依序為定位權限、網路、配對檔、VPN 通道、背景；偏好為語言、外觀；裝置獨立分組。選單使用藍底白圖示徽章，配對檔圖示為 key、背景圖示為 terminal。配對檔列右側摘要：就緒／Ready（灰字，合併已匯入與已驗證）、配對遭拒時顯示 22 pt 警示圖示＋warning 色「失效／Invalid」、尚未匯入時留空只顯示右側箭頭（2026-11-28 使用者指定，App 已實作、待實機驗收；Figma 04 尚未同步） |
 | 服務卡 | 永遠只有一顆主按鈕：停止時「啟動模擬」、運行中「停止服務」、停止失敗／卡住時「重置連線」。F1.b 的 App 驗收條件為重置成功後按鈕回到「啟動模擬」，不顯示成功 Toast。停止失敗 danger Toast 在頂部。「停止服務」若有 fly origin（第一次模擬前的現時或系統快取真實定位），先瞬移回 origin 約 1.5 秒再清除模擬定位，接著請求真實 GPS；手機確認設到 origin 時 GoFly 地圖箭頭與鏡頭立即移到 origin，清除後等待第一筆真實 GPS 變實心藍色箭頭，但鏡頭不自動移動，只有使用者按 Recenter（回到位置）才移到藍色箭頭（2026-11-23）；無定位授權或無可用定位時直接清除。驗收：授權定位後模擬、按停止，其他 App 先看到 origin 再回真實 GPS；箭頭變藍時鏡頭停在原處，按 Recenter 才移過去；App 重開後停止同樣先回 origin。已實作，待實機驗證。Figma 04 畫面待同步核對 |
 | F4 定位權限 | 顯示實際授權狀態與目前 App 身分的 iOS 設定入口，只要求使用期間 |
 | F10 網路 | Wi‑Fi 只顯示已連線／未連線、不可點；區域網路顯示已允許／未允許／尚未決定，可開目前 App 身分的 iOS 設定頁。不主動觸發新授權，只重讀已作答結果 |
@@ -216,8 +217,12 @@
 | F6.a 時間 sheet | 無中央標題、說明、快速選擇或目前設定卡；雙滾輪與冒號、固定在選取列旁的單位（中：小時／分鐘，英：hr／min）、單一輸入背景、完成設定。可連續拖曳，左右等寬，取消還原開啟值 |
 | F7 語言 | 只列跟隨系統、English、繁體中文、简体中文，無清單上方說明 |
 | F8 外觀 | 只列跟隨系統、淺色、深色，與語言分頁分開 |
-| F9 / F9.a 裝置與簽名 | 保留真實狀態，不顯示「到期前請在 Mac App…」小字。狀態群組下方另有一組「重新匯入配對檔」列（chevron）與小字「匯入新的配對檔會取代這支 iPhone 目前的配對資料。」；側載版與 Mac 安裝版都顯示。點入 F9.a：推入 R07.s 同版頁，左上返回「裝置與簽名」，pill 顯示目前狀態（已匯入 success／尚未匯入 neutral），底部「匯入配對檔」。從配對檔或 LocalDevVPN 驗證取得的 UDID 須與目前綁定的 iPhone 相同，尚無綁定時以取得的 UDID 建立綁定。取消選檔留在原頁；驗證失敗不寫入、顯示共用錯誤 Toast；成功以原子方式取代配對資料後返回 F9。Mac 安裝版之後再用 Mac App 更新（renew）時，會改回 Mac 提供的配對（2026-11-11 實作，未實機驗收；已啟動的裝置連線是否需重啟服務才改用新配對尚未驗證） |
-| F1 / F11 / F11.a–F11.d 裝置支援 | 2026-11-11 Figma 改版並實作，未實機驗收。設定首頁「裝置」群組在「裝置與簽名」下方的「裝置支援」列（`icon/cloud-download`），側載版與 Mac 安裝版都顯示。Mac 安裝版掛載時，若設定頁下載的檔案（`Documents/DDI`）完整且比 Mac 提供的正式檔案新，或正式檔案不符目前 iOS 的掛載方式，改用下載的檔案；否則沿用正式檔案。狀態「已就緒」代表兩者之一可用。地圖的裝置支援錯誤在 Mac 安裝版仍顯示 USB toast。F11 狀態列：已就緒／需要更新（warning）／下載中／啟用中；下方卡片與 DDI modal 同版式：72 pt 雲朵 Hero、「重新下載裝置支援」、說明「iOS 更新後若無法模擬定位，可重新下載並啟用裝置支援（約 16 MB）。」、primary「重新下載」。任何狀態都可重新下載：一律重新下載整組檔案（不比對 BuildManifest），新檔發布前保留舊檔，完成後啟用。不開 modal 或 sheet：進行中（F11.a）卡片內直接展開與 DDI modal 共用的步驟區（單列「下載裝置支援」含啟用、進度條、固定 2 行錯誤欄，`GoFlySupportProgressSection`），按鈕停用顯示「下載中…／啟用中…」；失敗（F11.b）標示失敗步驟與原因，按鈕「重試」；成功後（F11.d，Figma `395:17682`）卡片改為 DDI.4 已就緒樣式：「裝置支援已就緒」、說明「已重新下載並啟用這支 iPhone 的裝置支援。」、步驟列「完成」綠色、按鈕「完成」；按「完成」或離開此頁後卡片收回為「重新下載裝置支援」、狀態「已就緒」（F11.c）。卡片說明固定保留 2 行高度，展開態（F11.a／b／d）高度一致；卡片內距上 24、左右 16、按鈕至卡片下緣 24 pt。地圖遇到裝置支援錯誤改開 DDI modal（DDI.5／DDI.6），舊 F11.b 專用 toast 已自 Figma 移除。Dark 版尚未繪製 |
+| F9 / F9.a / F9.b 裝置與簽名／配對檔／診斷記錄 | F9 標題維持「裝置與簽名／Device and signing」，第一組卡片依序保留 GoFly 版本、簽名到期日、剩餘天數與簽名團隊，移除配對狀態、裝置服務、系統資訊、「重新匯入配對檔」入口，亦不顯示「到期前請在 Mac App…」小字（2026-11-28 使用者指定，配對檔獨立至 F1「權限與連線」的 VPN 通道下方；Figma 04 F9／Dark F9 已同步）。第二組卡片新增「診斷記錄／Diagnostics」列，右側顯示本機診斷檔容量（0 bytes 顯示 `0 MB`，有內容顯示至小數點後兩位如 `0.42 MB`）與向右箭頭；點擊開啟共用 `GoFlyActionSheet`（F9.b／Dark F9.b，標題「診斷記錄」、副標「`不含配對與裝置識別碼`」／「`No pairing or device IDs`」），提供「分享記錄／Share logs」（`icon/external-link`，呼叫系統 Share Sheet 分享匯出的 `.jsonl` 檔）與 destructive 紅色「清除記錄／Clear logs」（`icon/trash`，清空本機 `gofly.jsonl` 並即時更新為 `0 MB`、顯示「已清除診斷記錄」Snackbar），容量為 `0 MB` 時兩項停用（2026-11-28 Figma 04 Light／Dark 與 iOS App 皆已實作，待實機驗收）。簽名到期日、剩餘天數與簽名團隊優先讀取 Mac 正式安裝收據，側載安裝無收據時自動 fallback 解析 `embedded.mobileprovision`（依序嘗試 `Bundle.main`、LiveContainer 宿主 bundle `+[NSUserDefaults lcMainBundle]`、已載入 dyld 映像所屬 `/containers/Bundle/Application/<UUID>/*.app`，最後 fallback `_NSGetExecutablePath`）；在 LiveContainer 內建 SideStore 環境下會唯讀查詢 App Group 的 `Database/AltStore.sqlite`（`ZINSTALLEDAPP.ZEXPIRATIONDATE`），且在開啟 F9 且 LocalDevVPN 連線時會透過 `misagent`（`misagent_copy_all`）背景查詢系統已安裝的對應描述檔，三者取最新到期日以涵蓋獨立版 SideStore 與 LiveContainer 內建 SideStore 的 profile-only refresh；Mac 正式安裝則維持以安裝收據為準。設定「配對檔」列與設定頁配對 Toast 的「匯入／Import」推入 F9.a，返回「設定／Settings」；地圖配對 Toast 的「匯入／Import」直接以 sheet 開啟同一內容，返回「地圖／Map」。底部維持「匯入配對檔」主按鈕。 |
+
+- 配對修復驗收（2026-11-28）。缺檔時地圖提示「尚未匯入配對檔。」，設定首頁「配對檔」列留空，F9.a pill 顯示「未匯入／Missing」（灰）。現用檔案遭 iPhone 拒絕驗證（原生 103/5）時，Toast 標題為「需要重新匯入配對檔」，內文為「無法驗證目前的配對檔。」，設定首頁「配對檔」列顯示警示圖示＋「失效／Invalid」，F9.a pill 顯示「已失效／Invalid」（紅）。兩種 Toast 都用「匯入／Import」。
+- 選檔後顯示「正在驗證…」。格式、讀檔、區域網路／VPN、配對拒絕及其他驗證失敗各有提示，失敗停留在匯入頁。驗證並儲存後清除該次配對錯誤並返回原畫面，設定首頁「配對檔」列顯示「就緒／Ready」、F9.a pill 顯示「已就緒／Ready」（綠），由使用者再發起 Go；位置若仍未確認，保留其恢復提示。本機已有配對檔且未遭拒時（含冷啟動驗證前與驗證成功後）統一顯示「就緒／Ready」（列）與「已就緒／Ready」（內頁 pill）。
+- App 已實作，尚待實機驗收。Figma 04 的 B7 與 F9.a 提供共用 Toast 與匯入頁版型，尚無設定首頁「配對檔」列、配對拒絕 Toast、修復狀態或由地圖呈現 F9.a 的變體。
+| F1 / F11 / F11.a–F11.d 裝置支援 | 2026-11-11 Figma 改版並實作，未實機驗收。設定首頁「裝置」群組在「裝置與簽名」下方的「裝置支援」列（`icon/cloud-download`），側載版與 Mac 安裝版都顯示。Mac 安裝版掛載時，若設定頁下載的檔案（`Documents/DDI`）完整且比 Mac 提供的正式檔案新，或正式檔案不符目前 iOS 的掛載方式，改用下載的檔案；否則沿用正式檔案。狀態「已就緒」代表兩者之一可用。地圖的裝置支援錯誤在 Mac 安裝版仍顯示 USB toast。F11 狀態列：已就緒／需要更新（warning）／下載中／啟用中；下方卡片與 DDI modal 同版式：72 pt 雲朵 Hero、「重新下載裝置支援」、說明「iOS 更新後無法定位時，請重新下載。」（英：`Redownload if location fails after an iOS update.`）、primary「重新下載」。任何狀態都可重新下載：一律重新下載整組檔案（不比對 BuildManifest），新檔發布前保留舊檔，完成後啟用。不開 modal 或 sheet：進行中（F11.a）卡片內直接展開與 DDI modal 共用的步驟區（單列「下載裝置支援」含啟用、進度條、固定 1 行 20 pt 錯誤保留欄（上距 10 pt、下距按鈕 14 pt，`GoFlySupportProgressSection`，切換狀態不跳動）），按鈕停用顯示「下載中…／啟用中…」；失敗（F11.b）標示失敗步驟與原因，按鈕「重試」；成功後（F11.d，Figma `395:17682`）卡片改為 DDI.4 已就緒樣式：「裝置支援已就緒」、說明「已重新下載並啟用這支 iPhone 的裝置支援。」、步驟列「完成」綠色、按鈕「完成」；按「完成」或離開此頁後卡片收回為「重新下載裝置支援」、狀態「已就緒」（F11.c）。卡片說明依實際行數自適應（最多 2 行，不強制預留空白行），展開態（F11.a／b／d）高度一致；卡片內距上 24、左右 16、按鈕至卡片下緣 24 pt。地圖遇到裝置支援錯誤改開 DDI modal（DDI.5／DDI.6），舊 F11.b 專用 toast 已自 Figma 移除。Dark 版尚未繪製 |
 
 定位、區域網路及「背景 App 重新整理」列共用 iOS 的 App 設定入口。SideStore 的 My Apps 安裝成獨立 App 時，以 GoFly 名義管理權限；從 LiveContainer 的 Apps 啟動時，以執行 GoFly 的容器名義管理。回到 GoFly 後重新讀取授權狀態。VPN 列開啟 LocalDevVPN，Wi-Fi 列維持唯讀。iOS 公開 API 只能要求開 App 設定頁，無法保證直接選取個別權限。兩條路線的實際落點需各自實機驗收。
 

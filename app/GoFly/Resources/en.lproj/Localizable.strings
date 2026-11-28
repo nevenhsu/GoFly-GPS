@@ -41,9 +41,11 @@
 "location.disabled" = "Location Services are off. You can still use the device service without GPS access.";
 "location.permissionDenied" = "GPS access is not allowed. You can enable it in iOS Settings or continue using GoFly without it.";
 "location.noFix" = "A current GPS location could not be verified. Try again when a GPS signal is available.";
-"error.pairingRequired" = "Pairing data is missing. Connect to the Mac app to prepare.";
+"error.pairingRequired" = "No pairing file imported.";
+"error.pairingRejected.title" = "Re-import pairing file";
+"error.pairingRejected" = "Couldn’t verify pairing file.";
 "error.identityMismatch" = "Pairing is for another device. Repair it in the Mac app.";
-"error.devicePreparationRequired" = "Connect your iPhone to your Mac with USB and reinstall using your Mac app.";
+"error.devicePreparationRequired" = "Connect via USB and reinstall with the Mac app.";
 "error.serviceUnavailable" = "Can't reach the device service. Check the VPN tunnel.";
 "error.tunnelUnavailable" = "Can't reach the VPN tunnel. Reconnect LocalDevVPN, then try again.";
 "error.operationTimedOut" = "The device didn't confirm in time. Try again.";
@@ -53,11 +55,11 @@
 "onboarding.next" = "Next";
 "onboarding.location.title" = "Allow GoFly to use location";
 "onboarding.location.title.authorized" = "Location access allowed";
-"onboarding.location.message" = "Show your real location on the map and use it as the start of routes and wandering. Only “While Using the App” is needed.";
+"onboarding.location.message" = "Show your real location as a starting point. Only “While Using” is needed.";
 "onboarding.location.allow" = "Allow";
 "onboarding.location.skip" = "Skip";
 "onboarding.location.authorized" = "Location access is already allowed.";
-"onboarding.location.denied" = "Location access is off. To show your real location on the map, turn it on in iPhone Settings. You can also continue without it.";
+"onboarding.location.denied" = "Simulation still works. Turn on Location in Settings to show your real position.";
 "onboarding.location.openSettings" = "Settings";
 "onboarding.vpn.title" = "Connect VPN tunnel";
 "onboarding.vpn.stepsTitle" = "Connection steps";
@@ -70,7 +72,7 @@
 "onboarding.vpn.help.step3.title" = "LocalDevVPN: Tap Connect";
 "onboarding.vpn.stepLocalNetwork" = "Allow Local Network";
 "onboarding.vpn.help.troubleshooting" = "Still unable to connect?";
-"onboarding.vpn.help.reconnect" = "Make sure you are on Wi‑Fi and Local Network is allowed. Disconnect and reconnect in LocalDevVPN, then come back and check again.";
+"onboarding.vpn.help.reconnect" = "Check Wi‑Fi and Local Network, reconnect LocalDevVPN, then retry.";
 "onboarding.vpn.help.notChecked" = "Not connected";
 "onboarding.vpn.help.notReachable" = "Connection error";
 "onboarding.vpn.disconnected" = "Not connected";
@@ -96,7 +98,7 @@
 "search.placeDetails" = "Place details";
 "teleport.moving" = "Moving…";
 "teleport.unconfirmed" = "Location unconfirmed";
-"teleport.positionUnconfirmed" = "The location change is unconfirmed. Stop the service before using Go again.";
+"teleport.positionUnconfirmed" = "Location unconfirmed. Stop the service before tapping Go.";
 "teleport.failure.toast.title" = "Teleport failed";
 "teleport.failure.toast.message" = "Couldn't update the simulated location. Check Settings › VPN Channel.";
 "figma.fixture.b2.position" = "No. 45, Sec. 2, Zhongshan N. Rd.";
@@ -399,8 +401,8 @@
 "background.routePaused" = "Route paused";
 "background.routePaused.message" = "Background task ended. Resume the route.";
 "background.rejected" = "Background mode declined";
-"background.rejected.message" = "If you use GoFly in LiveContainer, enable Fix Background Processing Tasks in GoFly’s LiveContainer settings.";
-"background.rejected.settingsFailed" = "Open iOS Settings for this app. In LiveContainer, hold GoFly and enable Fix Background Processing Tasks.";
+"background.rejected.message" = "In LiveContainer, enable “Fix Background Processing Tasks” for GoFly.";
+"background.rejected.settingsFailed" = "Open iOS Settings. In LiveContainer, hold GoFly and enable Fix Background Processing Tasks.";
 "background.registrationLimit" = "Background mode busy. Open GoFly to check.";
 "background.unsupported" = "Background mode not supported on this system.";
 "background.activity.finiteRoute" = "GoFly route";
@@ -431,10 +433,10 @@
 "settings.status.available" = "Available";
 "settings.status.unavailable" = "Unavailable";
 "settings.status.timedOut" = "Timed out";
-"settings.status.locationServicesOff" = "Location Services off";
+"settings.status.locationServicesOff" = "Off";
 "settings.status.authorized" = "While Using";
 "settings.status.denied" = "Not allowed";
-"settings.status.notDetermined" = "Not determined";
+"settings.status.notDetermined" = "Not set";
 "settings.status.restricted" = "Restricted";
 "settings.openSystemSettings" = "Settings";
 "settings.externalOpenFailed" = "Open it manually, then return to GoFly.";
@@ -449,7 +451,7 @@
 "settings.vpn.downloadLocalDevVPN" = "Download LocalDevVPN";
 "settings.vpn.appStore" = "App Store";
 "settings.vpn.openLocalDevVPN" = "Open LocalDevVPN";
-"settings.vpn.externalOpenFailed" = "LocalDevVPN could not be opened. Open it manually, connect the tunnel, then return to GoFly.";
+"settings.vpn.externalOpenFailed" = "Couldn’t open LocalDevVPN. Connect manually, then return.";
 "settings.vpn.check" = "Check";
 "settings.device.pairing" = "Pairing";
 "settings.device.pairingReady" = "Paired";
@@ -483,31 +485,42 @@
 "setup.waiting.title" = "Continue setup on Mac";
 "setup.waiting.message" = "Finish setup in the GoFly Mac app, then return to this iPhone.";
 "setup.mac.title" = "Connect to Mac to finish pairing";
-"setup.mac.message" = "Connect this iPhone to your Mac with a USB cable, then complete device pairing and signing authorization in GoFly on your Mac.";
+"setup.mac.message" = "Connect to your Mac via USB and finish pairing in GoFly Mac App.";
 "setup.mac.unpaired" = "Not paired";
 "setup.pairingImport.title" = "Import pairing file";
-"setup.pairingImport.message" = "On your computer, export this iPhone’s pairing file, then tap the button below to import it.";
+"setup.pairingImport.message" = "Export this iPhone’s pairing file on your computer, then import it below.";
 "setup.pairingImport.notImported" = "Not imported";
 "setup.pairingImport.action" = "Import";
-"setup.pairingImport.failed" = "Export this iPhone’s pairing file on your computer and try again.";
-"setup.pairingImport.deviceVerificationFailed" = "Use a Remote Pairing file for this iPhone. Allow Local Network access for GoFly, connect LocalDevVPN, then try again.";
+"setup.pairingImport.failed" = "Couldn’t save the pairing file. Try again.";
+"setup.pairingImport.deviceVerificationFailed" = "Couldn’t verify pairing file.";
+"setup.pairingImport.reimportRequired" = "Re-import required";
+"setup.pairingImport.verified" = "Verified";
+"setup.pairingImport.verifying" = "Verifying…";
+"setup.pairingImport.invalidFormat" = "Choose a Remote Pairing file for this iPhone.";
+"setup.pairingImport.fileUnreadable" = "Couldn’t read file. Choose again.";
+"setup.pairingImport.networkUnavailable" = "Connect LocalDevVPN and allow Local Network (or for LiveContainer).";
+"setup.pairingImport.pairingRejected" = "Create a new pairing file in idevice_pair, then import it.";
 "setup.completed.title" = "Setup complete";
 "setup.completed.message" = "GoFly is ready.";
 "setup.blocked.title" = "Setup is required";
-"setup.blocked.identity" = "GoFly App and its setup package do not match. Connect this iPhone to the Mac app to repair setup.";
-"setup.blocked.pairing" = "Pairing data is missing or does not match this setup. Connect this iPhone to the GoFly Mac app to repair setup.";
-"setup.blocked.artifact" = "The device support package is incomplete or does not match setup. Connect this iPhone to the GoFly Mac app to repair setup.";
-"setup.blocked.input" = "The setup package is invalid. Connect this iPhone to the GoFly Mac app to retry setup.";
-"setup.blocked.storage" = "GoFly could not safely read setup. Connect this iPhone to the GoFly Mac app to retry setup.";
+"setup.blocked.identity" = "App and setup package mismatch. Connect to the Mac app to repair.";
+"setup.blocked.pairing" = "Pairing data missing or invalid. Connect to the Mac app to repair.";
+"setup.blocked.artifact" = "Device support package invalid. Connect to the Mac app to repair.";
+"setup.blocked.input" = "Invalid setup package. Connect to the Mac app to retry.";
+"setup.blocked.storage" = "Couldn’t read setup safely. Connect to the Mac app to retry.";
 "setup.retry" = "Retry";
 
 
-"recovery.coldClearPending" = "Last simulated position may still be active. Tap Restore to clear it.";
+"recovery.coldClearPending" = "Previous location may still be active. Tap Restore to clear.";
 
 "settings.diagnostics.title" = "Diagnostics";
 "settings.diagnostics.description" = "Saves the connection, movement, and background records to a file you can share. Coordinates are rounded to three decimals; pairing data and device identifiers are not included.";
 "settings.diagnostics.export" = "Export";
 "settings.diagnostics.exportFailed" = "Could not create the diagnostics file.";
+"settings.diagnostics.sheetDetail" = "No pairing or device IDs";
+"settings.diagnostics.share" = "Share logs";
+"settings.diagnostics.clear" = "Clear logs";
+"settings.diagnostics.cleared" = "Diagnostics cleared";
 
 "status.tone.neutral" = "Waiting";
 "status.tone.active" = "Active";
@@ -627,7 +640,7 @@
 "onboarding.location.currentStatus" = "Current permission";
 "onboarding.location.status.notDetermined" = "Not set";
 "onboarding.location.status.denied" = "Not allowed";
-"onboarding.location.status.authorized" = "While using the app · Allowed";
+"onboarding.location.status.authorized" = "Allowed";
 "onboarding.location.deniedTitle" = "Location permission is off";
 "onboarding.vpn.helpLink" = "Connection Guide";
 "onboarding.vpn.step1" = "Connect to Wi‑Fi";
@@ -685,7 +698,7 @@
 "background.activity.routeProgress" = "%ld%% of route";
 "background.durationCompleted" = "Background task complete";
 "background.positionPaused" = "Teleport simulation paused";
-"background.positionPaused.message" = "Connection or background interruption. Select Continue to resume location.";
+"background.positionPaused.message" = "Connection or background paused. Tap Retry to resume.";
 "background.positionRetry" = "Retry";
 "common.confirm" = "Confirm";
 "common.retry" = "Retry";
@@ -702,7 +715,7 @@
 "status.pill.paused" = "Paused";
 "status.pill.stopped" = "Stopped";
 "status.pill.error" = "Error";
-"status.pill.disconnected" = "Connection lost";
+"status.pill.disconnected" = "Disconnected";
 "gallery.fieldFocused" = "Search places";
 "gallery.fieldNormal" = "Search favorite places";
 "gallery.component.iconButtons" = "Icon Buttons";
@@ -741,7 +754,7 @@
 "wander.error.planningFailed" = "Pick a point on the map or retry.";
 "wander.planning" = "Planning route";
 "route.pausedToast.title" = "Route simulation paused";
-"route.pausedToast.message" = "The task was interrupted. Tap Retry to resume from where it stopped.";
+"route.pausedToast.message" = "Route interrupted. Tap Retry to resume.";
 "route.paused.progress" = "Route paused · %ld%%";
 "route.paused.remaining" = "%.1f km left · about %d min";
 "route.heading.going" = "To %@";
@@ -752,6 +765,7 @@
 "issue.action.fix" = "Fix";
 "issue.action.settings" = "Settings";
 "issue.action.chooseFile" = "Choose";
+"issue.action.importPairing" = "Import";
 
 "settings.background.duration" = "Background run time";
 "settings.background.duration.hours" = "Hours";
@@ -783,7 +797,7 @@
 
 "route.start.title.planning" = "Planning";
 "route.start.title.succeeded" = "Success";
-"route.start.title.partial" = "Partly succeeded";
+"route.start.title.partial" = "Partial";
 "route.start.title.allFailed" = "All failed";
 "route.start.inProgress" = "In progress";
 
@@ -797,10 +811,10 @@
 
 /* Local Network onboarding (R03.a), Network settings */
 "onboarding.localNetwork.title" = "Allow GoFly to use the local network";
-"onboarding.localNetwork.message" = "GoFly reaches this iPhone’s device service through LocalDevVPN, which needs Local Network access.";
+"onboarding.localNetwork.message" = "Needed to reach the device service via LocalDevVPN.";
 "onboarding.localNetwork.allow" = "Allow";
 "onboarding.localNetwork.checkFailed.title" = "Couldn’t check Local Network";
-"onboarding.localNetwork.checkFailed" = "Connect to Wi-Fi and tap Allow again. In LiveContainer, check Local Network access for LiveContainer in iOS Settings.";
+"onboarding.localNetwork.checkFailed" = "Connect to Wi‑Fi and tap Allow. In LiveContainer, enable Local Network in Settings.";
 "onboarding.localNetwork.status.unknown" = "Not set";
 "onboarding.localNetwork.status.granted" = "Allowed";
 "onboarding.localNetwork.status.denied" = "Not allowed";
@@ -840,8 +854,8 @@
 "support.modal.title.onboardingFailed" = "Couldn't prepare device support";
 "support.modal.title.map" = "Activate device support";
 "support.modal.title.mapFailed" = "Couldn't activate device support";
-"support.modal.message.onboarding" = "First use downloads device support (about 16 MB) so GoFly can simulate location on this iPhone.";
-"support.modal.message.map" = "Device support needs to be reactivated after an iOS update (about 16 MB). Your last action retries when it finishes.";
+"support.modal.message.onboarding" = "First use downloads device support to simulate location.";
+"support.modal.message.map" = "Reactivate device support after an iOS update. Your action will retry.";
 "support.modal.downloading" = "Downloading…";
 "support.modal.activating" = "Activating…";
 "support.step.download" = "Download device support";
@@ -852,10 +866,10 @@
 "support.step.activating" = "Activating…";
 "support.step.done" = "Done";
 "support.step.failed" = "Failed";
-"support.download.error.network" = "Couldn't reach the download server. Check your internet connection and try again.";
+"support.download.error.network" = "Couldn't reach server. Check your internet and retry.";
 "support.download.error.invalid" = "The downloaded files were incomplete. Try again later.";
-"support.download.error.storage" = "Not enough storage to save device support. Free up space and try again.";
-"support.activate.error.connection" = "Couldn't reach this iPhone. Make sure Wi‑Fi and LocalDevVPN are connected, then try again.";
+"support.download.error.storage" = "Not enough storage. Free up space and retry.";
+"support.activate.error.connection" = "Couldn't reach iPhone. Check Wi‑Fi and LocalDevVPN, then retry.";
 "support.activate.error.rejected" = "This iPhone didn't activate device support. Try again in a moment.";
 
 /* Settings › Device support (F11) and pairing re-import (F9.a) */
@@ -866,7 +880,7 @@
 "settings.support.downloading" = "Downloading";
 "settings.support.activating" = "Activating";
 "settings.support.cardTitle" = "Redownload device support";
-"settings.support.cardMessage" = "If location simulation stops working after an iOS update, redownload and activate device support (about 16 MB).";
+"settings.support.cardMessage" = "Redownload if location fails after an iOS update.";
 "settings.support.redownload" = "Redownload";
 "settings.device.reimportPairing" = "Re-import pairing file";
 "settings.device.reimportPairingNote" = "Importing a new pairing file replaces this iPhone's current pairing data.";
@@ -882,3 +896,11 @@
 "wander.search.destination" = "Set Destination";
 "wander.search.relocated" = "Moved to %@. Wander range updated.";
 "import.liveContainerHint" = "LiveContainer: turn on “Fix File Picker”";
+
+/* Settings › Pairing file row and status pill */
+"settings.pairingFile" = "Pairing file";
+"settings.pairingFile.ready" = "Ready";
+"settings.pairingFile.invalid" = "Invalid";
+"setup.pairingImport.pill.ready" = "Ready";
+"setup.pairingImport.pill.invalid" = "Invalid";
+"setup.pairingImport.pill.missing" = "Missing";

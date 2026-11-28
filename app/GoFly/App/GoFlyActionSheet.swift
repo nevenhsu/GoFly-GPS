@@ -131,7 +131,7 @@ struct GoFlyActionSheet: View {
 
     private func row(_ item: GoFlyActionSheetItem) -> some View {
         let textForeground = item.isDestructive ? GoFlyTextColor.danger : GoFlyTextColor.primary
-        let iconForeground = item.isDestructive ? GoFlyTextColor.danger : GoFlyThemeColor.iconSecondary
+        let iconForeground = item.isDestructive ? GoFlyThemeColor.iconDanger : GoFlyThemeColor.iconSecondary
         return Button(action: item.perform) {
             HStack(spacing: 14) {
                 if let icon = item.icon {
