@@ -516,40 +516,37 @@ struct GoFlyDeviceSettingsPage: View {
                 .accessibilityIdentifier("settings.device.diagnostics")
             }
         }
-        .overlay(alignment: .bottom) {
-            if showingDiagnosticsActions {
-                GoFlyActionSheet(
-                    title: goFlyString("settings.diagnostics.title"),
-                    detail: goFlyString("settings.diagnostics.sheetDetail"),
-                    items: [
-                        GoFlyActionSheetItem(
-                            title: goFlyString("settings.diagnostics.share"),
-                            icon: .asset(GoFlySymbols.externalLink),
-                            identifier: "settings.device.diagnostics.share",
-                            enabled: diagnosticsByteCount > 0,
-                            perform: {
-                                showingDiagnosticsActions = false
-                                shareDiagnostics()
-                            }
-                        ),
-                        GoFlyActionSheetItem(
-                            title: goFlyString("settings.diagnostics.clear"),
-                            icon: .asset(GoFlySymbols.delete),
-                            identifier: "settings.device.diagnostics.clear",
-                            enabled: diagnosticsByteCount > 0,
-                            isDestructive: true,
-                            perform: {
-                                showingDiagnosticsActions = false
-                                clearDiagnostics()
-                            }
-                        )
-                    ],
-                    cancelIdentifier: "settings.device.diagnostics.cancel",
-                    identifier: "settings.device.diagnostics.sheet",
-                    onCancel: { showingDiagnosticsActions = false }
+        .goFlyActionSheet(
+            isPresented: showingDiagnosticsActions,
+            title: goFlyString("settings.diagnostics.title"),
+            detail: goFlyString("settings.diagnostics.sheetDetail"),
+            items: [
+                GoFlyActionSheetItem(
+                    title: goFlyString("settings.diagnostics.share"),
+                    icon: .asset(GoFlySymbols.externalLink),
+                    identifier: "settings.device.diagnostics.share",
+                    enabled: diagnosticsByteCount > 0,
+                    perform: {
+                        showingDiagnosticsActions = false
+                        shareDiagnostics()
+                    }
+                ),
+                GoFlyActionSheetItem(
+                    title: goFlyString("settings.diagnostics.clear"),
+                    icon: .asset(GoFlySymbols.delete),
+                    identifier: "settings.device.diagnostics.clear",
+                    enabled: diagnosticsByteCount > 0,
+                    isDestructive: true,
+                    perform: {
+                        showingDiagnosticsActions = false
+                        clearDiagnostics()
+                    }
                 )
-            }
-        }
+            ],
+            cancelIdentifier: "settings.device.diagnostics.cancel",
+            identifier: "settings.device.diagnostics.sheet",
+            onCancel: { showingDiagnosticsActions = false }
+        )
         .sheet(item: $shareItem) { item in
             GoFlyShareSheet(url: item.url)
         }

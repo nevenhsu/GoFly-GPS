@@ -64,6 +64,7 @@ struct GoFlyImportedRoutesView: View {
                 importButton
             }
                 .opacity(showingActions ? 0 : 1)
+                .animation(.easeInOut(duration: 0.22), value: showingActions)
                 .accessibilityHidden(showingActions)
                 .allowsHitTesting(!showingActions)
                 .padding(.horizontal, 16)
@@ -82,23 +83,22 @@ struct GoFlyImportedRoutesView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if let actionRecord, showingActions {
-                GoFlyImportedRouteActionSheet(
-                    title: actionRecord.filename,
-                    detail: goFlyImportedRouteMetadata(actionRecord),
-                    canLoad: !isBusy && controller.canEdit && selectedSnapshot != nil && executionFailureKey == nil,
-                    canExport: !isBusy && selectedSnapshot != nil,
-                    canDelete: !isBusy && imports.canMutate,
-                    onLoad: { showingActions = false; loadSelected() },
-                    onViewAllPoints: {
-                        showingActions = false
-                        showingPoints = true
-                    },
-                    onExport: { showingActions = false; exportSelected() },
-                    onDelete: { showingActions = false; deleteSelected() },
-                    onCancel: { showingActions = false }
-                )
-            }
+            GoFlyImportedRouteActionSheet(
+                isPresented: showingActions && actionRecord != nil,
+                title: actionRecord?.filename ?? "",
+                detail: actionRecord.map(goFlyImportedRouteMetadata) ?? "",
+                canLoad: !isBusy && controller.canEdit && selectedSnapshot != nil && executionFailureKey == nil,
+                canExport: !isBusy && selectedSnapshot != nil,
+                canDelete: !isBusy && imports.canMutate,
+                onLoad: { showingActions = false; loadSelected() },
+                onViewAllPoints: {
+                    showingActions = false
+                    showingPoints = true
+                },
+                onExport: { showingActions = false; exportSelected() },
+                onDelete: { showingActions = false; deleteSelected() },
+                onCancel: { showingActions = false }
+            )
         }
         .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.goFlyGPX, .xml]) { result in
             switch result {
@@ -291,6 +291,7 @@ struct GoFlyImportedRoutesView: View {
 }
 
 private struct GoFlyImportedRouteActionSheet: View {
+    let isPresented: Bool
     let title: String
     let detail: String
     let canLoad: Bool
@@ -304,6 +305,7 @@ private struct GoFlyImportedRouteActionSheet: View {
 
     var body: some View {
         GoFlyActionSheet(
+            isPresented: isPresented,
             title: title, detail: detail,
             items: [
                 GoFlyActionSheetItem(title: goFlyString("imports.action.loadRoute"), icon: .playOutline,

@@ -1021,28 +1021,26 @@ struct GoFlyMapView: View {
         .overlay(alignment: .top) {
             toastStack(topInset: (topFrame.maxY > 0 ? topFrame.maxY : 116) + 8)
         }
-        .overlay(alignment: .bottom) {
-            // Figma E6: the same GoFly action sheet as D12, not the system dialog.
-            if showingWanderSearchMenu, isWanderMap {
-                GoFlyActionSheet(
-                    title: goFlyString("wander.search.title"),
-                    items: [
-                        GoFlyActionSheetItem(title: goFlyString("wander.search.teleport"), icon: .asset(.pin),
-                                             identifier: "wander.search.teleport") {
-                            showingWanderSearchMenu = false
-                            beginWanderSearch(.teleport)
-                        },
-                        GoFlyActionSheetItem(title: goFlyString("wander.search.destination"), icon: .asset(.flag),
-                                             identifier: "wander.search.destination") {
-                            showingWanderSearchMenu = false
-                            beginWanderSearch(.destination)
-                        }
-                    ],
-                    cancelIdentifier: "wander.search.cancel",
-                    identifier: "wander.search.actions",
-                    onCancel: { showingWanderSearchMenu = false })
-            }
-        }
+        // Figma E6: the same GoFly action sheet as D12, not the system dialog.
+        .goFlyActionSheet(
+            isPresented: showingWanderSearchMenu && isWanderMap,
+            title: goFlyString("wander.search.title"),
+            items: [
+                GoFlyActionSheetItem(title: goFlyString("wander.search.teleport"), icon: .asset(.pin),
+                                     identifier: "wander.search.teleport") {
+                    showingWanderSearchMenu = false
+                    beginWanderSearch(.teleport)
+                },
+                GoFlyActionSheetItem(title: goFlyString("wander.search.destination"), icon: .asset(.flag),
+                                     identifier: "wander.search.destination") {
+                    showingWanderSearchMenu = false
+                    beginWanderSearch(.destination)
+                }
+            ],
+            cancelIdentifier: "wander.search.cancel",
+            identifier: "wander.search.actions",
+            onCancel: { showingWanderSearchMenu = false }
+        )
         .onChange(of: isWanderMap) { _, shown in
             if !shown { showingWanderSearchMenu = false }
         }

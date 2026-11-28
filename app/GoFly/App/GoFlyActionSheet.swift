@@ -40,6 +40,7 @@ struct GoFlyActionSheetItem: Identifiable {
 /// with leading 20 pt icons, and a matching 16 pt / 52 pt Cancel card below.
 /// The system `confirmationDialog` renders differently, so GoFly draws its own.
 struct GoFlyActionSheet: View {
+    var isPresented: Bool = true
     let title: String
     var detail: String? = nil
     let items: [GoFlyActionSheetItem]
@@ -48,8 +49,32 @@ struct GoFlyActionSheet: View {
     let onCancel: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let cornerRadius: CGFloat = GoFlyStyle.Radius.card
+
+    private var shouldReduceMotion: Bool {
+        #if DEBUG && targetEnvironment(simulator)
+        return reduceMotion || GoFlyUITestOverrides.contains("-gofly-ui-reduce-motion")
+        #else
+        return reduceMotion
+        #endif
+    }
+
+    private var backdropAnimation: Animation? {
+        shouldReduceMotion ? nil : .easeInOut(duration: 0.22)
+    }
+
+    private var sheetAnimation: Animation? {
+        guard !shouldReduceMotion else { return nil }
+        return isPresented
+            ? .spring(response: 0.34, dampingFraction: 0.88)
+            : .spring(response: 0.26, dampingFraction: 0.95)
+    }
+
+    private var cardTransition: AnyTransition {
+        shouldReduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
+    }
 
     private var borderColor: Color {
         GoFlyThemeColor.lineSeparator.opacity(colorScheme == .dark ? 0.85 : 0.6)
@@ -61,43 +86,58 @@ struct GoFlyActionSheet: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            GoFlyThemeColor.commonBlack.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture(perform: onCancel)
-                .accessibilityHidden(true)
-
-            VStack(spacing: 8) {
-                VStack(spacing: 0) {
-                    header
-
-                    headerDivider
-
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        if index > 0 { rowSeparator(hasIcon: item.icon != nil) }
-                        row(item)
-                    }
+            ZStack {
+                if isPresented {
+                    GoFlyThemeColor.commonBlack.opacity(0.4)
+                        .ignoresSafeArea()
+                        .onTapGesture(perform: onCancel)
+                        .accessibilityHidden(true)
+                        .transition(.opacity)
                 }
-                .background(
-                    GoFlyThemeColor.surfaceControlFloating,
-                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(borderColor, lineWidth: 0.5)
-                        .allowsHitTesting(false)
-                }
-                .shadow(color: shadowColor, radius: 12, x: 0, y: 8)
-
-                cancelButton
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-            .fixedSize(horizontal: false, vertical: true)
+            .animation(backdropAnimation, value: isPresented)
+
+            ZStack(alignment: .bottom) {
+                if isPresented {
+                    cardStack
+                        .transition(cardTransition)
+                }
+            }
+            .animation(sheetAnimation, value: isPresented)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .allowsHitTesting(isPresented)
+        .zIndex(60)
+    }
+
+    private var cardStack: some View {
+        VStack(spacing: 8) {
+            VStack(spacing: 0) {
+                header
+
+                headerDivider
+
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 { rowSeparator(hasIcon: item.icon != nil) }
+                    row(item)
+                }
+            }
+            .background(GoFlyThemeColor.surfaceControlFloating)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 0.5)
+                    .allowsHitTesting(false)
+            }
+            .shadow(color: shadowColor, radius: 12, x: 0, y: 8)
+
+            cancelButton
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(identifier)
-        .zIndex(60)
     }
 
     private var header: some View {
@@ -148,7 +188,7 @@ struct GoFlyActionSheet: View {
             .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(GoFlyActionSheetButtonStyle(reduceMotion: shouldReduceMotion))
         .disabled(!item.enabled)
         .accessibilityIdentifier(item.identifier)
     }
@@ -180,11 +220,9 @@ struct GoFlyActionSheet: View {
                 .frame(maxWidth: .infinity, minHeight: 52)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .background(
-            GoFlyThemeColor.surfaceControlFloating,
-            in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        )
+        .buttonStyle(GoFlyActionSheetButtonStyle(reduceMotion: shouldReduceMotion))
+        .background(GoFlyThemeColor.surfaceControlFloating)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .strokeBorder(borderColor, lineWidth: 0.5)
@@ -192,6 +230,42 @@ struct GoFlyActionSheet: View {
         }
         .shadow(color: shadowColor, radius: 12, x: 0, y: 8)
         .accessibilityIdentifier(cancelIdentifier)
+    }
+}
+
+private struct GoFlyActionSheetButtonStyle: ButtonStyle {
+    let reduceMotion: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        let pressedFill = GoFlyThemeColor.commonBlack.opacity(colorScheme == .dark ? 0.18 : 0.06)
+        configuration.label
+            .background(configuration.isPressed ? pressedFill : Color.clear)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+extension View {
+    func goFlyActionSheet(
+        isPresented: Bool,
+        title: String,
+        detail: String? = nil,
+        items: [GoFlyActionSheetItem],
+        cancelIdentifier: String,
+        identifier: String,
+        onCancel: @escaping () -> Void
+    ) -> some View {
+        overlay(alignment: .bottom) {
+            GoFlyActionSheet(
+                isPresented: isPresented,
+                title: title,
+                detail: detail,
+                items: items,
+                cancelIdentifier: cancelIdentifier,
+                identifier: identifier,
+                onCancel: onCancel
+            )
+        }
     }
 }
 
